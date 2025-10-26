@@ -2865,21 +2865,8 @@ function setupMultiDayExpedition(container, controls, instructions, gameData) {
               document.getElementById('continue-journey-btn').style.display = 'none';
               document.getElementById('rest-btn').style.display = 'none';
               document.getElementById('forage-btn').style.display = 'none';
-              
-              // STOP RESOURCE DRAIN - Expedition pauses for rock testing
-              clearInterval(resourceDrainInterval);
-              
-              // Hide journey UI and show rock testing in same container
-              const journeyUI = document.querySelector('.mountain-journey-ui');
-              const landscape = document.querySelector('.expedition-landscape');
-              if (journeyUI) journeyUI.style.display = 'none';
-              if (landscape) landscape.style.display = 'none';
-              
-              // Transform container to rock testing scene
-              container.style.background = 'linear-gradient(180deg, #3C3C3C 0%, #2C2418 50%, #1a1410 100%)';
-              
               document.getElementById('rock-testing-area').style.display = 'block';
-              setupRockTesting(container);
+              setupRockTesting();
             }, 4000);
           }
         }, 2500);
@@ -2931,189 +2918,15 @@ function setupMultiDayExpedition(container, controls, instructions, gameData) {
     showNotification(`🔍 Found ${result}!`, 2500);
   });
   
-  // Rock testing at final stage - 3 ATTEMPTS SYSTEM
-  function setupRockTesting(testingContainer) {
-    // Create rock testing UI directly in the main container
-    testingContainer.innerHTML = `
-      <div style="padding: 2rem; max-width: 1200px; margin: 0 auto;">
-        <h2 style="color: var(--ochre-yellow); text-align: center; font-family: var(--font-title); font-size: 2rem; margin-bottom: 1rem;">
-          🪨 Limestone Plateau - Rock Testing
-        </h2>
-        <div id="attempts-display" style="text-align: center; margin-bottom: 1.5rem; font-size: 1.2rem; color: var(--limestone);">
-          <span style="color: #4CAF50; font-weight: bold;">Attempts Remaining: <span id="attempts-count">3</span>/3</span>
-        </div>
-        <div id="rock-test-instructions" style="background: rgba(139, 69, 19, 0.4); padding: 15px; border-radius: 10px; margin-bottom: 1.5rem; border: 2px solid var(--ochre-yellow);">
-          <strong style="color: var(--ochre-yellow); font-size: 1.1rem;">🔬 Your Task:</strong><br>
-          <p style="color: var(--limestone); margin: 10px 0;">
-            You have <strong style="color: #4CAF50;">3 attempts</strong> to identify manganese among these rocks.<br>
-            <span style="color: #FFD700;">✓ Manganese (MnO₂):</span> Dark color, medium-heavy weight, produces brown-black pigment<br>
-            <span style="color: #FF6B35;">✗ Wrong choice:</span> Lose an attempt. 3 failures = expedition fails!
-          </p>
-        </div>
-        <div id="rock-samples-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.5rem; margin-bottom: 2rem;">
-          <!-- Rocks will be added here -->
-        </div>
-        <div id="test-result-message" style="text-align: center; font-size: 1.1rem; min-height: 60px; color: var(--limestone);"></div>
-      </div>
-    `;
+  // Rock testing at final stage - ENHANCED DIFFICULTY
+  function setupRockTesting() {
+    const rocksContainer = document.getElementById('rock-samples-container');
     
-    miniGameState.attemptsRemaining = 3;
-    miniGameState.correctRockFound = false;
-    
-    // Simplified rock selection - just need to find the ONE correct manganese
-    const rocks = [
-      { type: 'limestone', icon: '⚪', name: 'Limestone', desc: 'White sedimentary rock', correct: false },
-      { type: 'hematite', icon: '🔴', name: 'Hematite', desc: 'Red iron oxide', correct: false },
-      { type: 'coal', icon: '⚫', name: 'Coal', desc: 'Black combustible rock', correct: false },
-      { type: 'manganese', icon: '🟤', name: 'Dark Rock', desc: 'Unknown mineral', correct: true },
-      { type: 'basalt', icon: '⚫', name: 'Basalt', desc: 'Dark volcanic rock', correct: false },
-      { type: 'shale', icon: '🟫', name: 'Shale', desc: 'Brown layered rock', correct: false }
-    ];
-    
-    // Shuffle rocks
-    rocks.sort(() => Math.random() - 0.5);
-    
-    const grid = testingContainer.querySelector('#rock-samples-grid');
-    
-    rocks.forEach((rock, index) => {
-      const rockCard = document.createElement('div');
-      rockCard.className = 'rock-test-card';
-      rockCard.style.cssText = `
-        background: rgba(60, 50, 40, 0.6);
-        border: 3px solid var(--stone-gray);
-        border-radius: 12px;
-        padding: 1.5rem;
-        text-align: center;
-        cursor: pointer;
-        transition: all 0.3s ease;
-      `;
-      
-      rockCard.innerHTML = `
-        <div style="font-size: 4rem; margin-bottom: 0.5rem;">${rock.icon}</div>
-        <div style="color: var(--limestone); font-weight: bold; margin-bottom: 0.5rem;">${rock.name}</div>
-        <div style="color: var(--stone-gray); font-size: 0.85rem;">${rock.desc}</div>
-      `;
-      
-      rockCard.addEventListener('click', () => {
-        if (miniGameState.attemptsRemaining <= 0 || miniGameState.correctRockFound) return;
-        
-        rockCard.style.pointerEvents = 'none';
-        
-        if (rock.correct) {
-          // SUCCESS!
-          rockCard.style.borderColor = '#4CAF50';
-          rockCard.style.background = 'rgba(76, 175, 80, 0.3)';
-          rockCard.style.boxShadow = '0 0 30px rgba(76, 175, 80, 0.8)';
-          
-          miniGameState.correctRockFound = true;
-          
-          const resultMsg = testingContainer.querySelector('#test-result-message');
-          resultMsg.innerHTML = `
-            <div style="color: #4CAF50; font-size: 1.5rem; font-weight: bold; animation: pulse 1s ease-in-out infinite;">
-              ✅ MANGANESE IDENTIFIED!
-            </div>
-            <div style="color: var(--limestone); margin-top: 1rem;">
-              Expedition successful! Returning with manganese for pigment...
-            </div>
-          `;
-          
-          setTimeout(() => {
-            const distanceBonus = Math.floor(miniGameState.journeyDistance / 12);
-            const survivalBonus = Math.floor((miniGameState.stamina + miniGameState.food + miniGameState.water) / 60);
-            const accuracyBonus = (3 - miniGameState.attemptsRemaining) === 1 ? 2 : (3 - miniGameState.attemptsRemaining) === 2 ? 1 : 0;
-            miniGameState.totalMultiplier = gameData.rewardMultiplier + distanceBonus + survivalBonus + accuracyBonus;
-            
-            showNotification(
-              `🎉 EXPEDITION SUCCESSFUL!\n` +
-              `Collected ${miniGameState.totalMultiplier}x manganese after ${miniGameState.daysPassed} days!\n` +
-              `Bonuses - Distance: +${distanceBonus} | Survival: +${survivalBonus} | First try: +${accuracyBonus}`,
-              5000
-            );
-            setTimeout(() => endMiniGame(true), 4000);
-          }, 2500);
-          
-        } else {
-          // WRONG!
-          rockCard.style.borderColor = '#F44336';
-          rockCard.style.background = 'rgba(244, 67, 54, 0.3)';
-          rockCard.style.opacity = '0.5';
-          
-          miniGameState.attemptsRemaining--;
-          testingContainer.querySelector('#attempts-count').textContent = miniGameState.attemptsRemaining;
-          
-          const resultMsg = testingContainer.querySelector('#test-result-message');
-          
-          if (miniGameState.attemptsRemaining > 0) {
-            resultMsg.innerHTML = `
-              <div style="color: #FF6B35; font-size: 1.3rem; font-weight: bold;">
-                ❌ Wrong! That's ${rock.name}
-              </div>
-              <div style="color: var(--limestone); margin-top: 0.5rem;">
-                ${miniGameState.attemptsRemaining} attempt${miniGameState.attemptsRemaining > 1 ? 's' : ''} remaining...
-              </div>
-            `;
-            showNotification(`❌ Incorrect - that's ${rock.name}, not manganese!`, 2500);
-          } else {
-            // NO ATTEMPTS LEFT - FAIL
-            resultMsg.innerHTML = `
-              <div style="color: #F44336; font-size: 1.5rem; font-weight: bold;">
-                💀 EXPEDITION FAILED
-              </div>
-              <div style="color: var(--limestone); margin-top: 1rem;">
-                All attempts exhausted. Returning empty-handed...
-              </div>
-            `;
-            showNotification('💀 EXPEDITION FAILED - No manganese identified. You receive NOTHING.', 4000);
-            setTimeout(() => endMiniGame(false), 3000);
-          }
-        }
-      });
-      
-      rockCard.addEventListener('mouseenter', function() {
-        if (miniGameState.attemptsRemaining > 0 && !miniGameState.correctRockFound) {
-          this.style.borderColor = 'var(--ochre-yellow)';
-          this.style.transform = 'translateY(-8px) scale(1.05)';
-        }
-      });
-      
-      rockCard.addEventListener('mouseleave', function() {
-        if (!this.style.pointerEvents) {
-          this.style.borderColor = 'var(--stone-gray)';
-          this.style.transform = 'translateY(0) scale(1)';
-        }
-      });
-      
-      grid.appendChild(rockCard);
-    });
-  }
-}
-
-// ========================================
-// BOTANICAL IDENTIFICATION - FOREST WISDOM
-// ========================================
-
-function setupBotanicalGame(container, controls, instructions, gameData) {
-  instructions.innerHTML = `
-    <strong>Forest Wisdom - Botanical Identification</strong><br>
-    Identify resinous trees for torch-making.<br>
-    <span style="color: #4CAF50;">✓ Correct: Pine (Pinus sylvestris), Juniper (Juniperus)</span><br>
-    <span style="color: #C00000;">✗ Wrong: Oak, Birch, Willow (low resin content)</span><br>
-    <em>Scientific fact: Pine has 15-20% resin, Oak only 2-3%</em>
-  `;
-  
-  container.innerHTML = '';
-  container.style.background = 'linear-gradient(180deg, #87CEEB 0%, #6B8E23 50%, #5C4033 100%)';
-  
-  controls.innerHTML = `
-    <div class="progress-bar" style="width: 300px;">
-      <div class="progress-fill" id="minigame-timer">Time: ${miniGameState.timeRemaining}s</div>
-    </div>
-    <div style="color: white; font-weight: bold; font-size: 1.1rem; margin-top: 10px;">
-      Resinous Wood Collected: <span id="trees-collected">0</span> / ${miniGameState.treesNeeded}
-    </div>
-  `;
-  
-  const treeTypes = [
+    // Many more rock types - harder to find manganese!
+    const rockTypes = [
+      { type: 'limestone', correct: false, icon: '⚪', streak: 'white', hardness: 3, name: 'Limestone (CaCO₃)', weight: 'light', fizzes: true },
+      { type: 'calcite', correct: false, icon: '⚪', streak: 'white', hardness: 3, name: 'Calcite', weight: 'light', fizzes: true },
+      { type: 'hematite', correct: false, icon: '🔴', streak: 'red-brown', hardness: 6, name: 'Hematite (Fe₂O₃)', weight: 'heavy', fizzes: false },
       { type: 'magnetite', correct: false, icon: '⚫', streak: 'black', hardness: 6, name: 'Magnetite (Fe₃O₄)', weight: 'very heavy', fizzes: false },
       { type: 'sandstone', correct: false, icon: '🟡', streak: 'tan', hardness: 4, name: 'Sandstone', weight: 'medium', fizzes: false },
       { type: 'granite', correct: false, icon: '⚫', streak: 'none', hardness: 7, name: 'Granite', weight: 'heavy', fizzes: false },
@@ -3309,30 +3122,30 @@ function setupBotanicalGame(container, controls, instructions, gameData) {
           // Check if stamina depletion causes failure
           if (miniGameState.stamina <= 0) {
             addLogEntry(`💀 Exhausted from too many failed tests...`);
-            showNotification('💀 EXPEDITION FAILED - No manganese identified. You receive NOTHING.', 4000);
+            showNotification('💀 EXPEDITION FAILED - Too many wrong identifications! You receive NOTHING.', 4000);
             setTimeout(() => endMiniGame(false), 3000);
           }
         }
       });
       
-      rockCard.addEventListener('mouseenter', function() {
-        if (miniGameState.attemptsRemaining > 0 && !miniGameState.correctRockFound) {
+      sample.addEventListener('mouseenter', function() {
+        if (!this.classList.contains('identified')) {
           this.style.borderColor = 'var(--ochre-yellow)';
-          this.style.transform = 'translateY(-8px) scale(1.05)';
+          this.style.transform = 'translateY(-5px) scale(1.02)';
         }
       });
       
-      rockCard.addEventListener('mouseleave', function() {
-        if (!this.style.pointerEvents) {
+      sample.addEventListener('mouseleave', function() {
+        if (!this.classList.contains('identified')) {
           this.style.borderColor = 'var(--stone-gray)';
           this.style.transform = 'translateY(0) scale(1)';
         }
       });
       
-      grid.appendChild(rockCard);
+      rocksContainer.appendChild(sample);
     });
   }
-} // End of setupMultiDayExpedition
+}
 
 // ========================================
 // BOTANICAL IDENTIFICATION - FOREST WISDOM
