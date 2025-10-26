@@ -1293,6 +1293,12 @@ function getCanvasPosition(e) {
 function updateUI() {
   updateInventory();
   updateTools();
+  
+  // Update workshop crafting cards if we're in the workshop
+  const workshopScene = document.getElementById('workshop-scene');
+  if (workshopScene && workshopScene.classList.contains('active')) {
+    renderCraftingUI();
+  }
 }
 
 function updateInventory() {
