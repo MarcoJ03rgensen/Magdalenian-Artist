@@ -2148,14 +2148,9 @@ function setupEnhancedNavigationGame(container, controls, instructions, gameData
 
 function showCharacterPicker(container, controls, instructions, gameData) {
   const characters = [
-    { emoji: '🚶', name: 'Walker', desc: 'Classic traveler' },
-    { emoji: '🧑', name: 'Person', desc: 'Determined explorer' },
-    { emoji: '👤', name: 'Silhouette', desc: 'Shadow wanderer' },
-    { emoji: '🏃', name: 'Runner', desc: 'Swift journeyer' },
-    { emoji: '🧔', name: 'Elder', desc: 'Wise pathfinder' },
-    { emoji: '👩', name: 'Woman', desc: 'Brave adventurer' },
-    { emoji: '🧑‍🦰', name: 'Red Hair', desc: 'Fiery spirit' },
-    { emoji: '👨', name: 'Man', desc: 'Strong trekker' }
+    { emoji: '�', name: 'Horse' },
+    { emoji: '�', name: 'Ox' },
+    { emoji: '�', name: 'Elk' }
   ];
   
   container.innerHTML = `
@@ -2166,7 +2161,7 @@ function showCharacterPicker(container, controls, instructions, gameData) {
       <p style="color: var(--limestone); text-align: center; margin-bottom: 2rem; font-size: 1.1rem;">
         Select the icon that will represent you on this perilous journey
       </p>
-      <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 1.5rem; max-width: 600px;">
+      <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.5rem; max-width: 500px;">
         ${characters.map((char, i) => `
           <div class="character-option" data-emoji="${char.emoji}" style="
             background: rgba(139, 69, 19, 0.4);
@@ -2178,9 +2173,8 @@ function showCharacterPicker(container, controls, instructions, gameData) {
             transition: all 0.3s ease;
           " onmouseover="this.style.transform='scale(1.1)'; this.style.borderColor='var(--ochre-yellow)'"
              onmouseout="this.style.transform='scale(1)'; this.style.borderColor='var(--stone-gray)'">
-            <div style="font-size: 3rem; margin-bottom: 0.5rem;">${char.emoji}</div>
-            <div style="color: var(--ochre-yellow); font-weight: bold; font-size: 0.9rem;">${char.name}</div>
-            <div style="color: var(--limestone); font-size: 0.75rem; margin-top: 0.25rem;">${char.desc}</div>
+            <div style="font-size: 3.5rem;">${char.emoji}</div>
+            <div style="color: var(--ochre-yellow); font-weight: bold; font-size: 0.9rem; margin-top: 0.5rem;">${char.name}</div>
           </div>
         `).join('')}
       </div>
@@ -2344,6 +2338,14 @@ function setupMultiDayExpedition(container, controls, instructions, gameData) {
       <div style="background: rgba(0,0,0,0.5); border-radius: 4px; overflow: hidden; height: 14px;">
         <div id="stage-progress-bar" style="height: 100%; background: linear-gradient(90deg, #DAA520, #FFD700); width: 0%; transition: width 0.5s ease;"></div>
       </div>
+    </div>
+    
+    <div id="hazard-warning" style="display: none; background: rgba(255, 107, 53, 0.9); padding: 8px; border-radius: 6px; margin-bottom: 8px; text-align: center; font-weight: bold; color: white; border: 2px solid #FF6B35;">
+      <span id="hazard-text">Hazard!</span>
+    </div>
+    
+    <div id="biome-description" style="background: rgba(0, 0, 0, 0.5); padding: 6px; border-radius: 6px; margin-bottom: 8px; font-size: 0.75rem; color: var(--limestone); text-align: center; font-style: italic;">
+      ${stages[0].description}
     </div>
     
     <div id="event-log" style="background: rgba(0, 0, 0, 0.6); padding: 6px; border-radius: 6px; max-height: 50px; overflow-y: auto; font-size: 0.75rem; color: var(--limestone);">
