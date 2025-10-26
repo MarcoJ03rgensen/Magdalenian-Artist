@@ -1,4 +1,4 @@
-// ========================================
+﻿// ========================================
 // MAGDALENIAN CAVE ART EXPERIENCE
 // Highly Visual HTML5 Game
 // ========================================
@@ -1883,6 +1883,8 @@ function endMiniGame(success) {
     // Check if this is a manganese expedition death (no reward)
     const isManganeseExpedition = miniGameState.materialKey === 'manganese';
     const isDeath = miniGameState.stamina !== undefined && (miniGameState.stamina <= 0 || miniGameState.food <= 0 || miniGameState.water <= 0);
+    const gameData = miniGames[miniGameState.materialKey];
+    const hasTimeLimit = gameData && gameData.duration > 0;
     
     if (isManganeseExpedition && isDeath) {
       overlay.innerHTML = `
@@ -1891,11 +1893,20 @@ function endMiniGame(success) {
         <div class="result-reward" style="color: #FF6B35;">You died on the journey - collected NOTHING</div>
         <button class="btn-primary" onclick="closeMiniGame(false)">Return Empty-Handed</button>
       `;
-    } else {
+    } else if (hasTimeLimit) {
+      // Only show "Time's Up!" for games that actually have a time limit
       overlay.innerHTML = `
         <div class="result-icon">⏱️</div>
         <div class="result-text">Time's Up!</div>
-        <div class="result-reward">Collected 1x ${materials[miniGameState.materialKey].name}</div>
+        <div class="result-reward" style="color: #FF6B35;">Failed - collected NOTHING</div>
+        <button class="btn-primary" onclick="closeMiniGame(false)">Continue</button>
+      `;
+    } else {
+      // For games without time limits that failed for other reasons
+      overlay.innerHTML = `
+        <div class="result-icon">❌</div>
+        <div class="result-text">Failed</div>
+        <div class="result-reward" style="color: #FF6B35;">Incomplete - collected NOTHING</div>
         <button class="btn-primary" onclick="closeMiniGame(false)">Continue</button>
       `;
     }
@@ -1910,10 +1921,15 @@ function closeMiniGame(success) {
   const isDeath = miniGameState.stamina !== undefined && (miniGameState.stamina <= 0 || miniGameState.food <= 0 || miniGameState.water <= 0);
   
   let multiplier;
-  if (isManganeseExpedition && isDeath) {
-    multiplier = 0; // Death on expedition = no reward
+  if (!success) {
+    // Failed minigame = no reward
+    multiplier = 0;
+  } else if (isManganeseExpedition && isDeath) {
+    // Death on expedition = no reward (shouldn't happen with success=true, but just in case)
+    multiplier = 0;
   } else {
-    multiplier = success ? (miniGameState.totalMultiplier || miniGames[miniGameState.materialKey].rewardMultiplier) : 1;
+    // Success = full reward
+    multiplier = miniGameState.totalMultiplier || miniGames[miniGameState.materialKey].rewardMultiplier;
   }
   
   gatherMaterial(miniGameState.materialKey, gameState.currentGatherButton, multiplier);
@@ -2148,9 +2164,8 @@ function setupEnhancedNavigationGame(container, controls, instructions, gameData
 
 function showCharacterPicker(container, controls, instructions, gameData) {
   const characters = [
-    { emoji: '�', name: 'Horse' },
-    { emoji: '�', name: 'Ox' },
-    { emoji: '�', name: 'Elk' }
+    { image: 'horse.png', name: 'Horse' },
+    { image: 'ox.png', name: 'Ox' }
   ];
   
   container.innerHTML = `
@@ -2161,9 +2176,9 @@ function showCharacterPicker(container, controls, instructions, gameData) {
       <p style="color: var(--limestone); text-align: center; margin-bottom: 2rem; font-size: 1.1rem;">
         Select the icon that will represent you on this perilous journey
       </p>
-      <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.5rem; max-width: 500px;">
+      <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 1.5rem; max-width: 400px;">
         ${characters.map((char, i) => `
-          <div class="character-option" data-emoji="${char.emoji}" style="
+          <div class="character-option" data-image="${char.image}" style="
             background: rgba(139, 69, 19, 0.4);
             border: 3px solid var(--stone-gray);
             border-radius: 12px;
@@ -2173,7 +2188,7 @@ function showCharacterPicker(container, controls, instructions, gameData) {
             transition: all 0.3s ease;
           " onmouseover="this.style.transform='scale(1.1)'; this.style.borderColor='var(--ochre-yellow)'"
              onmouseout="this.style.transform='scale(1)'; this.style.borderColor='var(--stone-gray)'">
-            <div style="font-size: 3.5rem;">${char.emoji}</div>
+            <img src="${char.image}" alt="${char.name}" style="width: 80px; height: 80px; object-fit: contain;">
             <div style="color: var(--ochre-yellow); font-weight: bold; font-size: 0.9rem; margin-top: 0.5rem;">${char.name}</div>
           </div>
         `).join('')}
@@ -2184,7 +2199,7 @@ function showCharacterPicker(container, controls, instructions, gameData) {
   // Add click handlers
   container.querySelectorAll('.character-option').forEach(option => {
     option.addEventListener('click', () => {
-      miniGameState.selectedCharacter = option.dataset.emoji;
+      miniGameState.selectedCharacter = option.dataset.image;
       setupMultiDayExpedition(container, controls, instructions, gameData);
     });
   });
@@ -2476,12 +2491,22 @@ function setupMultiDayExpedition(container, controls, instructions, gameData) {
     position: absolute;
     bottom: 25%;
     left: 15%;
-    font-size: 4rem;
     z-index: 10;
     filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.8));
     transition: transform 0.3s ease;
   `;
-  character.textContent = miniGameState.selectedCharacter || '🚶';
+  
+  // Display character as image or emoji
+  if (miniGameState.selectedCharacter && miniGameState.selectedCharacter.endsWith('.png')) {
+    const img = document.createElement('img');
+    img.src = miniGameState.selectedCharacter;
+    img.style.cssText = 'width: 60px; height: 60px; object-fit: contain;';
+    character.appendChild(img);
+  } else {
+    character.style.fontSize = '4rem';
+    character.textContent = miniGameState.selectedCharacter || '🚶';
+  }
+  
   landscapeContainer.appendChild(character);
   
   container.appendChild(landscapeContainer);
@@ -2861,8 +2886,12 @@ function setupMultiDayExpedition(container, controls, instructions, gameData) {
           
           // Reached deposit site!
           if (miniGameState.stage === 4) {
-            addLogEntry(`� ARRIVED at the limestone plateau!`);
+            addLogEntry(`🎯 ARRIVED at the limestone plateau!`);
             showNotification('🎉 Finally reached the manganese deposits! Now to identify the right rocks...', 4000);
+            
+            // STOP resource drain when rock testing begins
+            clearInterval(resourceDrainInterval);
+            
             setTimeout(() => {
               document.getElementById('continue-journey-btn').style.display = 'none';
               document.getElementById('rest-btn').style.display = 'none';
