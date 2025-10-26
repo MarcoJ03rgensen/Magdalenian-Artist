@@ -1940,7 +1940,12 @@ function closeMiniGame(success) {
 function initMiniGameCloseHandler() {
   document.getElementById('close-minigame').addEventListener('click', () => {
     if (miniGameState.active) {
-      if (confirm('Exit mini-game? You\'ll get 1x material instead.')) {
+      const isManganeseExpedition = miniGameState.materialKey === 'manganese';
+      const message = isManganeseExpedition 
+        ? 'Abandon the expedition? You\'ll return empty-handed!' 
+        : 'Exit mini-game? You\'ll get 1x material instead.';
+      
+      if (confirm(message)) {
         endMiniGame(false);
       }
     } else {
@@ -2487,13 +2492,14 @@ function setupMultiDayExpedition(container, controls, instructions, gameData) {
   // Character sprite
   const character = document.createElement('div');
   character.className = 'expedition-character';
+  character.id = 'journey-character';
   character.style.cssText = `
     position: absolute;
     bottom: 25%;
     left: 15%;
     z-index: 10;
     filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.8));
-    transition: transform 0.3s ease;
+    transition: left 0.5s ease;
   `;
   
   // Display character as image or emoji
@@ -2788,8 +2794,11 @@ function setupMultiDayExpedition(container, controls, instructions, gameData) {
     miniGameState.water -= waterDrain;
     
     // Animate character
-    character.style.transform = 'translateX(20px)';
-    setTimeout(() => character.style.transform = 'translateX(0)', 300);
+    const journeyCharacter = document.getElementById('journey-character');
+    if (journeyCharacter) {
+      journeyCharacter.style.transform = 'translateX(20px)';
+      setTimeout(() => journeyCharacter.style.transform = 'translateX(0)', 300);
+    }
     
     addLogEntry(`🚶 Traveled ${progressIncrement.toFixed(1)} km through ${stage.name}`);
     
@@ -2798,6 +2807,12 @@ function setupMultiDayExpedition(container, controls, instructions, gameData) {
     document.getElementById('stage-progress-bar').style.width = progressPercent + '%';
     document.getElementById('stage-progress-text').textContent = `${miniGameState.progress.toFixed(1)} / ${stage.distance} km`;
     document.getElementById('total-distance').textContent = miniGameState.journeyDistance.toFixed(1);
+    
+    // Move character along with progress
+    if (journeyCharacter) {
+      const characterPosition = 15 + (progressPercent * 0.7); // Move from 15% to 85% of the screen
+      journeyCharacter.style.left = characterPosition + '%';
+    }
     
     // Random hazard events
     if (Math.random() > 0.65) {
@@ -2865,6 +2880,12 @@ function setupMultiDayExpedition(container, controls, instructions, gameData) {
           document.getElementById('stage-icon').textContent = newStage.icon;
           document.getElementById('stage-progress-text').textContent = `0 / ${newStage.distance} km`;
           document.getElementById('stage-progress-bar').style.width = '0%';
+          
+          // Reset character position for new stage
+          const journeyCharacter = document.getElementById('journey-character');
+          if (journeyCharacter) {
+            journeyCharacter.style.left = '15%';
+          }
           
           updateBiomeVisuals(miniGameState.stage);
           updateResourceDisplay();
@@ -3016,7 +3037,7 @@ function setupMultiDayExpedition(container, controls, instructions, gameData) {
       
       sample.innerHTML = `
         <div style="font-size: 3rem; margin-bottom: 8px;">${rock.icon}</div>
-        <div style="color: var(--limestone); font-size: 0.8rem; font-weight: bold; margin-bottom: 8px;">${rock.name}</div>
+        <div class="rock-name-label" style="color: var(--limestone); font-size: 0.8rem; font-weight: bold; margin-bottom: 8px;">Unknown Rock</div>
         
         <div class="test-results" style="font-size: 0.7rem; text-align: left; color: var(--ochre-yellow); line-height: 1.6;">
           <div class="test-streak" style="opacity: 0; margin: 3px 0;">
@@ -3143,6 +3164,10 @@ function setupMultiDayExpedition(container, controls, instructions, gameData) {
           sample.style.background = 'rgba(244, 67, 54, 0.3)';
           sample.style.opacity = '0.6';
           wrongRocksPenalty++;
+          
+          // Reveal the actual rock name when wrong
+          sample.querySelector('.rock-name-label').textContent = rock.name;
+          sample.querySelector('.rock-name-label').style.color = '#F44336';
           
           miniGameState.stamina -= 15;
           updateResourceDisplay();
