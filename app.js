@@ -142,7 +142,7 @@ const miniGames = {
   manganese: {
     name: 'The Mountain Expedition',
     type: 'navigation-multiday',
-    duration: 75,
+    duration: 0, // No time limit - must complete the journey
     badge: 'manganesemaster',
     fact: 'Manganese dioxide (MnO₂) procurement routes of 50+ km documented at Pech Merle and other Magdalenian sites. Found in limestone caves and surface deposits. Harder than ochre (Mohs 5-6), requires specific grinding. Produces brown-black pigment crucial for outlines.',
     rewardMultiplier: 4,
@@ -480,27 +480,239 @@ const codexData = {
 // ========================================
 
 window.addEventListener('DOMContentLoaded', () => {
-  initTitleScreen();
-  initNavigation();
-  initLandscapeScene();
-  initWorkshopScene();
-  initCaveScene();
-  initModals();
-  updateBadges();
-  createFloatingParticles();
-  updateUI();
+  try {
+    initTitleScreen();
+    initNavigation();
+    initLandscapeScene();
+    initWorkshopScene();
+    initCaveScene();
+    initModals();
+    updateBadges();
+    createFloatingParticles();
+    updateUI();
+    loadGameState(); // Load saved progress
+    initKeyboardNavigation(); // Add keyboard shortcuts
+  } catch (error) {
+    console.error('Initialization error:', error);
+    showNotification('⚠️ Error loading game. Please refresh the page.', 5000);
+  }
 });
+
+// ========================================
+// KEYBOARD NAVIGATION
+// ========================================
+
+function initKeyboardNavigation() {
+  document.addEventListener('keydown', (e) => {
+    // Ignore if typing in input or modal is open
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+    if (document.querySelector('.modal-overlay')) return;
+    
+    switch(e.key) {
+      case '1':
+        e.preventDefault();
+        switchScene('landscape');
+        break;
+      case '2':
+        e.preventDefault();
+        switchScene('workshop');
+        break;
+      case '3':
+        e.preventDefault();
+        switchScene('cave');
+        break;
+      case 'h':
+      case 'H':
+        e.preventDefault();
+        document.getElementById('help-btn').click();
+        break;
+      case 'c':
+      case 'C':
+        e.preventDefault();
+        document.getElementById('codex-btn').click();
+        break;
+      case 'i':
+      case 'I':
+        e.preventDefault();
+        document.getElementById('inventory-btn').click();
+        break;
+      case 's':
+      case 'S':
+        if (e.ctrlKey || e.metaKey) {
+          e.preventDefault();
+          saveGameState();
+          showNotification('💾 Game saved!', 2000);
+        }
+        break;
+      case 'Escape':
+        e.preventDefault();
+        // Close any open modals
+        const activeModal = document.querySelector('.modal.active');
+        if (activeModal) {
+          activeModal.classList.remove('active');
+        }
+        break;
+    }
+  });
+}
+
+// ========================================
+// SAVE/LOAD SYSTEM
+// ========================================
+
+function saveGameState() {
+  try {
+    const saveData = {
+      inventory: gameState.inventory,
+      tools: gameState.tools,
+      paints: gameState.paints,
+      badges: gameState.badges,
+      hasLight: gameState.hasLight,
+      timestamp: Date.now()
+    };
+    localStorage.setItem('magdalenianGame', JSON.stringify(saveData));
+  } catch (error) {
+    console.warn('Could not save game:', error);
+  }
+}
+
+function loadGameState() {
+  try {
+    const saved = localStorage.getItem('magdalenianGame');
+    if (saved) {
+      const data = JSON.parse(saved);
+      gameState.inventory = data.inventory || {};
+      gameState.tools = data.tools || {};
+      gameState.paints = data.paints || {};
+      gameState.badges = data.badges || {};
+      gameState.hasLight = data.hasLight || false;
+      
+      updateUI();
+      updateBadges();
+      renderCraftingUI();
+      renderPaintingToolbar();
+      
+      // Show notification about loaded progress
+      const timeSince = Math.floor((Date.now() - data.timestamp) / 1000 / 60);
+      showNotification(`✓ Progress loaded (${timeSince} minutes ago)`, 3000);
+    }
+  } catch (error) {
+    console.warn('Could not load saved game:', error);
+  }
+}
+
+function resetGameState() {
+  if (confirm('Reset all progress? This cannot be undone.')) {
+    localStorage.removeItem('magdalenianGame');
+    location.reload();
+  }
+}
+
+// ========================================
+// SOUND SYSTEM (Placeholder for future audio)
+// ========================================
+
+const sounds = {
+  gather: () => console.log('🔊 Sound: Material gathered'),
+  craft: () => console.log('🔊 Sound: Item crafted'),
+  paint: () => console.log('🔊 Sound: Brush stroke'),
+  success: () => console.log('🔊 Sound: Success chime'),
+  click: () => console.log('🔊 Sound: UI click'),
+  ambient: () => console.log('🔊 Sound: Cave ambience')
+};
+
+// To add real sounds later, replace console.log with:
+// new Audio('sounds/gather.mp3').play();
 
 // ========================================
 // TITLE SCREEN
 // ========================================
 
+const tutorialSteps = [
+  {
+    title: 'Welcome to 17,000 BCE',
+    text: 'You are a Magdalenian artist during the peak of Ice Age art. Your mission is to create authentic cave paintings using period-accurate techniques and materials.'
+  },
+  {
+    title: '🌄 Step 1: Gather Materials',
+    text: 'Start by gathering raw materials from the landscape. Click on glowing spots to collect ochre, charcoal, wood, and other resources. Some materials trigger educational mini-games!'
+  },
+  {
+    title: '⚒️ Step 2: Craft Tools & Paints',
+    text: 'Visit the Workshop to combine materials. Mix pigments with animal fat to create paints. Craft brushes, torches, and lamps from gathered resources.'
+  },
+  {
+    title: '🕳️ Step 3: Paint in the Cave',
+    text: 'Enter the sacred cave (requires light!). Select your paints and tools, then create authentic prehistoric art. Use templates to help draw accurate animal figures.'
+  },
+  {
+    title: 'Ready to Begin!',
+    text: 'Press H for help, C for the Codex (information library), and Ctrl+S to save. Your progress auto-saves when you gather or craft. Good luck, artist!'
+  }
+];
+
+let currentTutorialStep = 0;
+
 function initTitleScreen() {
   const startBtn = document.getElementById('start-btn');
   startBtn.addEventListener('click', () => {
-    showNotification('Welcome to the Magdalenian Experience! Gather materials from the landscape.', 4000);
-    switchToScene('landscape');
+    // Check if first time playing
+    const hasSeenTutorial = localStorage.getItem('magdalenianTutorialSeen');
+    
+    if (!hasSeenTutorial) {
+      showTutorial();
+    } else {
+      startGame();
+    }
   });
+}
+
+function showTutorial() {
+  const overlay = document.getElementById('tutorial-overlay');
+  overlay.style.display = 'flex';
+  currentTutorialStep = 0;
+  updateTutorialStep();
+  
+  document.getElementById('tutorial-next').addEventListener('click', nextTutorialStep);
+  document.getElementById('tutorial-skip').addEventListener('click', skipTutorial);
+}
+
+function updateTutorialStep() {
+  const step = tutorialSteps[currentTutorialStep];
+  document.getElementById('tutorial-title').textContent = step.title;
+  document.getElementById('tutorial-text').textContent = step.text;
+  
+  const nextBtn = document.getElementById('tutorial-next');
+  if (currentTutorialStep === tutorialSteps.length - 1) {
+    nextBtn.textContent = 'Start Creating!';
+  } else {
+    nextBtn.textContent = 'Next';
+  }
+}
+
+function nextTutorialStep() {
+  currentTutorialStep++;
+  
+  if (currentTutorialStep >= tutorialSteps.length) {
+    finishTutorial();
+  } else {
+    updateTutorialStep();
+  }
+}
+
+function skipTutorial() {
+  finishTutorial();
+}
+
+function finishTutorial() {
+  localStorage.setItem('magdalenianTutorialSeen', 'true');
+  document.getElementById('tutorial-overlay').style.display = 'none';
+  startGame();
+}
+
+function startGame() {
+  showNotification('Welcome to The Magdalenian Cave Art Experience! Gather materials from the landscape.', 4000);
+  switchToScene('landscape');
 }
 
 function createFloatingParticles() {
@@ -570,11 +782,14 @@ function switchToScene(sceneName) {
     document.getElementById(sceneId).classList.add('active');
   }
   
-  // Update nav buttons
+  // Update nav buttons with ARIA states
   document.querySelectorAll('.nav-btn').forEach(btn => {
     btn.classList.remove('active');
+    btn.setAttribute('aria-pressed', 'false');
   });
-  document.getElementById(`nav-${sceneName}`).classList.add('active');
+  const activeBtn = document.getElementById(`nav-${sceneName}`);
+  activeBtn.classList.add('active');
+  activeBtn.setAttribute('aria-pressed', 'true');
   
   updateUI();
 }
@@ -658,30 +873,39 @@ function initLandscapeScene() {
 // Quick gather removed - all gathering now requires mini-games!
 
 function gatherMaterial(materialKey, buttonElement, multiplier = 1) {
-  // Add to inventory
-  if (!gameState.inventory[materialKey]) {
-    gameState.inventory[materialKey] = 0;
-  }
-  gameState.inventory[materialKey] += multiplier;
-  
-  // Visual feedback
-  const material = materials[materialKey];
-  const bonusText = multiplier > 1 ? ` +${multiplier}x BONUS!` : '';
-  showNotification(`✅ Collected ${material.name}!${bonusText} (Total: ${gameState.inventory[materialKey]})`, 2000);
-  
-  // Particle burst
-  const rect = buttonElement.getBoundingClientRect();
-  createParticleBurst(rect.left + rect.width / 2, rect.top + rect.height / 2, material.color || '#DAA520', 15);
-  
-  // Update UI
-  updateUI();
-  
-  // Helpful hints
-  const totalMaterials = Object.keys(gameState.inventory).length;
-  if (totalMaterials === 3) {
-    setTimeout(() => {
-      showNotification('💡 Great start! Visit the Workshop to craft paints and tools.', 3000);
-    }, 2000);
+  try {
+    // Add to inventory
+    if (!gameState.inventory[materialKey]) {
+      gameState.inventory[materialKey] = 0;
+    }
+    gameState.inventory[materialKey] += multiplier;
+    
+    // Sound effect
+    sounds.gather();
+    
+    // Visual feedback
+    const material = materials[materialKey];
+    const bonusText = multiplier > 1 ? ` +${multiplier}x BONUS!` : '';
+    showNotification(`✅ Collected ${material.name}!${bonusText} (Total: ${gameState.inventory[materialKey]})`, 2000);
+    
+    // Particle burst
+    const rect = buttonElement.getBoundingClientRect();
+    createParticleBurst(rect.left + rect.width / 2, rect.top + rect.height / 2, material.color || '#DAA520', 15);
+    
+    // Update UI
+    updateUI();
+    saveGameState(); // Auto-save
+    
+    // Helpful hints
+    const totalMaterials = Object.keys(gameState.inventory).length;
+    if (totalMaterials === 3) {
+      setTimeout(() => {
+        showNotification('💡 Great start! Visit the Workshop to craft paints and tools.', 3000);
+      }, 2000);
+    }
+  } catch (error) {
+    console.error('Error gathering material:', error);
+    showNotification('⚠️ Error collecting material. Please try again.', 2000);
   }
 }
 
@@ -721,15 +945,21 @@ function createCraftCard(key, recipe, type) {
   const canCraft = checkRequirements(recipe.requires);
   const alreadyCrafted = type === 'paint' ? gameState.paints[key] : gameState.tools[key];
   
-  if (!canCraft || alreadyCrafted) {
-    card.classList.add('disabled');
-  }
+  // Only disable if already crafted OR can't craft
   if (alreadyCrafted) {
     card.classList.add('crafted');
+    card.classList.add('disabled');
+  } else if (!canCraft) {
+    card.classList.add('disabled');
   }
   
   const requirementsText = Object.entries(recipe.requires)
-    .map(([mat, count]) => `${materials[mat].icon}×${count}`)
+    .map(([mat, count]) => {
+      const hasEnough = gameState.inventory[mat] >= count;
+      const icon = materials[mat].icon;
+      const color = hasEnough ? '#4CAF50' : '#F44336';
+      return `<span style="color: ${color};">${icon}×${count}</span>`;
+    })
     .join(' ');
   
   let statusHtml = '';
@@ -748,18 +978,33 @@ function createCraftCard(key, recipe, type) {
     ${statusHtml}
   `;
   
+  // Only allow clicking if can craft AND not already crafted
   if (canCraft && !alreadyCrafted) {
     card.style.cursor = 'pointer';
-    card.addEventListener('click', () => craftItem(key, recipe, type, card));
+    card.addEventListener('click', () => {
+      sounds.click();
+      craftItem(key, recipe, type, card);
+    });
   }
   
   return card;
 }
 
 function checkRequirements(requires) {
-  return Object.entries(requires).every(([mat, count]) => {
-    return gameState.inventory[mat] && gameState.inventory[mat] >= count;
+  const canCraft = Object.entries(requires).every(([mat, count]) => {
+    const hasAmount = gameState.inventory[mat] || 0;
+    const needed = count;
+    const hasEnough = hasAmount >= needed;
+    
+    // Debug logging
+    if (!hasEnough) {
+      console.log(`Missing: ${mat} - Has ${hasAmount}, needs ${needed}`);
+    }
+    
+    return hasEnough;
   });
+  
+  return canCraft;
 }
 
 function craftItem(key, recipe, type, cardElement) {
@@ -782,6 +1027,11 @@ let isDrawing = false;
 let lastX = 0;
 let lastY = 0;
 
+// Canvas history for undo/redo
+let canvasHistory = [];
+let historyStep = -1;
+const MAX_HISTORY = 20;
+
 function initCaveScene() {
   canvas = document.getElementById('painting-canvas');
   ctx = canvas.getContext('2d');
@@ -789,6 +1039,9 @@ function initCaveScene() {
   // Set up canvas
   ctx.lineCap = 'round';
   ctx.lineJoin = 'round';
+  
+  // Save initial blank state
+  saveCanvasState();
   
   // Drawing events
   canvas.addEventListener('mousedown', startDrawing);
@@ -805,9 +1058,13 @@ function initCaveScene() {
   renderPaintingToolbar();
   
   // Buttons
+  document.getElementById('undo-canvas').addEventListener('click', undoCanvas);
+  document.getElementById('redo-canvas').addEventListener('click', redoCanvas);
+  
   document.getElementById('clear-canvas').addEventListener('click', () => {
     if (confirm('Clear your painting?')) {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
+      saveCanvasState();
       document.getElementById('cave-instruction').style.display = 'block';
       showNotification('Canvas cleared', 1500);
     }
@@ -817,6 +1074,59 @@ function initCaveScene() {
     const instruction = document.getElementById('cave-instruction');
     instruction.style.display = instruction.style.display === 'none' ? 'block' : 'none';
   });
+  
+  updateUndoRedoButtons();
+}
+
+function saveCanvasState() {
+  // Remove any states after current step
+  canvasHistory = canvasHistory.slice(0, historyStep + 1);
+  
+  // Save current state
+  canvasHistory.push(canvas.toDataURL());
+  historyStep++;
+  
+  // Limit history size
+  if (canvasHistory.length > MAX_HISTORY) {
+    canvasHistory.shift();
+    historyStep--;
+  }
+  
+  updateUndoRedoButtons();
+}
+
+function undoCanvas() {
+  if (historyStep > 0) {
+    historyStep--;
+    restoreCanvasState();
+    showNotification('↶ Undo', 1000);
+  }
+}
+
+function redoCanvas() {
+  if (historyStep < canvasHistory.length - 1) {
+    historyStep++;
+    restoreCanvasState();
+    showNotification('↷ Redo', 1000);
+  }
+}
+
+function restoreCanvasState() {
+  const img = new Image();
+  img.src = canvasHistory[historyStep];
+  img.onload = () => {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.drawImage(img, 0, 0);
+    updateUndoRedoButtons();
+  };
+}
+
+function updateUndoRedoButtons() {
+  const undoBtn = document.getElementById('undo-canvas');
+  const redoBtn = document.getElementById('redo-canvas');
+  
+  if (undoBtn) undoBtn.disabled = historyStep <= 0;
+  if (redoBtn) redoBtn.disabled = historyStep >= canvasHistory.length - 1;
 }
 
 function renderPaintingToolbar() {
@@ -940,7 +1250,11 @@ function draw(e) {
 }
 
 function stopDrawing() {
-  isDrawing = false;
+  if (isDrawing) {
+    isDrawing = false;
+    // Save canvas state after completing a stroke
+    saveCanvasState();
+  }
 }
 
 function handleTouchStart(e) {
@@ -954,6 +1268,7 @@ function handleTouchStart(e) {
 }
 
 function handleTouchMove(e) {
+  if (!isDrawing) return;
   e.preventDefault();
   const touch = e.touches[0];
   const mouseEvent = new MouseEvent('mousemove', {
@@ -982,6 +1297,8 @@ function updateUI() {
 
 function updateInventory() {
   const container = document.getElementById('inventory-grid');
+  if (!container) return;
+  
   container.innerHTML = '';
   
   Object.keys(gameState.inventory).forEach(key => {
@@ -1001,6 +1318,8 @@ function updateInventory() {
 
 function updateTools() {
   const container = document.getElementById('tools-grid');
+  if (!container) return;
+  
   container.innerHTML = '';
   
   let hasTools = false;
@@ -1029,24 +1348,122 @@ function updateTools() {
     container.appendChild(item);
   });
   
-  document.getElementById('tools-panel').style.display = hasTools ? 'block' : 'none';
+  const toolsPanel = document.getElementById('tools-panel');
+  if (toolsPanel) {
+    toolsPanel.style.display = hasTools ? 'block' : 'none';
+  }
+}
+
+function renderInventoryModal() {
+  // Materials
+  const materialsContainer = document.getElementById('inventory-grid-modal');
+  materialsContainer.innerHTML = '';
+  
+  let hasMaterials = false;
+  Object.keys(gameState.inventory).forEach(key => {
+    const count = gameState.inventory[key];
+    if (count > 0) {
+      hasMaterials = true;
+      const item = document.createElement('div');
+      item.className = 'inventory-item';
+      item.innerHTML = `
+        <div class="item-icon">${materials[key].icon}</div>
+        <div class="item-name">${materials[key].name}</div>
+        <div class="item-count">${count}</div>
+      `;
+      materialsContainer.appendChild(item);
+    }
+  });
+  
+  if (!hasMaterials) {
+    materialsContainer.innerHTML = '<div class="empty-inventory">No materials collected yet. Visit the Gathering area!</div>';
+  }
+  
+  // Paints
+  const paintsContainer = document.getElementById('paints-grid-modal');
+  paintsContainer.innerHTML = '';
+  
+  let hasPaints = false;
+  Object.keys(gameState.paints).forEach(key => {
+    hasPaints = true;
+    const paint = gameState.paints[key];
+    const item = document.createElement('div');
+    item.className = 'paint-item';
+    item.style.backgroundColor = paint.color;
+    item.innerHTML = `
+      <div class="item-icon">${paint.icon}</div>
+      <div class="item-name">${paint.name}</div>
+    `;
+    paintsContainer.appendChild(item);
+  });
+  
+  if (!hasPaints) {
+    paintsContainer.innerHTML = '<div class="empty-inventory">No paints crafted yet. Visit the Workshop!</div>';
+  }
+  
+  // Tools
+  const toolsContainer = document.getElementById('tools-grid-modal');
+  toolsContainer.innerHTML = '';
+  
+  let hasTools = false;
+  Object.keys(gameState.tools).forEach(key => {
+    if (gameState.tools[key]) {
+      hasTools = true;
+      const tool = toolRecipes[key];
+      const item = document.createElement('div');
+      item.className = 'tool-item';
+      item.innerHTML = `
+        <div class="item-icon">${tool.icon}</div>
+        <div class="item-name">${tool.name}</div>
+      `;
+      toolsContainer.appendChild(item);
+    }
+  });
+  
+  if (!hasTools) {
+    toolsContainer.innerHTML = '<div class="empty-inventory">No tools crafted yet. Visit the Workshop!</div>';
+  }
 }
 
 // ========================================
 // PARTICLE EFFECTS
 // ========================================
 
+// ========================================
+// PARTICLE SYSTEM WITH POOLING
+// ========================================
+
+const particlePool = [];
+const MAX_PARTICLES = 100;
+let activeParticles = 0;
+
 function createParticleBurst(x, y, color, count) {
   const container = document.getElementById('particle-container');
+  if (!container) return;
   
-  for (let i = 0; i < count; i++) {
-    const particle = document.createElement('div');
-    particle.className = 'particle';
+  // Limit particle count for performance
+  const actualCount = Math.min(count, 20);
+  
+  for (let i = 0; i < actualCount; i++) {
+    // Skip if too many active particles
+    if (activeParticles >= MAX_PARTICLES) break;
+    
+    let particle;
+    
+    // Reuse particle from pool or create new one
+    if (particlePool.length > 0) {
+      particle = particlePool.pop();
+    } else {
+      particle = document.createElement('div');
+      particle.className = 'particle';
+    }
+    
     particle.style.left = x + 'px';
     particle.style.top = y + 'px';
     particle.style.backgroundColor = color;
+    particle.style.opacity = '1';
     
-    const angle = (Math.PI * 2 * i) / count;
+    const angle = (Math.PI * 2 * i) / actualCount;
     const velocity = 50 + Math.random() * 50;
     const tx = Math.cos(angle) * velocity;
     const ty = Math.sin(angle) * velocity - 50; // Slight upward bias
@@ -1055,9 +1472,19 @@ function createParticleBurst(x, y, color, count) {
     particle.style.setProperty('--ty', ty + 'px');
     
     container.appendChild(particle);
+    activeParticles++;
     
+    // Return particle to pool after animation
     setTimeout(() => {
-      particle.remove();
+      if (particle.parentNode) {
+        particle.parentNode.removeChild(particle);
+      }
+      activeParticles--;
+      
+      // Add back to pool if not too large
+      if (particlePool.length < 50) {
+        particlePool.push(particle);
+      }
     }, 1000);
   }
 }
@@ -1067,6 +1494,28 @@ function createParticleBurst(x, y, color, count) {
 // ========================================
 
 function initModals() {
+  // Inventory
+  document.getElementById('inventory-btn').addEventListener('click', () => {
+    renderInventoryModal();
+    document.getElementById('inventory-modal').classList.add('active');
+    sounds.click();
+  });
+  
+  document.getElementById('close-inventory').addEventListener('click', () => {
+    document.getElementById('inventory-modal').classList.remove('active');
+  });
+  
+  // Challenges
+  document.getElementById('challenges-btn').addEventListener('click', () => {
+    renderChallengesModal();
+    document.getElementById('challenges-modal').classList.add('active');
+    sounds.click();
+  });
+  
+  document.getElementById('close-challenges').addEventListener('click', () => {
+    document.getElementById('challenges-modal').classList.remove('active');
+  });
+  
   // Codex
   document.getElementById('codex-btn').addEventListener('click', () => {
     document.getElementById('codex-modal').classList.add('active');
@@ -1094,6 +1543,17 @@ function initModals() {
   
   document.getElementById('close-help').addEventListener('click', () => {
     document.getElementById('help-modal').classList.remove('active');
+  });
+  
+  // Save button
+  document.getElementById('save-btn').addEventListener('click', () => {
+    saveGameState();
+    showNotification('💾 Progress saved!', 2000);
+  });
+  
+  // Reset button
+  document.getElementById('reset-btn').addEventListener('click', () => {
+    resetGameState();
   });
   
   // Close on background click
@@ -1175,6 +1635,8 @@ const workshopGames = {
 
 function updateBadges() {
   const container = document.getElementById('badges-grid');
+  if (!container) return;
+  
   container.innerHTML = '';
   
   // Display in organized groups
@@ -1220,6 +1682,49 @@ function updateBadges() {
   }
 }
 
+function renderChallengesModal() {
+  const container = document.getElementById('badges-grid-modal');
+  container.innerHTML = '';
+  
+  // All badges with descriptions
+  const badgeDescriptions = {
+    ochreExpert: 'Master the riverbank journey',
+    manganesemaster: 'Complete the mountain expedition',
+    woodWhisperer: 'Identify the perfect wood',
+    charcoalCrafter: 'Control pyrolysis temperature',
+    fatRenderer: 'Extract bone marrow fat',
+    boneArtisan: 'Craft hollow bone tool',
+    lampMaster: 'Carve the perfect lamp',
+    brushMaker: 'Weave fine hair brush',
+    pigmentMaster: 'Grind pigments perfectly',
+    paintMixer: 'Mix paint with ideal ratios',
+    lightPlanner: 'Plan cave illumination',
+    templateMaker: 'Study animal proportions'
+  };
+  
+  Object.keys(badgeInfo).forEach(key => {
+    const badge = badgeInfo[key];
+    const earned = gameState.badges[key];
+    
+    const item = document.createElement('div');
+    item.className = 'badge-item ' + (earned ? 'earned' : 'locked');
+    item.innerHTML = `
+      <div style="font-size: 3rem;">${badge.icon}</div>
+      <div class="badge-name">${badge.name}</div>
+      <div class="badge-description">${badgeDescriptions[key] || ''}</div>
+    `;
+    
+    if (earned) {
+      const checkmark = document.createElement('div');
+      checkmark.style.cssText = 'position: absolute; top: 5px; right: 5px; font-size: 1.2rem;';
+      checkmark.textContent = '✓';
+      item.appendChild(checkmark);
+    }
+    
+    container.appendChild(item);
+  });
+}
+
 // ========================================
 // MINI-GAME SYSTEM
 // ========================================
@@ -1230,6 +1735,8 @@ let miniGameState = {
   materialKey: null,
   timeRemaining: 0,
   timerInterval: null,
+  startTime: null,
+  duration: 0,
   characterX: 50,
   characterY: 50,
   collected: false,
@@ -1316,20 +1823,29 @@ function startMiniGame(materialKey) {
   
   modal.classList.add('active');
   
-  // Start timer
-  startMiniGameTimer();
+  // Start timer only if game has a duration
+  if (gameData.duration > 0) {
+    startMiniGameTimer();
+  }
 }
 
 function startMiniGameTimer() {
   clearInterval(miniGameState.timerInterval);
+  
+  // Store start time and duration for accurate timing
+  miniGameState.startTime = Date.now();
+  miniGameState.duration = miniGameState.timeRemaining;
+  
   miniGameState.timerInterval = setInterval(() => {
-    miniGameState.timeRemaining--;
+    // Calculate actual time elapsed
+    const elapsed = Math.floor((Date.now() - miniGameState.startTime) / 1000);
+    miniGameState.timeRemaining = Math.max(0, miniGameState.duration - elapsed);
     updateTimerDisplay();
     
     if (miniGameState.timeRemaining <= 0) {
       endMiniGame(false);
     }
-  }, 1000);
+  }, 100); // Update more frequently for smoother display
 }
 
 function updateTimerDisplay() {
@@ -1364,19 +1880,42 @@ function endMiniGame(success) {
       updateBadges();
     }
   } else {
-    overlay.innerHTML = `
-      <div class="result-icon">⏱️</div>
-      <div class="result-text">Time's Up!</div>
-      <div class="result-reward">Collected 1x ${materials[miniGameState.materialKey].name}</div>
-      <button class="btn-primary" onclick="closeMiniGame(false)">Continue</button>
-    `;
+    // Check if this is a manganese expedition death (no reward)
+    const isManganeseExpedition = miniGameState.materialKey === 'manganese';
+    const isDeath = miniGameState.stamina !== undefined && (miniGameState.stamina <= 0 || miniGameState.food <= 0 || miniGameState.water <= 0);
+    
+    if (isManganeseExpedition && isDeath) {
+      overlay.innerHTML = `
+        <div class="result-icon">💀</div>
+        <div class="result-text">Expedition Failed!</div>
+        <div class="result-reward" style="color: #FF6B35;">You died on the journey - collected NOTHING</div>
+        <button class="btn-primary" onclick="closeMiniGame(false)">Return Empty-Handed</button>
+      `;
+    } else {
+      overlay.innerHTML = `
+        <div class="result-icon">⏱️</div>
+        <div class="result-text">Time's Up!</div>
+        <div class="result-reward">Collected 1x ${materials[miniGameState.materialKey].name}</div>
+        <button class="btn-primary" onclick="closeMiniGame(false)">Continue</button>
+      `;
+    }
   }
   
   container.appendChild(overlay);
 }
 
 function closeMiniGame(success) {
-  const multiplier = success ? (miniGameState.totalMultiplier || miniGames[miniGameState.materialKey].rewardMultiplier) : 1;
+  // Check if player died on manganese expedition (should get 0 materials)
+  const isManganeseExpedition = miniGameState.materialKey === 'manganese';
+  const isDeath = miniGameState.stamina !== undefined && (miniGameState.stamina <= 0 || miniGameState.food <= 0 || miniGameState.water <= 0);
+  
+  let multiplier;
+  if (isManganeseExpedition && isDeath) {
+    multiplier = 0; // Death on expedition = no reward
+  } else {
+    multiplier = success ? (miniGameState.totalMultiplier || miniGames[miniGameState.materialKey].rewardMultiplier) : 1;
+  }
+  
   gatherMaterial(miniGameState.materialKey, gameState.currentGatherButton, multiplier);
   document.getElementById('minigame-modal').classList.remove('active');
 }
@@ -1602,78 +2141,1198 @@ function setupEnhancedNavigationGame(container, controls, instructions, gameData
 
 // ========================================
 // MULTI-DAY EXPEDITION - THE MOUNTAIN JOURNEY
+// Enhanced with beautiful multi-stage journey system
+// ========================================
+// MOUNTAIN EXPEDITION - CHARACTER PICKER
+// ========================================
+
+function showCharacterPicker(container, controls, instructions, gameData) {
+  const characters = [
+    { emoji: '🚶', name: 'Walker', desc: 'Classic traveler' },
+    { emoji: '🧑', name: 'Person', desc: 'Determined explorer' },
+    { emoji: '👤', name: 'Silhouette', desc: 'Shadow wanderer' },
+    { emoji: '🏃', name: 'Runner', desc: 'Swift journeyer' },
+    { emoji: '🧔', name: 'Elder', desc: 'Wise pathfinder' },
+    { emoji: '👩', name: 'Woman', desc: 'Brave adventurer' },
+    { emoji: '🧑‍🦰', name: 'Red Hair', desc: 'Fiery spirit' },
+    { emoji: '👨', name: 'Man', desc: 'Strong trekker' }
+  ];
+  
+  container.innerHTML = `
+    <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; padding: 2rem;">
+      <h2 style="color: var(--ochre-yellow); font-family: var(--font-title); font-size: 2rem; margin-bottom: 1rem; text-align: center;">
+        Choose Your Character
+      </h2>
+      <p style="color: var(--limestone); text-align: center; margin-bottom: 2rem; font-size: 1.1rem;">
+        Select the icon that will represent you on this perilous journey
+      </p>
+      <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 1.5rem; max-width: 600px;">
+        ${characters.map((char, i) => `
+          <div class="character-option" data-emoji="${char.emoji}" style="
+            background: rgba(139, 69, 19, 0.4);
+            border: 3px solid var(--stone-gray);
+            border-radius: 12px;
+            padding: 1.5rem;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+          " onmouseover="this.style.transform='scale(1.1)'; this.style.borderColor='var(--ochre-yellow)'"
+             onmouseout="this.style.transform='scale(1)'; this.style.borderColor='var(--stone-gray)'">
+            <div style="font-size: 3rem; margin-bottom: 0.5rem;">${char.emoji}</div>
+            <div style="color: var(--ochre-yellow); font-weight: bold; font-size: 0.9rem;">${char.name}</div>
+            <div style="color: var(--limestone); font-size: 0.75rem; margin-top: 0.25rem;">${char.desc}</div>
+          </div>
+        `).join('')}
+      </div>
+    </div>
+  `;
+  
+  // Add click handlers
+  container.querySelectorAll('.character-option').forEach(option => {
+    option.addEventListener('click', () => {
+      miniGameState.selectedCharacter = option.dataset.emoji;
+      setupMultiDayExpedition(container, controls, instructions, gameData);
+    });
+  });
+  
+  controls.innerHTML = '';
+}
+
+// ========================================
+// MOUNTAIN EXPEDITION - MULTI-DAY JOURNEY
 // ========================================
 
 function setupMultiDayExpedition(container, controls, instructions, gameData) {
   instructions.innerHTML = `
-    <strong>The Mountain Expedition</strong><br>
-    Multi-day journey to mountain manganese deposits.<br>
-    Manage food, water, and find the right geological formation!<br>
-    <em>Test rock properties: Streak test leaves black mark = manganese</em>
+    <strong>🏔️ The Mountain Expedition - A 50+ km Journey for Manganese</strong><br>
+    Travel through valleys, forests, and mountains to find rare manganese deposits.<br>
+    <span style="color: #FFD700;">⭐ Survive the journey - manage stamina, food, and water</span><br>
+    <span style="color: #4CAF50;">✓ No time limit - only success matters! Complete the journey or fail.</span><br>
+    <span style="color: #FF6B35;">⚠️ Death means failure - you get NOTHING if you don't reach the deposits!</span>
   `;
   
   container.innerHTML = '';
-  container.style.background = 'linear-gradient(180deg, #4A90E2 0%, #2d5016 50%, #1a1410 100%)';
+  container.style.background = 'linear-gradient(180deg, #87CEEB 0%, #6B8E23 50%, #3C2A1E 100%)';
   
-  miniGameState.dayProgress = 0;
-  miniGameState.resources = { food: 100, water: 100 };
+  // Show character picker first
+  if (!miniGameState.selectedCharacter) {
+    showCharacterPicker(container, controls, instructions, gameData);
+    return;
+  }
+  
+  // Enhanced state
+  miniGameState.stage = 0; // 0=valley, 1=foothills, 2=forest, 3=mountain, 4=deposit site
+  miniGameState.progress = 0; // Progress through current stage
+  miniGameState.stamina = 100;
+  miniGameState.food = 100;
+  miniGameState.water = 100;
   miniGameState.foundManganese = false;
+  miniGameState.rocksTested = 0;
+  miniGameState.journeyDistance = 0;
+  miniGameState.daysPassed = 1;
+  miniGameState.weatherCondition = 'clear'; // clear, rain, wind, storm
+  miniGameState.encounterLog = [];
+  miniGameState.campsitesVisited = 0;
+  
+  const stages = [
+    { 
+      name: 'River Valley', 
+      distance: 12, 
+      bg: 'linear-gradient(180deg, #87CEEB 0%, #6B8E23 70%, #8B7355 100%)', 
+      icon: '🌾', 
+      hazards: ['Swollen river crossing', 'Muddy banks', 'Hidden sinkholes'],
+      features: ['Wild berry bushes', 'Fresh water source', 'Deer tracks'],
+      description: 'Lush valley with a winding river. The landscape is beautiful but treacherous.'
+    },
+    { 
+      name: 'Rolling Foothills', 
+      distance: 16, 
+      bg: 'linear-gradient(180deg, #87CEEB 0%, #8B7355 50%, #5C4033 100%)', 
+      icon: '⛰️', 
+      hazards: ['Loose scree slopes', 'Twisted ankle risk', 'Steep inclines'],
+      features: ['Sheltered caves', 'Edible roots', 'Mountain springs'],
+      description: 'Rocky hills rise before you. The path grows steeper with each step.'
+    },
+    { 
+      name: 'Dense Pine Forest', 
+      distance: 14, 
+      bg: 'linear-gradient(180deg, #4A90E2 0%, #2d5016 60%, #1a3010 100%)', 
+      icon: '🌲', 
+      hazards: ['Easy to get lost', 'Thorny undergrowth', 'Predator territory'],
+      features: ['Pine nuts', 'Medicinal herbs', 'Natural shelter'],
+      description: 'Ancient pines block the sun. Sounds echo strangely in the gloom.'
+    },
+    { 
+      name: 'Mountain Ascent', 
+      distance: 13, 
+      bg: 'linear-gradient(180deg, #6B7B8C 0%, #4A5568 50%, #2C3540 100%)', 
+      icon: '🏔️', 
+      hazards: ['Thin air exhaustion', 'Extreme weather', 'Cliff edges'],
+      features: ['Snow melt water', 'Mountain goat paths', 'Windbreak rocks'],
+      description: 'The air grows thin. Each breath is a battle. The summit calls.'
+    },
+    { 
+      name: 'Limestone Plateau', 
+      distance: 10, 
+      bg: 'linear-gradient(180deg, #3C3C3C 0%, #2C2418 50%, #1a1410 100%)', 
+      icon: '🕳️', 
+      hazards: ['Hidden cave shafts', 'Disorienting darkness', 'Unstable ground'],
+      features: ['Cave systems', 'Mineral deposits', 'Underground streams'],
+      description: 'Weathered limestone riddled with caves. Manganese deposits await below.'
+    }
+  ];
+  
+  // Create enhanced UI
+  const journeyUI = document.createElement('div');
+  journeyUI.className = 'mountain-journey-ui';
+  journeyUI.style.cssText = `
+    position: absolute;
+    top: 10px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0, 0, 0, 0.9);
+    padding: 12px 20px;
+    border-radius: 12px;
+    border: 2px solid var(--ochre-yellow);
+    backdrop-filter: blur(10px);
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.8);
+    z-index: 100;
+    max-width: 90%;
+    font-size: 0.9rem;
+  `;
+  
+  journeyUI.innerHTML = `
+    <div style="text-align: center; margin-bottom: 10px;">
+      <div style="font-size: 1.2rem; font-weight: bold; color: var(--ochre-yellow); margin-bottom: 3px;">
+        <span id="stage-icon">${stages[0].icon}</span> <span id="stage-name">${stages[0].name}</span>
+      </div>
+      <div style="color: var(--limestone); font-size: 0.8rem;">
+        Day <span id="day-counter">1</span> | Distance: <span id="total-distance">0</span>/65 km | 
+        <span id="weather-display">🌤️ Clear</span>
+      </div>
+    </div>
+    
+    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 10px;">
+      <div class="stat-panel" style="padding: 6px;">
+        <div class="stat-label" style="font-size: 0.75rem; margin-bottom: 3px;">💪 Stamina</div>
+        <div class="stat-bar-bg" style="height: 12px; margin-bottom: 3px;">
+          <div class="stat-bar-fill stamina-bar" id="stamina-bar" style="width: 100%; background: linear-gradient(90deg, #4CAF50, #8BC34A);"></div>
+        </div>
+        <div class="stat-value" style="font-size: 0.7rem;" id="stamina-value">100%</div>
+      </div>
+      <div class="stat-panel" style="padding: 6px;">
+        <div class="stat-label" style="font-size: 0.75rem; margin-bottom: 3px;">🍖 Food</div>
+        <div class="stat-bar-bg" style="height: 12px; margin-bottom: 3px;">
+          <div class="stat-bar-fill food-bar" id="food-bar" style="width: 100%; background: linear-gradient(90deg, #FF6B35, #FDB813);"></div>
+        </div>
+        <div class="stat-value" style="font-size: 0.7rem;" id="food-value">100%</div>
+      </div>
+      <div class="stat-panel" style="padding: 6px;">
+        <div class="stat-label" style="font-size: 0.75rem; margin-bottom: 3px;">💧 Water</div>
+        <div class="stat-bar-bg" style="height: 12px; margin-bottom: 3px;">
+          <div class="stat-bar-fill water-bar" id="water-bar" style="width: 100%; background: linear-gradient(90deg, #2196F3, #03A9F4);"></div>
+        </div>
+        <div class="stat-value" style="font-size: 0.7rem;" id="water-value">100%</div>
+      </div>
+    </div>
+    
+    <div style="background: rgba(139, 69, 19, 0.3); padding: 6px 10px; border-radius: 6px; margin-bottom: 8px;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 3px;">
+        <span style="color: var(--limestone); font-weight: bold; font-size: 0.8rem;">Stage Progress</span>
+        <span style="color: var(--ochre-yellow); font-size: 0.8rem;" id="stage-progress-text">0 / ${stages[0].distance} km</span>
+      </div>
+      <div style="background: rgba(0,0,0,0.5); border-radius: 4px; overflow: hidden; height: 14px;">
+        <div id="stage-progress-bar" style="height: 100%; background: linear-gradient(90deg, #DAA520, #FFD700); width: 0%; transition: width 0.5s ease;"></div>
+      </div>
+    </div>
+    
+    <div id="event-log" style="background: rgba(0, 0, 0, 0.6); padding: 6px; border-radius: 6px; max-height: 50px; overflow-y: auto; font-size: 0.75rem; color: var(--limestone);">
+      <div class="log-entry">🚶 Journey begins from the settlement...</div>
+    </div>
+  `;
+  container.appendChild(journeyUI);
+  
+  // Create landscape layers with parallax
+  const landscapeContainer = document.createElement('div');
+  landscapeContainer.className = 'expedition-landscape';
+  landscapeContainer.style.cssText = `
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    top: 0;
+    left: 0;
+    overflow: hidden;
+  `;
+  
+  // Sky layer with moving clouds
+  const skyLayer = document.createElement('div');
+  skyLayer.className = 'expedition-sky';
+  skyLayer.style.cssText = `
+    position: absolute;
+    width: 100%;
+    height: 60%;
+    top: 0;
+    left: 0;
+    z-index: 1;
+  `;
+  
+  // Add animated clouds
+  for (let i = 0; i < 4; i++) {
+    const cloud = document.createElement('div');
+    cloud.className = 'expedition-cloud';
+    cloud.style.cssText = `
+      position: absolute;
+      background: rgba(255, 255, 255, 0.6);
+      border-radius: 100px;
+      width: ${80 + Math.random() * 60}px;
+      height: ${30 + Math.random() * 20}px;
+      top: ${10 + Math.random() * 30}%;
+      left: ${-20 + Math.random() * 120}%;
+      animation: cloudDrift ${40 + Math.random() * 30}s linear infinite;
+      animation-delay: ${-Math.random() * 20}s;
+    `;
+    skyLayer.appendChild(cloud);
+  }
+  
+  // Add sun/moon based on day
+  const celestial = document.createElement('div');
+  celestial.id = 'expedition-celestial';
+  celestial.className = 'expedition-sun';
+  celestial.style.cssText = `
+    position: absolute;
+    top: 15%;
+    right: 15%;
+    width: 60px;
+    height: 60px;
+    background: radial-gradient(circle, #FDB813 0%, #FF8C00 70%);
+    border-radius: 50%;
+    box-shadow: 0 0 40px rgba(253, 184, 19, 0.8);
+    transition: all 1s ease;
+  `;
+  skyLayer.appendChild(celestial);
+  
+  // Weather layer (for rain/snow effects)
+  const weatherLayer = document.createElement('div');
+  weatherLayer.id = 'expedition-weather-layer';
+  weatherLayer.style.cssText = `
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    top: 0;
+    left: 0;
+    pointer-events: none;
+    z-index: 25;
+  `;
+  skyLayer.appendChild(weatherLayer);
+  
+  landscapeContainer.appendChild(skyLayer);
+  
+  // Far mountains
+  const farMountains = document.createElement('div');
+  farMountains.className = 'expedition-far-mountains';
+  farMountains.style.cssText = `
+    position: absolute;
+    bottom: 30%;
+    width: 100%;
+    height: 25%;
+    background: linear-gradient(to bottom, transparent 0%, rgba(107, 123, 140, 0.6) 40%, rgba(74, 85, 104, 0.8) 100%);
+    clip-path: polygon(0 70%, 15% 45%, 30% 60%, 50% 30%, 70% 55%, 85% 40%, 100% 65%, 100% 100%, 0 100%);
+    z-index: 2;
+  `;
+  landscapeContainer.appendChild(farMountains);
+  
+  // Mid-layer (changes based on biome)
+  const midLayer = document.createElement('div');
+  midLayer.id = 'expedition-mid-layer';
+  midLayer.className = 'expedition-mid-layer';
+  midLayer.style.cssText = `
+    position: absolute;
+    bottom: 15%;
+    width: 100%;
+    height: 30%;
+    z-index: 3;
+  `;
+  landscapeContainer.appendChild(midLayer);
+  
+  // Ground layer
+  const groundLayer = document.createElement('div');
+  groundLayer.className = 'expedition-ground';
+  groundLayer.style.cssText = `
+    position: absolute;
+    bottom: 0;
+    width: 100%;
+    height: 25%;
+    background: linear-gradient(180deg, var(--earth-brown) 0%, #3C2A1E 100%);
+    z-index: 4;
+  `;
+  landscapeContainer.appendChild(groundLayer);
+  
+  // Character sprite
+  const character = document.createElement('div');
+  character.className = 'expedition-character';
+  character.style.cssText = `
+    position: absolute;
+    bottom: 25%;
+    left: 15%;
+    font-size: 4rem;
+    z-index: 10;
+    filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.8));
+    transition: transform 0.3s ease;
+  `;
+  character.textContent = miniGameState.selectedCharacter || '🚶';
+  landscapeContainer.appendChild(character);
+  
+  container.appendChild(landscapeContainer);
+  
+  // Journey controls
+  controls.innerHTML = `
+    <div style="display: flex; gap: 10px; align-items: center; justify-content: center; flex-wrap: wrap;">
+      <button class="btn-primary expedition-action-btn" id="continue-journey-btn" style="font-size: 1rem; padding: 10px 20px;">
+        🚶 Continue Journey
+      </button>
+      <button class="btn-secondary expedition-action-btn" id="rest-btn" style="padding: 10px 20px;">
+        😴 Rest
+      </button>
+      <button class="btn-secondary expedition-action-btn" id="forage-btn" style="padding: 10px 20px;">
+        🔍 Forage
+      </button>
+    </div>
+    <div id="rock-testing-area" style="display: none; margin-top: 20px;">
+      <div style="background: rgba(0, 0, 0, 0.8); padding: 20px; border-radius: 12px; border: 3px solid var(--ochre-yellow);">
+        <h3 style="color: var(--ochre-yellow); text-align: center; margin-bottom: 15px;">🪨 Test Rock Samples - Streak Method</h3>
+        <p style="color: var(--limestone); text-align: center; margin-bottom: 15px; font-style: italic;">
+          Rub each rock on unglazed ceramic. <strong>Black streak = Manganese (MnO₂)</strong>
+        </p>
+        <div id="rock-samples-container" style="display: flex; gap: 15px; justify-content: center; flex-wrap: wrap;">
+        </div>
+      </div>
+    </div>
+  `;
+  
+  // Weather system
+  function updateWeather() {
+    const weatherConditions = [
+      { type: 'clear', icon: '🌤️', text: 'Clear skies', drainMultiplier: 1.0 },
+      { type: 'cloudy', icon: '☁️', text: 'Overcast', drainMultiplier: 1.1 },
+      { type: 'rain', icon: '🌧️', text: 'Heavy rain', drainMultiplier: 1.5 },
+      { type: 'wind', icon: '💨', text: 'Strong winds', drainMultiplier: 1.3 },
+      { type: 'storm', icon: '⛈️', text: 'Thunderstorm', drainMultiplier: 2.0 }
+    ];
+    
+    // Random weather changes
+    if (Math.random() > 0.7) {
+      const newWeather = weatherConditions[Math.floor(Math.random() * weatherConditions.length)];
+      miniGameState.weatherCondition = newWeather.type;
+      miniGameState.weatherMultiplier = newWeather.drainMultiplier;
+      
+      document.getElementById('weather-display').textContent = `${newWeather.icon} ${newWeather.text}`;
+      
+      // Add visual weather effects
+      const weatherLayer = document.getElementById('expedition-weather-layer');
+      weatherLayer.innerHTML = '';
+      
+      if (newWeather.type === 'rain' || newWeather.type === 'storm') {
+        // Add rain drops
+        for (let i = 0; i < 30; i++) {
+          const raindrop = document.createElement('div');
+          raindrop.className = 'raindrop';
+          raindrop.style.left = Math.random() * 100 + '%';
+          raindrop.style.animationDelay = Math.random() * 1 + 's';
+          raindrop.style.animationDuration = (0.3 + Math.random() * 0.3) + 's';
+          weatherLayer.appendChild(raindrop);
+        }
+        
+        // Darken sky for storm
+        if (newWeather.type === 'storm') {
+          const skyLayer = weatherLayer.parentElement;
+          skyLayer.style.filter = 'brightness(0.6)';
+          
+          // Lightning effect
+          setTimeout(() => {
+            weatherLayer.style.background = 'rgba(255, 255, 255, 0.8)';
+            setTimeout(() => {
+              weatherLayer.style.background = 'transparent';
+            }, 100);
+          }, 2000 + Math.random() * 3000);
+        }
+      } else if (newWeather.type === 'wind') {
+        // Faster cloud movement
+        document.querySelectorAll('.expedition-cloud').forEach(cloud => {
+          cloud.style.animationDuration = '15s';
+        });
+      }
+      
+      addLogEntry(`${newWeather.icon} Weather changed: ${newWeather.text}`);
+    }
+  }
+  
+  // Log entry system
+  function addLogEntry(message) {
+    const eventLog = document.getElementById('event-log');
+    const entry = document.createElement('div');
+    entry.className = 'log-entry';
+    entry.textContent = message;
+    entry.style.animation = 'fadeIn 0.5s ease-out';
+    eventLog.insertBefore(entry, eventLog.firstChild);
+    
+    // Keep only last 5 entries
+    while (eventLog.children.length > 5) {
+      eventLog.removeChild(eventLog.lastChild);
+    }
+  }
+  
+  // Update biome visuals
+  function updateBiomeVisuals(stageIndex) {
+    const stage = stages[stageIndex];
+    container.style.background = stage.bg;
+    
+    // Update description
+    document.getElementById('biome-description').textContent = stage.description;
+    
+    // Update mid-layer based on biome
+    const midLayer = document.getElementById('expedition-mid-layer');
+    midLayer.innerHTML = '';
+    
+    switch(stageIndex) {
+      case 0: // Valley - Add grass and flowers
+        for (let i = 0; i < 8; i++) {
+          const grass = document.createElement('div');
+          grass.style.cssText = `
+            position: absolute;
+            bottom: 0;
+            left: ${i * 12}%;
+            width: 80px;
+            height: 60px;
+            background: linear-gradient(to top, transparent, rgba(107, 142, 35, 0.6));
+            clip-path: polygon(40% 100%, 45% 20%, 50% 0%, 55% 20%, 60% 100%);
+          `;
+          midLayer.appendChild(grass);
+        }
+        break;
+      case 1: // Foothills - Add rocks
+        for (let i = 0; i < 6; i++) {
+          const rock = document.createElement('div');
+          rock.style.cssText = `
+            position: absolute;
+            bottom: ${Math.random() * 40}%;
+            left: ${10 + i * 15}%;
+            width: ${30 + Math.random() * 30}px;
+            height: ${25 + Math.random() * 25}px;
+            background: linear-gradient(135deg, #8B8680 0%, #5C4033 100%);
+            border-radius: ${Math.random() * 10}px;
+            box-shadow: 2px 4px 8px rgba(0, 0, 0, 0.6);
+          `;
+          midLayer.appendChild(rock);
+        }
+        break;
+      case 2: // Forest - Add trees
+        for (let i = 0; i < 7; i++) {
+          const tree = document.createElement('div');
+          const treeSize = 60 + Math.random() * 40;
+          tree.style.cssText = `
+            position: absolute;
+            bottom: 0;
+            left: ${5 + i * 14}%;
+            font-size: ${treeSize}px;
+            filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.5));
+            opacity: 0.8;
+          `;
+          tree.textContent = '🌲';
+          midLayer.appendChild(tree);
+        }
+        break;
+      case 3: // Mountains - Add peaks
+        midLayer.style.background = 'linear-gradient(to bottom, transparent 0%, rgba(139, 134, 128, 0.7) 50%, rgba(92, 64, 51, 0.9) 100%)';
+        midLayer.style.clipPath = 'polygon(0 80%, 20% 40%, 40% 60%, 60% 20%, 80% 50%, 100% 70%, 100% 100%, 0 100%)';
+        break;
+      case 4: // Cave - Add cave entrance
+        const caveEntrance = document.createElement('div');
+        caveEntrance.style.cssText = `
+          position: absolute;
+          bottom: 20%;
+          left: 50%;
+          transform: translateX(-50%);
+          width: 150px;
+          height: 100px;
+          background: radial-gradient(ellipse at center, #0a0806 0%, #1a1410 60%, transparent 100%);
+          border-radius: 50% 50% 0 0;
+          box-shadow: inset 0 -20px 40px rgba(0, 0, 0, 0.9);
+        `;
+        midLayer.appendChild(caveEntrance);
+        
+        const caveGlow = document.createElement('div');
+        caveGlow.style.cssText = `
+          position: absolute;
+          bottom: 15%;
+          left: 50%;
+          transform: translateX(-50%);
+          font-size: 3rem;
+          animation: gatherPulse 2s ease-in-out infinite;
+        `;
+        caveGlow.textContent = '✨';
+        midLayer.appendChild(caveGlow);
+        break;
+    }
+  }
+  
+  updateBiomeVisuals(0);
+  
+  // Journey mechanics
+  let resourceDrainInterval = setInterval(() => {
+    if (!miniGameState.active || miniGameState.stage >= 5) {
+      clearInterval(resourceDrainInterval);
+      return;
+    }
+    
+    // Natural resource drain (affected by weather)
+    const weatherMult = miniGameState.weatherMultiplier || 1.0;
+    miniGameState.stamina = Math.max(0, miniGameState.stamina - (0.4 * weatherMult));
+    miniGameState.food = Math.max(0, miniGameState.food - (0.25 * weatherMult));
+    miniGameState.water = Math.max(0, miniGameState.water - (0.4 * weatherMult));
+    
+    updateResourceDisplay();
+    
+    // Check failure conditions
+    if (miniGameState.stamina <= 0) {
+      clearInterval(resourceDrainInterval);
+      addLogEntry('💀 Collapsed from exhaustion...');
+      showNotification('💀 EXPEDITION FAILED - Exhausted! You receive NOTHING.', 4000);
+      setTimeout(() => endMiniGame(false), 3000);
+    } else if (miniGameState.food <= 0) {
+      clearInterval(resourceDrainInterval);
+      addLogEntry('💀 Starved to death...');
+      showNotification('� EXPEDITION FAILED - Starvation! You receive NOTHING.', 4000);
+      setTimeout(() => endMiniGame(false), 3000);
+    } else if (miniGameState.water <= 0) {
+      clearInterval(resourceDrainInterval);
+      addLogEntry('💀 Died of thirst...');
+      showNotification('💀 EXPEDITION FAILED - Dehydration! You receive NOTHING.', 4000);
+      setTimeout(() => endMiniGame(false), 3000);
+    }
+  }, 600);
+  
+  function updateResourceDisplay() {
+    const staminaBar = document.getElementById('stamina-bar');
+    const foodBar = document.getElementById('food-bar');
+    const waterBar = document.getElementById('water-bar');
+    const staminaValue = document.getElementById('stamina-value');
+    const foodValue = document.getElementById('food-value');
+    const waterValue = document.getElementById('water-value');
+    
+    if (!staminaBar) return;
+    
+    staminaBar.style.width = miniGameState.stamina + '%';
+    foodBar.style.width = miniGameState.food + '%';
+    waterBar.style.width = miniGameState.water + '%';
+    
+    staminaValue.textContent = Math.round(miniGameState.stamina) + '%';
+    foodValue.textContent = Math.round(miniGameState.food) + '%';
+    waterValue.textContent = Math.round(miniGameState.water) + '%';
+    
+    // Color warnings
+    if (miniGameState.stamina < 30) staminaBar.style.background = 'linear-gradient(90deg, #F44336, #E91E63)';
+    if (miniGameState.food < 30) foodBar.style.background = 'linear-gradient(90deg, #F44336, #E91E63)';
+    if (miniGameState.water < 30) waterBar.style.background = 'linear-gradient(90deg, #F44336, #E91E63)';
+  }
+  
+  // Continue journey button
+  document.getElementById('continue-journey-btn').addEventListener('click', () => {
+    if (miniGameState.stamina < 12) {
+      showNotification('⚠️ Too exhausted! Rest before continuing.', 2000);
+      return;
+    }
+    
+    const stage = stages[miniGameState.stage];
+    
+    // Advance progress
+    const baseProgress = 1.5 + Math.random() * 1.5;
+    const weatherMult = miniGameState.weatherMultiplier || 1.0;
+    const progressIncrement = baseProgress / weatherMult; // Slower in bad weather
+    miniGameState.progress += progressIncrement;
+    miniGameState.journeyDistance += progressIncrement;
+    
+    // Consume resources (affected by weather)
+    const staminaDrain = (8 + Math.random() * 7) * weatherMult;
+    const foodDrain = (3 + Math.random() * 3) * weatherMult;
+    const waterDrain = (4 + Math.random() * 4) * weatherMult;
+    
+    miniGameState.stamina -= staminaDrain;
+    miniGameState.food -= foodDrain;
+    miniGameState.water -= waterDrain;
+    
+    // Animate character
+    character.style.transform = 'translateX(20px)';
+    setTimeout(() => character.style.transform = 'translateX(0)', 300);
+    
+    addLogEntry(`🚶 Traveled ${progressIncrement.toFixed(1)} km through ${stage.name}`);
+    
+    // Update progress bar
+    const progressPercent = Math.min(100, (miniGameState.progress / stage.distance) * 100);
+    document.getElementById('stage-progress-bar').style.width = progressPercent + '%';
+    document.getElementById('stage-progress-text').textContent = `${miniGameState.progress.toFixed(1)} / ${stage.distance} km`;
+    document.getElementById('total-distance').textContent = miniGameState.journeyDistance.toFixed(1);
+    
+    // Random hazard events
+    if (Math.random() > 0.65) {
+      const hazard = stage.hazards[Math.floor(Math.random() * stage.hazards.length)];
+      const hazardWarning = document.getElementById('hazard-warning');
+      const hazardText = document.getElementById('hazard-text');
+      hazardText.textContent = hazard + '!';
+      hazardWarning.style.display = 'block';
+      
+      const hazardDamage = 8 + Math.random() * 12;
+      miniGameState.stamina -= hazardDamage;
+      addLogEntry(`⚠️ ${hazard} - Lost ${hazardDamage.toFixed(0)} stamina!`);
+      
+      setTimeout(() => hazardWarning.style.display = 'none', 4000);
+    }
+    
+    // Random beneficial events
+    if (Math.random() > 0.8) {
+      const feature = stage.features[Math.floor(Math.random() * stage.features.length)];
+      const benefit = Math.floor(Math.random() * 3);
+      
+      if (benefit === 0) {
+        miniGameState.food = Math.min(100, miniGameState.food + 10);
+        addLogEntry(`✨ Found ${feature}! +10 food`);
+        showNotification(`✨ Discovered ${feature}!`, 2000);
+      } else if (benefit === 1) {
+        miniGameState.water = Math.min(100, miniGameState.water + 15);
+        addLogEntry(`✨ Found ${feature}! +15 water`);
+        showNotification(`✨ Discovered ${feature}!`, 2000);
+      } else {
+        miniGameState.stamina = Math.min(100, miniGameState.stamina + 8);
+        addLogEntry(`✨ Found ${feature}! +8 stamina`);
+        showNotification(`✨ Discovered ${feature}!`, 2000);
+      }
+    }
+    
+    // Weather updates
+    updateWeather();
+    
+    updateResourceDisplay();
+    
+    // Check if stage complete
+    if (miniGameState.progress >= stage.distance) {
+      miniGameState.stage++;
+      miniGameState.progress = 0;
+      miniGameState.campsitesVisited++;
+      
+      if (miniGameState.stage < stages.length) {
+        // New stage - rest at campsite
+        const newStage = stages[miniGameState.stage];
+        
+        // Campsite rest
+        showNotification(`🏕️ Setting up camp before entering ${newStage.name}...`, 2500);
+        addLogEntry(`🏕️ Made camp at the edge of ${newStage.name}`);
+        
+        setTimeout(() => {
+          // Partial recovery during camp
+          miniGameState.stamina = Math.min(100, miniGameState.stamina + 30);
+          miniGameState.food = Math.max(0, miniGameState.food - 10); // Consume food
+          miniGameState.water = Math.max(0, miniGameState.water - 10);
+          
+          addLogEntry(`😴 Rested at camp. Stamina restored, supplies consumed.`);
+          
+          document.getElementById('stage-name').textContent = newStage.name;
+          document.getElementById('stage-icon').textContent = newStage.icon;
+          document.getElementById('stage-progress-text').textContent = `0 / ${newStage.distance} km`;
+          document.getElementById('stage-progress-bar').style.width = '0%';
+          
+          updateBiomeVisuals(miniGameState.stage);
+          updateResourceDisplay();
+          
+          const remainingKm = 65 - miniGameState.journeyDistance.toFixed(0);
+          showNotification(`🗺️ Entering ${newStage.name}... ${remainingKm} km to manganese deposits.`, 3000);
+          
+          // Advance day if past midpoint
+          if (miniGameState.stage % 2 === 0) {
+            miniGameState.daysPassed++;
+            document.getElementById('day-counter').textContent = miniGameState.daysPassed;
+            addLogEntry(`🌅 Day ${miniGameState.daysPassed} begins`);
+            
+            // Change sun position for new day
+            const celestial = document.getElementById('expedition-celestial');
+            celestial.style.top = '15%';
+            celestial.style.right = (10 + miniGameState.daysPassed * 5) + '%';
+          }
+          
+          // Reached deposit site!
+          if (miniGameState.stage === 4) {
+            addLogEntry(`� ARRIVED at the limestone plateau!`);
+            showNotification('🎉 Finally reached the manganese deposits! Now to identify the right rocks...', 4000);
+            setTimeout(() => {
+              document.getElementById('continue-journey-btn').style.display = 'none';
+              document.getElementById('rest-btn').style.display = 'none';
+              document.getElementById('forage-btn').style.display = 'none';
+              
+              // STOP RESOURCE DRAIN - Expedition pauses for rock testing
+              clearInterval(resourceDrainInterval);
+              
+              // Hide journey UI and show rock testing in same container
+              const journeyUI = document.querySelector('.mountain-journey-ui');
+              const landscape = document.querySelector('.expedition-landscape');
+              if (journeyUI) journeyUI.style.display = 'none';
+              if (landscape) landscape.style.display = 'none';
+              
+              // Transform container to rock testing scene
+              container.style.background = 'linear-gradient(180deg, #3C3C3C 0%, #2C2418 50%, #1a1410 100%)';
+              
+              document.getElementById('rock-testing-area').style.display = 'block';
+              setupRockTesting(container);
+            }, 4000);
+          }
+        }, 2500);
+      }
+    }
+  });
+  
+  // Rest button
+  document.getElementById('rest-btn').addEventListener('click', () => {
+    const staminaGain = 30 + Math.random() * 15;
+    miniGameState.stamina = Math.min(100, miniGameState.stamina + staminaGain);
+    miniGameState.food -= 10;
+    miniGameState.water -= 8;
+    
+    updateResourceDisplay();
+    addLogEntry(`😴 Rested. +${staminaGain.toFixed(0)} stamina, consumed supplies.`);
+    showNotification(`😴 Brief rest... +${staminaGain.toFixed(0)} stamina`, 2000);
+    
+    // Small weather check during rest
+    if (Math.random() > 0.6) {
+      updateWeather();
+    }
+  });
+  
+  // Forage button
+  document.getElementById('forage-btn').addEventListener('click', () => {
+    const stage = stages[miniGameState.stage];
+    const foodGain = 12 + Math.random() * 18;
+    const waterGain = 8 + Math.random() * 17;
+    const staminaCost = 12 + Math.random() * 8;
+    
+    miniGameState.food = Math.min(100, miniGameState.food + foodGain);
+    miniGameState.water = Math.min(100, miniGameState.water + waterGain);
+    miniGameState.stamina -= staminaCost;
+    
+    // Random forage encounters
+    const forageResults = [
+      `wild berries and nuts`,
+      `edible roots and tubers`,
+      `fresh water from a stream`,
+      `${stage.features[0].toLowerCase()}`,
+      `medicinal herbs and clean water`
+    ];
+    
+    const result = forageResults[Math.floor(Math.random() * forageResults.length)];
+    
+    updateResourceDisplay();
+    addLogEntry(`🔍 Foraged ${result}. +${foodGain.toFixed(0)} food, +${waterGain.toFixed(0)} water`);
+    showNotification(`🔍 Found ${result}!`, 2500);
+  });
+  
+  // Rock testing at final stage - 3 ATTEMPTS SYSTEM
+  function setupRockTesting(testingContainer) {
+    // Create rock testing UI directly in the main container
+    testingContainer.innerHTML = `
+      <div style="padding: 2rem; max-width: 1200px; margin: 0 auto;">
+        <h2 style="color: var(--ochre-yellow); text-align: center; font-family: var(--font-title); font-size: 2rem; margin-bottom: 1rem;">
+          🪨 Limestone Plateau - Rock Testing
+        </h2>
+        <div id="attempts-display" style="text-align: center; margin-bottom: 1.5rem; font-size: 1.2rem; color: var(--limestone);">
+          <span style="color: #4CAF50; font-weight: bold;">Attempts Remaining: <span id="attempts-count">3</span>/3</span>
+        </div>
+        <div id="rock-test-instructions" style="background: rgba(139, 69, 19, 0.4); padding: 15px; border-radius: 10px; margin-bottom: 1.5rem; border: 2px solid var(--ochre-yellow);">
+          <strong style="color: var(--ochre-yellow); font-size: 1.1rem;">🔬 Your Task:</strong><br>
+          <p style="color: var(--limestone); margin: 10px 0;">
+            You have <strong style="color: #4CAF50;">3 attempts</strong> to identify manganese among these rocks.<br>
+            <span style="color: #FFD700;">✓ Manganese (MnO₂):</span> Dark color, medium-heavy weight, produces brown-black pigment<br>
+            <span style="color: #FF6B35;">✗ Wrong choice:</span> Lose an attempt. 3 failures = expedition fails!
+          </p>
+        </div>
+        <div id="rock-samples-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.5rem; margin-bottom: 2rem;">
+          <!-- Rocks will be added here -->
+        </div>
+        <div id="test-result-message" style="text-align: center; font-size: 1.1rem; min-height: 60px; color: var(--limestone);"></div>
+      </div>
+    `;
+    
+    miniGameState.attemptsRemaining = 3;
+    miniGameState.correctRockFound = false;
+    
+    // Simplified rock selection - just need to find the ONE correct manganese
+    const rocks = [
+      { type: 'limestone', icon: '⚪', name: 'Limestone', desc: 'White sedimentary rock', correct: false },
+      { type: 'hematite', icon: '🔴', name: 'Hematite', desc: 'Red iron oxide', correct: false },
+      { type: 'coal', icon: '⚫', name: 'Coal', desc: 'Black combustible rock', correct: false },
+      { type: 'manganese', icon: '🟤', name: 'Dark Rock', desc: 'Unknown mineral', correct: true },
+      { type: 'basalt', icon: '⚫', name: 'Basalt', desc: 'Dark volcanic rock', correct: false },
+      { type: 'shale', icon: '🟫', name: 'Shale', desc: 'Brown layered rock', correct: false }
+    ];
+    
+    // Shuffle rocks
+    rocks.sort(() => Math.random() - 0.5);
+    
+    const grid = testingContainer.querySelector('#rock-samples-grid');
+    
+    rocks.forEach((rock, index) => {
+      const rockCard = document.createElement('div');
+      rockCard.className = 'rock-test-card';
+      rockCard.style.cssText = `
+        background: rgba(60, 50, 40, 0.6);
+        border: 3px solid var(--stone-gray);
+        border-radius: 12px;
+        padding: 1.5rem;
+        text-align: center;
+        cursor: pointer;
+        transition: all 0.3s ease;
+      `;
+      
+      rockCard.innerHTML = `
+        <div style="font-size: 4rem; margin-bottom: 0.5rem;">${rock.icon}</div>
+        <div style="color: var(--limestone); font-weight: bold; margin-bottom: 0.5rem;">${rock.name}</div>
+        <div style="color: var(--stone-gray); font-size: 0.85rem;">${rock.desc}</div>
+      `;
+      
+      rockCard.addEventListener('click', () => {
+        if (miniGameState.attemptsRemaining <= 0 || miniGameState.correctRockFound) return;
+        
+        rockCard.style.pointerEvents = 'none';
+        
+        if (rock.correct) {
+          // SUCCESS!
+          rockCard.style.borderColor = '#4CAF50';
+          rockCard.style.background = 'rgba(76, 175, 80, 0.3)';
+          rockCard.style.boxShadow = '0 0 30px rgba(76, 175, 80, 0.8)';
+          
+          miniGameState.correctRockFound = true;
+          
+          const resultMsg = testingContainer.querySelector('#test-result-message');
+          resultMsg.innerHTML = `
+            <div style="color: #4CAF50; font-size: 1.5rem; font-weight: bold; animation: pulse 1s ease-in-out infinite;">
+              ✅ MANGANESE IDENTIFIED!
+            </div>
+            <div style="color: var(--limestone); margin-top: 1rem;">
+              Expedition successful! Returning with manganese for pigment...
+            </div>
+          `;
+          
+          setTimeout(() => {
+            const distanceBonus = Math.floor(miniGameState.journeyDistance / 12);
+            const survivalBonus = Math.floor((miniGameState.stamina + miniGameState.food + miniGameState.water) / 60);
+            const accuracyBonus = (3 - miniGameState.attemptsRemaining) === 1 ? 2 : (3 - miniGameState.attemptsRemaining) === 2 ? 1 : 0;
+            miniGameState.totalMultiplier = gameData.rewardMultiplier + distanceBonus + survivalBonus + accuracyBonus;
+            
+            showNotification(
+              `🎉 EXPEDITION SUCCESSFUL!\n` +
+              `Collected ${miniGameState.totalMultiplier}x manganese after ${miniGameState.daysPassed} days!\n` +
+              `Bonuses - Distance: +${distanceBonus} | Survival: +${survivalBonus} | First try: +${accuracyBonus}`,
+              5000
+            );
+            setTimeout(() => endMiniGame(true), 4000);
+          }, 2500);
+          
+        } else {
+          // WRONG!
+          rockCard.style.borderColor = '#F44336';
+          rockCard.style.background = 'rgba(244, 67, 54, 0.3)';
+          rockCard.style.opacity = '0.5';
+          
+          miniGameState.attemptsRemaining--;
+          testingContainer.querySelector('#attempts-count').textContent = miniGameState.attemptsRemaining;
+          
+          const resultMsg = testingContainer.querySelector('#test-result-message');
+          
+          if (miniGameState.attemptsRemaining > 0) {
+            resultMsg.innerHTML = `
+              <div style="color: #FF6B35; font-size: 1.3rem; font-weight: bold;">
+                ❌ Wrong! That's ${rock.name}
+              </div>
+              <div style="color: var(--limestone); margin-top: 0.5rem;">
+                ${miniGameState.attemptsRemaining} attempt${miniGameState.attemptsRemaining > 1 ? 's' : ''} remaining...
+              </div>
+            `;
+            showNotification(`❌ Incorrect - that's ${rock.name}, not manganese!`, 2500);
+          } else {
+            // NO ATTEMPTS LEFT - FAIL
+            resultMsg.innerHTML = `
+              <div style="color: #F44336; font-size: 1.5rem; font-weight: bold;">
+                💀 EXPEDITION FAILED
+              </div>
+              <div style="color: var(--limestone); margin-top: 1rem;">
+                All attempts exhausted. Returning empty-handed...
+              </div>
+            `;
+            showNotification('💀 EXPEDITION FAILED - No manganese identified. You receive NOTHING.', 4000);
+            setTimeout(() => endMiniGame(false), 3000);
+          }
+        }
+      });
+      
+      rockCard.addEventListener('mouseenter', function() {
+        if (miniGameState.attemptsRemaining > 0 && !miniGameState.correctRockFound) {
+          this.style.borderColor = 'var(--ochre-yellow)';
+          this.style.transform = 'translateY(-8px) scale(1.05)';
+        }
+      });
+      
+      rockCard.addEventListener('mouseleave', function() {
+        if (!this.style.pointerEvents) {
+          this.style.borderColor = 'var(--stone-gray)';
+          this.style.transform = 'translateY(0) scale(1)';
+        }
+      });
+      
+      grid.appendChild(rockCard);
+    });
+  }
+}
+
+// ========================================
+// BOTANICAL IDENTIFICATION - FOREST WISDOM
+// ========================================
+
+function setupBotanicalGame(container, controls, instructions, gameData) {
+  instructions.innerHTML = `
+    <strong>Forest Wisdom - Botanical Identification</strong><br>
+    Identify resinous trees for torch-making.<br>
+    <span style="color: #4CAF50;">✓ Correct: Pine (Pinus sylvestris), Juniper (Juniperus)</span><br>
+    <span style="color: #C00000;">✗ Wrong: Oak, Birch, Willow (low resin content)</span><br>
+    <em>Scientific fact: Pine has 15-20% resin, Oak only 2-3%</em>
+  `;
+  
+  container.innerHTML = '';
+  container.style.background = 'linear-gradient(180deg, #87CEEB 0%, #6B8E23 50%, #5C4033 100%)';
   
   controls.innerHTML = `
     <div class="progress-bar" style="width: 300px;">
       <div class="progress-fill" id="minigame-timer">Time: ${miniGameState.timeRemaining}s</div>
     </div>
-    <div style="color: white; font-weight: bold; margin-top: 10px;">
-      Day: <span id="day-count">1</span> | Food: <span id="food-level">100</span>% | Water: <span id="water-level">100</span>%
+    <div style="color: white; font-weight: bold; font-size: 1.1rem; margin-top: 10px;">
+      Resinous Wood Collected: <span id="trees-collected">0</span> / ${miniGameState.treesNeeded}
     </div>
   `;
   
-  // Create rock samples to test
-  const rocks = [
-    { type: 'limestone', correct: false, icon: '⚪', streak: 'white' },
-    { type: 'manganese', correct: true, icon: '🟤', streak: 'black' },
-    { type: 'ironOre', correct: false, icon: '🔴', streak: 'red-brown' },
-    { type: 'sandstone', correct: false, icon: '🟡', streak: 'yellow' }
-  ];
-  
-  rocks.forEach((rock, i) => {
-    const sample = document.createElement('div');
-    sample.className = 'resource-deposit';
-    sample.innerHTML = rock.icon;
-    sample.style.left = (100 + i * 200) + 'px';
-    sample.style.bottom = '150px';
-    sample.style.fontSize = '4rem';
-    sample.title = 'Click to test';
+  const treeTypes = [
+      { type: 'magnetite', correct: false, icon: '⚫', streak: 'black', hardness: 6, name: 'Magnetite (Fe₃O₄)', weight: 'very heavy', fizzes: false },
+      { type: 'sandstone', correct: false, icon: '🟡', streak: 'tan', hardness: 4, name: 'Sandstone', weight: 'medium', fizzes: false },
+      { type: 'granite', correct: false, icon: '⚫', streak: 'none', hardness: 7, name: 'Granite', weight: 'heavy', fizzes: false },
+      { type: 'basalt', correct: false, icon: '⚫', streak: 'gray', hardness: 6, name: 'Basalt', weight: 'heavy', fizzes: false },
+      { type: 'coal', correct: false, icon: '⚫', streak: 'black', hardness: 2, name: 'Coal (C)', weight: 'light', fizzes: false },
+      { type: 'shale', correct: false, icon: '🟫', streak: 'brown', hardness: 3, name: 'Shale', weight: 'light', fizzes: false },
+      { type: 'manganese1', correct: true, icon: '🟤', streak: 'black', hardness: 5, name: 'Unknown Dark Rock', weight: 'medium-heavy', fizzes: false },
+      { type: 'limonite', correct: false, icon: '🟤', streak: 'yellow-brown', hardness: 4, name: 'Limonite', weight: 'medium', fizzes: false },
+      { type: 'manganese2', correct: true, icon: '🟤', streak: 'black', hardness: 6, name: 'Unknown Dark Rock', weight: 'medium-heavy', fizzes: false }
+    ];
     
-    sample.addEventListener('click', function() {
-      if (rock.correct) {
-        showNotification(`✓ Correct! Streak test: ${rock.streak}. This is manganese!`, 2000);
-        this.classList.add('quality-high');
-        miniGameState.foundManganese = true;
-        setTimeout(() => endMiniGame(true), 1500);
-      } else {
-        showNotification(`✗ Streak test: ${rock.streak}. Not manganese. Keep searching!`, 2000);
-        this.style.opacity = '0.3';
-        miniGameState.timeRemaining -= 10;
-      }
+    rockTypes.sort(() => Math.random() - 0.5);
+    
+    // Testing tools available
+    let hasStreakPlate = false;
+    let hasAcid = false;
+    let correctManganeseFound = 0;
+    let wrongRocksPenalty = 0;
+    
+    // Add testing instruction
+    const testingGuide = document.createElement('div');
+    testingGuide.style.cssText = `
+      background: rgba(139, 69, 19, 0.4);
+      padding: 12px;
+      border-radius: 8px;
+      margin-bottom: 15px;
+      border: 2px solid var(--ochre-yellow);
+      text-align: left;
+      font-size: 0.85rem;
+      color: var(--limestone);
+    `;
+    testingGuide.innerHTML = `
+      <strong style="color: var(--ochre-yellow);">⚗️ Geological Testing Protocol:</strong><br>
+      <span style="color: #4CAF50;">✓ Manganese (MnO₂):</span> BLACK streak + Hard (5-6) + Medium-heavy weight<br>
+      <span style="color: #F44336;">✗ Magnetite (Fe₃O₄):</span> Black streak BUT very heavy + magnetic<br>
+      <span style="color: #F44336;">✗ Coal:</span> Black streak BUT very soft (2) + light weight<br>
+      <em style="color: var(--ochre-orange);">⚠️ Must test MULTIPLE properties! 2 manganese samples exist.</em><br>
+      <strong style="color: #FF6B35;">❌ Each wrong identification drains 15% stamina!</strong>
+    `;
+    rocksContainer.parentElement.insertBefore(testingGuide, rocksContainer);
+    
+    rockTypes.forEach(rock => {
+      const sample = document.createElement('div');
+      sample.className = 'rock-sample-card';
+      sample.style.cssText = `
+        background: rgba(60, 50, 40, 0.9);
+        border: 3px solid var(--stone-gray);
+        border-radius: 12px;
+        padding: 12px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        text-align: center;
+        min-width: 140px;
+        position: relative;
+      `;
+      
+      sample.innerHTML = `
+        <div style="font-size: 3rem; margin-bottom: 8px;">${rock.icon}</div>
+        <div style="color: var(--limestone); font-size: 0.8rem; font-weight: bold; margin-bottom: 8px;">${rock.name}</div>
+        
+        <div class="test-results" style="font-size: 0.7rem; text-align: left; color: var(--ochre-yellow); line-height: 1.6;">
+          <div class="test-streak" style="opacity: 0; margin: 3px 0;">
+            🧪 Streak: <span class="streak-value">?</span>
+          </div>
+          <div class="test-hardness" style="opacity: 0; margin: 3px 0;">
+            💎 Hardness: <span class="hardness-value">?</span>
+          </div>
+          <div class="test-weight" style="opacity: 0; margin: 3px 0;">
+            ⚖️ Weight: <span class="weight-value">?</span>
+          </div>
+          <div class="test-acid" style="opacity: 0; margin: 3px 0;">
+            🧪 Acid: <span class="acid-value">?</span>
+          </div>
+        </div>
+        
+        <div class="test-buttons" style="display: flex; flex-direction: column; gap: 5px; margin-top: 10px;">
+          <button class="btn-test-small streak-test-btn" style="font-size: 0.7rem; padding: 4px 8px;">Streak Test</button>
+          <button class="btn-test-small hardness-test-btn" style="font-size: 0.7rem; padding: 4px 8px;">Hardness Test</button>
+          <button class="btn-test-small weight-test-btn" style="font-size: 0.7rem; padding: 4px 8px;">Weight Test</button>
+        </div>
+        
+        <button class="btn-identify" style="margin-top: 10px; font-size: 0.75rem; padding: 6px 12px; background: rgba(76, 175, 80, 0.3); border: 2px solid #4CAF50; border-radius: 6px; color: white; cursor: pointer; width: 100%; font-weight: bold; display: none;">
+          ✓ IDENTIFY AS MANGANESE
+        </button>
+      `;
+      
+      let testsCompleted = 0;
+      
+      // Streak test
+      sample.querySelector('.streak-test-btn').addEventListener('click', function(e) {
+        e.stopPropagation();
+        if (sample.querySelector('.test-streak').style.opacity === '1') return;
+        
+        sample.querySelector('.test-streak').style.opacity = '1';
+        sample.querySelector('.streak-value').textContent = rock.streak;
+        testsCompleted++;
+        this.disabled = true;
+        this.style.opacity = '0.5';
+        
+        addLogEntry(`🧪 Streak test: ${rock.streak}`);
+        
+        if (testsCompleted >= 3) {
+          sample.querySelector('.btn-identify').style.display = 'block';
+        }
+      });
+      
+      // Hardness test
+      sample.querySelector('.hardness-test-btn').addEventListener('click', function(e) {
+        e.stopPropagation();
+        if (sample.querySelector('.test-hardness').style.opacity === '1') return;
+        
+        sample.querySelector('.test-hardness').style.opacity = '1';
+        sample.querySelector('.hardness-value').textContent = rock.hardness + ' (Mohs)';
+        testsCompleted++;
+        this.disabled = true;
+        this.style.opacity = '0.5';
+        
+        addLogEntry(`💎 Hardness test: ${rock.hardness} on Mohs scale`);
+        
+        if (testsCompleted >= 3) {
+          sample.querySelector('.btn-identify').style.display = 'block';
+        }
+      });
+      
+      // Weight test
+      sample.querySelector('.weight-test-btn').addEventListener('click', function(e) {
+        e.stopPropagation();
+        if (sample.querySelector('.test-weight').style.opacity === '1') return;
+        
+        sample.querySelector('.test-weight').style.opacity = '1';
+        sample.querySelector('.weight-value').textContent = rock.weight;
+        testsCompleted++;
+        this.disabled = true;
+        this.style.opacity = '0.5';
+        
+        addLogEntry(`⚖️ Weight test: ${rock.weight}`);
+        
+        if (testsCompleted >= 3) {
+          sample.querySelector('.btn-identify').style.display = 'block';
+        }
+      });
+      
+      // Final identification
+      sample.querySelector('.btn-identify').addEventListener('click', function(e) {
+        e.stopPropagation();
+        if (sample.classList.contains('identified')) return;
+        
+        sample.classList.add('identified');
+        sample.classList.add('tested'); // Prevent further interaction
+        miniGameState.rocksTested++;
+        
+        if (rock.correct) {
+          sample.style.borderColor = '#4CAF50';
+          sample.style.background = 'rgba(76, 175, 80, 0.3)';
+          sample.style.boxShadow = '0 0 20px rgba(76, 175, 80, 0.6)';
+          correctManganeseFound++;
+          
+          addLogEntry(`✅ MANGANESE (MnO₂) CONFIRMED! Sample ${correctManganeseFound}/2`);
+          showNotification(`✅ MANGANESE IDENTIFIED! Black streak + Hardness 5-6 + Medium-heavy. ${correctManganeseFound}/2 found!`, 3500);
+          
+          // Need to find BOTH manganese samples
+          if (correctManganeseFound >= 2) {
+            setTimeout(() => {
+              const distanceBonus = Math.floor(miniGameState.journeyDistance / 12);
+              const survivalBonus = Math.floor((miniGameState.stamina + miniGameState.food + miniGameState.water) / 60);
+              const accuracyBonus = wrongRocksPenalty === 0 ? 2 : (wrongRocksPenalty === 1 ? 1 : 0);
+              miniGameState.totalMultiplier = gameData.rewardMultiplier + distanceBonus + survivalBonus + accuracyBonus;
+              
+              addLogEntry(`🎉 BOTH MANGANESE SAMPLES FOUND! Expedition complete!`);
+              showNotification(
+                `🎉 EXPEDITION SUCCESSFUL!\n` +
+                `Collected ${miniGameState.totalMultiplier}x manganese after ${miniGameState.daysPassed} days ` +
+                `and ${miniGameState.journeyDistance.toFixed(1)} km!\n` +
+                `Distance: +${distanceBonus} | Survival: +${survivalBonus} | Accuracy: +${accuracyBonus}`,
+                5000
+              );
+              setTimeout(() => endMiniGame(true), 4000);
+            }, 2500);
+          }
+        } else {
+          // Wrong identification - PENALTY!
+          sample.style.borderColor = '#F44336';
+          sample.style.background = 'rgba(244, 67, 54, 0.3)';
+          sample.style.opacity = '0.6';
+          wrongRocksPenalty++;
+          
+          miniGameState.stamina -= 15;
+          updateResourceDisplay();
+          
+          addLogEntry(`❌ WRONG! ${rock.name} identified as manganese. -15% stamina!`);
+          showNotification(`❌ INCORRECT! That's ${rock.name}, not manganese!\nStreak: ${rock.streak} | Hardness: ${rock.hardness} | Weight: ${rock.weight}\n-15% stamina penalty!`, 4000);
+          
+          // Check if stamina depletion causes failure
+          if (miniGameState.stamina <= 0) {
+            addLogEntry(`💀 Exhausted from too many failed tests...`);
+            showNotification('💀 EXPEDITION FAILED - No manganese identified. You receive NOTHING.', 4000);
+            setTimeout(() => endMiniGame(false), 3000);
+          }
+        }
+      });
+      
+      rockCard.addEventListener('mouseenter', function() {
+        if (miniGameState.attemptsRemaining > 0 && !miniGameState.correctRockFound) {
+          this.style.borderColor = 'var(--ochre-yellow)';
+          this.style.transform = 'translateY(-8px) scale(1.05)';
+        }
+      });
+      
+      rockCard.addEventListener('mouseleave', function() {
+        if (!this.style.pointerEvents) {
+          this.style.borderColor = 'var(--stone-gray)';
+          this.style.transform = 'translateY(0) scale(1)';
+        }
+      });
+      
+      grid.appendChild(rockCard);
     });
-    
-    container.appendChild(sample);
-  });
-  
-  // Resource depletion
-  setInterval(() => {
-    if (!miniGameState.active) return;
-    miniGameState.resources.food -= 2;
-    miniGameState.resources.water -= 3;
-    document.getElementById('food-level').textContent = Math.max(0, miniGameState.resources.food);
-    document.getElementById('water-level').textContent = Math.max(0, miniGameState.resources.water);
-    
-    if (miniGameState.resources.food <= 0 || miniGameState.resources.water <= 0) {
-      endMiniGame(false);
-    }
-  }, 3000);
-}
+  }
+} // End of setupMultiDayExpedition
 
 // ========================================
 // BOTANICAL IDENTIFICATION - FOREST WISDOM
@@ -1763,115 +3422,141 @@ function setupPyrolysisGame(container, controls, instructions, gameData) {
     <em>Chemistry: Wood + Heat (300-500°C) → Pure Carbon</em>
   `;
   
-  container.style.background = 'linear-gradient(180deg, #87CEEB 0%, #B0D4E3 40%, #8B7355 100%)';
+  container.style.background = 'linear-gradient(180deg, #4A4A4A 0%, #2C2C2C 50%, #1A1A1A 100%)';
+  container.innerHTML = '';
+  
+  // Create fire pit visual
+  const firePit = document.createElement('div');
+  firePit.style.cssText = `
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 300px;
+    text-align: center;
+  `;
+  
+  const fireDisplay = document.createElement('div');
+  fireDisplay.style.cssText = `
+    font-size: 6rem;
+    margin-bottom: 20px;
+  `;
+  fireDisplay.textContent = '🔥';
+  firePit.appendChild(fireDisplay);
+  
+  const tempDisplay = document.createElement('div');
+  tempDisplay.id = 'temp-display';
+  tempDisplay.style.cssText = `
+    font-size: 2rem;
+    font-weight: bold;
+    color: white;
+    margin-bottom: 20px;
+  `;
+  tempDisplay.textContent = '400°C';
+  firePit.appendChild(tempDisplay);
+  
+  const zoneDisplay = document.createElement('div');
+  zoneDisplay.id = 'zone-display';
+  zoneDisplay.style.cssText = `
+    font-size: 1.2rem;
+    font-weight: bold;
+    color: #4CAF50;
+    margin-bottom: 30px;
+  `;
+  zoneDisplay.textContent = '🟢 PERFECT ZONE';
+  firePit.appendChild(zoneDisplay);
+  
+  container.appendChild(firePit);
   
   // Timer display
   controls.innerHTML = `
-    <div class="progress-bar" style="width: 300px;">
-      <div class="progress-fill" id="minigame-timer">Time: ${miniGameState.timeRemaining}s</div>
+    <div style="text-align: center; margin-bottom: 20px;">
+      <div id="minigame-timer" style="font-size: 1.5rem; color: white; font-weight: bold;">Time: ${miniGameState.timeRemaining}s</div>
+      <div id="quality-score" style="font-size: 1.2rem; color: #FFD700; margin-top: 10px;">Quality: 0%</div>
+    </div>
+    <div style="display: flex; justify-content: center; gap: 1rem;">
+      <button class="btn-primary" id="add-wood-btn">🪵 Add Wood (+Heat)</button>
+      <button class="btn-secondary" id="reduce-air-btn">💨 Reduce Air (-Heat)</button>
     </div>
   `;
   
-  // Create character
-  const character = document.createElement('div');
-  character.className = 'character-sprite';
-  character.id = 'game-character';
-  character.style.left = '50px';
-  character.style.bottom = '50px';
-  container.appendChild(character);
+  // Game state
+  let temperature = 400;
+  let qualityScore = 0;
+  let timeInPerfectZone = 0;
   
-  // Create obstacles
-  const obstacleCount = isLong ? 8 : 5;
-  for (let i = 0; i < obstacleCount; i++) {
-    const obstacle = document.createElement('div');
-    obstacle.className = 'obstacle ' + (Math.random() > 0.5 ? 'rock' : 'water');
-    obstacle.style.left = (150 + Math.random() * 500) + 'px';
-    obstacle.style.bottom = (50 + Math.random() * 300) + 'px';
-    container.appendChild(obstacle);
-  }
-  
-  // Create resource deposit at the end
-  const deposit = document.createElement('div');
-  deposit.className = 'resource-deposit';
-  deposit.innerHTML = materials[miniGameState.materialKey].icon;
-  deposit.style.right = '50px';
-  deposit.style.bottom = '50px';
-  deposit.style.background = materials[miniGameState.materialKey].color || 'rgba(218, 165, 32, 0.3)';
-  deposit.addEventListener('click', () => {
-    if (!miniGameState.collected) {
-      miniGameState.collected = true;
-      character.classList.add('carrying');
-      deposit.remove();
-      showNotification('Collected! Now return to start (left side)', 2000);
+  // Temperature drift
+  const tempDrift = setInterval(() => {
+    if (!miniGameState.active) {
+      clearInterval(tempDrift);
+      return;
     }
+    
+    // Temperature naturally decreases
+    temperature -= 5 + Math.random() * 5;
+    temperature = Math.max(200, Math.min(700, temperature));
+    updateDisplay();
+  }, 1000);
+  
+  // Control buttons
+  document.getElementById('add-wood-btn').addEventListener('click', () => {
+    temperature += 30 + Math.random() * 20;
+    temperature = Math.min(700, temperature);
+    sounds.click();
+    updateDisplay();
   });
-  container.appendChild(deposit);
   
-  // Stamina bar for long journey
-  if (isLong) {
-    const staminaBar = document.createElement('div');
-    staminaBar.innerHTML = '<div class="progress-bar"><div class="progress-fill" id="stamina-fill" style="width: 100%;">Stamina</div></div>';
-    staminaBar.style.position = 'absolute';
-    staminaBar.style.top = '10px';
-    staminaBar.style.left = '10px';
-    staminaBar.style.width = '200px';
-    container.appendChild(staminaBar);
-  }
+  document.getElementById('reduce-air-btn').addEventListener('click', () => {
+    temperature -= 20 + Math.random() * 15;
+    temperature = Math.max(200, temperature);
+    sounds.click();
+    updateDisplay();
+  });
   
-  // Movement controls
-  let moveInterval = null;
-  const moveSpeed = 3;
-  
-  document.addEventListener('keydown', handleNavKeyDown);
-  document.addEventListener('keyup', handleNavKeyUp);
-  
-  function handleNavKeyDown(e) {
-    if (!miniGameState.active) return;
+  function updateDisplay() {
+    const tempEl = document.getElementById('temp-display');
+    const zoneEl = document.getElementById('zone-display');
+    const qualityEl = document.getElementById('quality-score');
     
-    const key = e.key;
-    if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'a', 'd', 'w', 's'].includes(key)) {
-      e.preventDefault();
-      character.classList.add('walking');
-      
-      if (!moveInterval) {
-        moveInterval = setInterval(() => {
-          moveCharacter(key, character, container);
-        }, 50);
-      }
+    if (!tempEl) return;
+    
+    tempEl.textContent = Math.round(temperature) + '°C';
+    
+    // Determine zone
+    if (temperature >= 400 && temperature <= 450) {
+      zoneEl.textContent = '🟢 PERFECT ZONE!';
+      zoneEl.style.color = '#4CAF50';
+      fireDisplay.textContent = '🔥';
+      timeInPerfectZone++;
+      qualityScore = Math.min(100, (timeInPerfectZone / 20) * 100);
+    } else if (temperature >= 350 && temperature <= 500) {
+      zoneEl.textContent = '🟡 GOOD ZONE';
+      zoneEl.style.color = '#FFD700';
+      fireDisplay.textContent = '🔥';
+      qualityScore = Math.min(100, (timeInPerfectZone / 25) * 100);
+    } else if (temperature > 600) {
+      zoneEl.textContent = '🔴 TOO HOT - BURNING TO ASH!';
+      zoneEl.style.color = '#F44336';
+      fireDisplay.textContent = '💥';
+      qualityScore = Math.max(0, qualityScore - 5);
+    } else if (temperature < 250) {
+      zoneEl.textContent = '🔵 TOO COOL - INCOMPLETE';
+      zoneEl.style.color = '#2196F3';
+      fireDisplay.textContent = '💨';
+      qualityScore = Math.max(0, qualityScore - 3);
+    } else {
+      zoneEl.textContent = '⚪ ACCEPTABLE';
+      zoneEl.style.color = '#9E9E9E';
+      fireDisplay.textContent = '🔥';
     }
-  }
-  
-  function handleNavKeyUp(e) {
-    if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'a', 'd', 'w', 's'].includes(e.key)) {
-      character.classList.remove('walking');
-      clearInterval(moveInterval);
-      moveInterval = null;
-    }
-  }
-  
-  function moveCharacter(key, char, cont) {
-    const rect = cont.getBoundingClientRect();
-    const charRect = char.getBoundingClientRect();
-    let currentLeft = parseInt(char.style.left);
-    let currentBottom = parseInt(char.style.bottom);
     
-    if (key === 'ArrowLeft' || key === 'a') currentLeft -= moveSpeed;
-    if (key === 'ArrowRight' || key === 'd') currentLeft += moveSpeed;
-    if (key === 'ArrowUp' || key === 'w') currentBottom += moveSpeed;
-    if (key === 'ArrowDown' || key === 's') currentBottom -= moveSpeed;
+    qualityEl.textContent = `Quality: ${Math.round(qualityScore)}%`;
     
-    // Bounds checking
-    currentLeft = Math.max(0, Math.min(currentLeft, rect.width - 32));
-    currentBottom = Math.max(0, Math.min(currentBottom, rect.height - 48));
-    
-    char.style.left = currentLeft + 'px';
-    char.style.bottom = currentBottom + 'px';
-    
-    // Check if returned to start with resource
-    if (miniGameState.collected && currentLeft < 100) {
-      document.removeEventListener('keydown', handleNavKeyDown);
-      document.removeEventListener('keyup', handleNavKeyUp);
-      endMiniGame(true);
+    // Win condition
+    if (qualityScore >= 80) {
+      clearInterval(tempDrift);
+      miniGameState.totalMultiplier = gameData.rewardMultiplier;
+      setTimeout(() => endMiniGame(true), 500);
     }
   }
 }
@@ -2714,6 +4399,21 @@ window.endMiniGame = endMiniGame;
 window.closeMiniGame = closeMiniGame;
 window.completeWorkshopCraft = completeWorkshopCraft;
 
+// Cleanup function for event listeners
+function cleanupEventListeners() {
+  // Remove global event listeners for mini-games
+  document.removeEventListener('keydown', handleNavKeyDown);
+  document.removeEventListener('keyup', handleNavKeyUp);
+  document.removeEventListener('keydown', handleEnhancedNav);
+  document.removeEventListener('keyup', handleEnhancedNavStop);
+}
+
+// Store references to event handlers for proper cleanup
+let handleNavKeyDown = null;
+let handleNavKeyUp = null;
+let handleEnhancedNav = null;
+let handleEnhancedNavStop = null;
+
 // ========================================
 // WORKSHOP MINI-GAME LAUNCHER
 // ========================================
@@ -2755,43 +4455,49 @@ function startWorkshopMiniGame(key, recipe, type) {
 }
 
 function completeWorkshopCraft() {
-  const { craftingKey, craftingRecipe, craftingType, craftingCard } = gameState;
-  
-  // Consume materials
-  Object.entries(craftingRecipe.requires).forEach(([mat, count]) => {
-    gameState.inventory[mat] -= count;
-  });
-  
-  // Add to appropriate storage
-  if (craftingType === 'paint') {
-    gameState.paints[craftingKey] = craftingRecipe;
-    if (!gameState.selectedPaint) {
-      gameState.selectedPaint = craftingKey;
-    }
-    showNotification(`🎨 Created ${craftingRecipe.name}! Use it in the Cave to paint.`, 2500);
-  } else {
-    gameState.tools[craftingKey] = true;
-    if (craftingRecipe.isLight) {
-      gameState.hasLight = true;
-      showNotification(`✨ Created ${craftingRecipe.name}! You can now enter the CAVE!`, 3000);
+  try {
+    const { craftingKey, craftingRecipe, craftingType, craftingCard } = gameState;
+    
+    // Consume materials
+    Object.entries(craftingRecipe.requires).forEach(([mat, count]) => {
+      gameState.inventory[mat] -= count;
+    });
+    
+    // Add to appropriate storage
+    if (craftingType === 'paint') {
+      gameState.paints[craftingKey] = craftingRecipe;
+      if (!gameState.selectedPaint) {
+        gameState.selectedPaint = craftingKey;
+      }
+      showNotification(`🎨 Created ${craftingRecipe.name}! Use it in the Cave to paint.`, 2500);
     } else {
-      showNotification(`🛠️ Created ${craftingRecipe.name}!`, 2000);
+      gameState.tools[craftingKey] = true;
+      if (craftingRecipe.isLight) {
+        gameState.hasLight = true;
+        showNotification(`✨ Created ${craftingRecipe.name}! You can now enter the CAVE!`, 3000);
+      } else {
+        showNotification(`🛠️ Created ${craftingRecipe.name}!`, 2000);
+      }
     }
+    
+    // Visual feedback
+    if (craftingCard) {
+      craftingCard.classList.add('pop-in');
+      const rect = craftingCard.getBoundingClientRect();
+      createParticleBurst(rect.left + rect.width / 2, rect.top + rect.height / 2, '#4CAF50', 20);
+    }
+    
+    // Update UI
+    updateUI();
+    renderCraftingUI();
+    saveGameState(); // Auto-save
+    
+    // Close modal
+    document.getElementById('minigame-modal').classList.remove('active');
+  } catch (error) {
+    console.error('Error completing craft:', error);
+    showNotification('⚠️ Error crafting item. Please try again.', 2000);
   }
-  
-  // Visual feedback
-  if (craftingCard) {
-    craftingCard.classList.add('pop-in');
-    const rect = craftingCard.getBoundingClientRect();
-    createParticleBurst(rect.left + rect.width / 2, rect.top + rect.height / 2, '#4CAF50', 20);
-  }
-  
-  // Update UI
-  updateUI();
-  renderCraftingUI();
-  
-  // Close modal
-  document.getElementById('minigame-modal').classList.remove('active');
 }
 
 // ========================================

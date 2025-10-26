@@ -3,15 +3,18 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Magdalenian Cave Art Experience - A Journey Through Time</title>
+    <title>The Magdalenian Cave Art Experience - A Journey Through Time</title>
+    <meta name="description" content="The Magdalenian Cave Art Experience - Educational game about prehistoric cave art and Magdalenian culture (~17,000 BCE)">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Merriweather:wght@300;400;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
+    <a href="#main-content" class="skip-link">Skip to main content</a>
+    
     <!-- Title Screen -->
-    <div id="title-screen" class="screen active">
+    <div id="title-screen" class="screen active" role="main" aria-label="Title screen">
         <div class="title-content">
             <div class="cave-art-logo">
                 <svg class="logo-svg" viewBox="0 0 200 100">
@@ -21,58 +24,67 @@
                     <path class="horn" d="M 65 33 Q 70 18, 75 22" />
                 </svg>
             </div>
-            <h1 class="main-title">THE MAGDALENIAN<br>EXPERIENCE</h1>
+            <h1 class="main-title">THE MAGDALENIAN<br>CAVE ART EXPERIENCE</h1>
             <p class="subtitle">Journey to the Caves of Lascaux<br>~17,000 Years Ago</p>
             <button id="start-btn" class="btn-primary glow-pulse">BEGIN YOUR JOURNEY</button>
             <div class="title-info">
-                <p>A historically accurate recreation of Upper Paleolithic cave painting</p>
+                <p>The Magdalenian Cave Art Experience - A historically accurate recreation of Upper Paleolithic cave painting</p>
+                <p class="copyright-notice">A game by <a href="https://marcoj03rgensen.github.io/" target="_blank" rel="noopener noreferrer" class="creator-link">Marco Birkedahl Jørgensen</a><br>&copy; 2025 Marco Birkedahl Jørgensen. All rights reserved.</p>
             </div>
         </div>
         <div class="floating-particles" id="title-particles"></div>
     </div>
 
+    <!-- Tutorial Overlay -->
+    <div id="tutorial-overlay" class="tutorial-overlay" style="display: none;">
+        <div class="tutorial-box">
+            <div class="tutorial-step" id="tutorial-step-content">
+                <h3 id="tutorial-title">Welcome!</h3>
+                <p id="tutorial-text">Let's learn how to create authentic Magdalenian cave art.</p>
+            </div>
+            <div class="tutorial-actions">
+                <button id="tutorial-skip" class="btn-secondary">Skip Tutorial</button>
+                <button id="tutorial-next" class="btn-primary">Next</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Main Game Container -->
     <div id="game-screen" class="screen">
         <!-- Top Navigation Bar -->
-        <nav id="top-nav">
+        <nav id="top-nav" role="navigation" aria-label="Main navigation">
             <div class="nav-title">
-                <span class="period-icon">🗿</span>
-                <span>Magdalenian Period - 17,000 BCE</span>
+                <a href="https://marcoj03rgensen.github.io/" target="_blank" rel="noopener noreferrer" class="nav-logo-link" title="Visit Marco's Portfolio">
+                    <img src="MJ.png" alt="MJ Logo" class="nav-logo-icon">
+                </a>
+                <span>The Magdalenian Cave Art Experience</span>
             </div>
-            <div class="nav-buttons">
-                <button id="nav-landscape" class="nav-btn active" data-scene="landscape">
-                    <span class="nav-icon">🌄</span>
+            <div class="nav-buttons" role="group" aria-label="Scene selection">
+                <button id="nav-landscape" class="nav-btn active" data-scene="landscape" aria-pressed="true">
+                    <span class="nav-icon" aria-hidden="true">🌄</span>
                     <span class="nav-label">Gathering</span>
                 </button>
-                <button id="nav-workshop" class="nav-btn" data-scene="workshop">
-                    <span class="nav-icon">⚒️</span>
+                <button id="nav-workshop" class="nav-btn" data-scene="workshop" aria-pressed="false">
+                    <span class="nav-icon" aria-hidden="true">⚒️</span>
                     <span class="nav-label">Workshop</span>
                 </button>
-                <button id="nav-cave" class="nav-btn" data-scene="cave">
-                    <span class="nav-icon">🕳️</span>
+                <button id="nav-cave" class="nav-btn" data-scene="cave" aria-pressed="false">
+                    <span class="nav-icon" aria-hidden="true">🕳️</span>
                     <span class="nav-label">Cave</span>
                 </button>
             </div>
-            <div class="nav-actions">
-                <button id="codex-btn" class="icon-btn">📖</button>
-                <button id="help-btn" class="icon-btn">❓</button>
+            <div class="nav-actions" role="group" aria-label="Game actions">
+                <button id="inventory-btn" class="icon-btn" title="View Inventory" aria-label="Open inventory">🎒</button>
+                <button id="challenges-btn" class="icon-btn" title="Challenges" aria-label="View challenges and badges">🏆</button>
+                <button id="save-btn" class="icon-btn" title="Save Progress" aria-label="Save game progress">💾</button>
+                <button id="codex-btn" class="icon-btn" title="Codex" aria-label="Open information codex">📖</button>
+                <button id="help-btn" class="icon-btn" title="Help" aria-label="Show help menu">❓</button>
+                <button id="reset-btn" class="icon-btn" title="Reset Game" aria-label="Reset all progress">🔄</button>
             </div>
         </nav>
 
-        <!-- Inventory Panel -->
-        <div id="inventory-panel">
-            <h3>Inventory</h3>
-            <div id="inventory-grid"></div>
-        </div>
-
-        <!-- Tools Panel -->
-        <div id="tools-panel" style="display: none;">
-            <h3>Tools &amp; Paints</h3>
-            <div id="tools-grid"></div>
-        </div>
-
         <!-- Scene Container -->
-        <div id="scene-container">
+        <div id="scene-container" id="main-content" role="main">
             <!-- Landscape Scene -->
             <div id="landscape-scene" class="scene active">
                 <div class="parallax-layer sky-layer">
@@ -88,11 +100,6 @@
                 </div>
                 <div class="parallax-layer foreground-layer">
                     <div class="gathering-spots"></div>
-                </div>
-                <div class="scene-title-overlay" id="landscape-instruction">
-                    <button class="info-close-btn" onclick="document.getElementById('landscape-instruction').style.display='none'">&times;</button>
-                    <h2>The Gathering Lands</h2>
-                    <p>Click glowing spots to collect materials</p>
                 </div>
             </div>
 
@@ -113,10 +120,6 @@
                     <div class="tool-bench"></div>
                 </div>
                 <div class="workshop-content">
-                    <div class="scene-title-overlay">
-                        <h2>The Processing Workshop</h2>
-                        <p>Craft pigments and tools</p>
-                    </div>
                     <div class="crafting-panels">
                         <div class="craft-section">
                             <h3>Create Paints</h3>
@@ -159,14 +162,11 @@
                         <div id="animal-templates" class="template-swatches"></div>
                     </div>
                     <div class="toolbar-actions">
+                        <button id="undo-canvas" class="btn-secondary" title="Undo last stroke">↶ Undo</button>
+                        <button id="redo-canvas" class="btn-secondary" title="Redo stroke">↷ Redo</button>
                         <button id="clear-canvas" class="btn-secondary">Clear</button>
                         <button id="step-back" class="btn-secondary">Step Back</button>
                     </div>
-                </div>
-                <div class="scene-title-overlay" id="cave-instruction">
-                    <button class="info-close-btn" onclick="document.getElementById('cave-instruction').style.display='none'">&times;</button>
-                    <h2>The Sacred Cave</h2>
-                    <p>Select paint and tool, then draw on the wall</p>
                 </div>
             </div>
         </div>
@@ -179,7 +179,7 @@
     <div id="codex-modal" class="modal">
         <div class="modal-content codex-content">
             <button class="modal-close" id="close-codex">&times;</button>
-            <h2>Magdalenian Codex</h2>
+            <h2>The Magdalenian Cave Art Experience - Codex</h2>
             <div class="codex-tabs">
                 <button class="codex-tab active" data-tab="period">The Period</button>
                 <button class="codex-tab" data-tab="pigments">Pigments</button>
@@ -210,6 +210,19 @@
                     <p>Use your paints and tools to create authentic cave art. You need a light source (torch or lamp) to enter!</p>
                 </div>
                 <div class="help-section">
+                    <h3>⌨️ Keyboard Shortcuts</h3>
+                    <ul style="list-style: none; padding-left: 0;">
+                        <li><kbd>1</kbd> - Switch to Gathering scene</li>
+                        <li><kbd>2</kbd> - Switch to Workshop scene</li>
+                        <li><kbd>3</kbd> - Switch to Cave scene</li>
+                        <li><kbd>I</kbd> - Open Inventory</li>
+                        <li><kbd>H</kbd> - Open Help menu</li>
+                        <li><kbd>C</kbd> - Open Codex</li>
+                        <li><kbd>Ctrl+S</kbd> - Save game progress</li>
+                        <li><kbd>Esc</kbd> - Close modals</li>
+                    </ul>
+                </div>
+                <div class="help-section">
                     <h3>🎯 Goal</h3>
                     <p>Experience the authentic process of Magdalenian cave painting from 17,000 years ago.</p>
                 </div>
@@ -218,15 +231,41 @@
     </div>
 
     <!-- Notification Toast -->
-    <div id="notification" class="notification"></div>
+    <div id="notification" class="notification" role="status" aria-live="polite"></div>
 
-    <!-- Badges Display -->
-    <div id="badges-display">
-        <div class="badges-title">Challenges</div>
-        <div id="badges-grid"></div>
+    <!-- Challenges Modal -->
+    <div id="challenges-modal" class="modal">
+        <div class="modal-content challenges-modal-content">
+            <button class="modal-close" id="close-challenges">&times;</button>
+            <h2>🏆 Challenges & Achievements</h2>
+            <p style="text-align: center; color: var(--stone-gray); margin-bottom: 2rem;">
+                Complete mini-games with perfect quality to earn badges!
+            </p>
+            <div id="badges-grid-modal" class="badges-grid-large"></div>
+        </div>
     </div>
 
-
+    <!-- Inventory Modal -->
+    <div id="inventory-modal" class="modal">
+        <div class="modal-content inventory-modal-content">
+            <button class="modal-close" id="close-inventory">&times;</button>
+            <h2>🎒 Your Inventory</h2>
+            <div class="inventory-sections">
+                <div class="inventory-section">
+                    <h3>📦 Materials</h3>
+                    <div id="inventory-grid-modal" class="inventory-grid-large"></div>
+                </div>
+                <div class="inventory-section">
+                    <h3>🎨 Paints</h3>
+                    <div id="paints-grid-modal" class="inventory-grid-large"></div>
+                </div>
+                <div class="inventory-section">
+                    <h3>🛠️ Tools</h3>
+                    <div id="tools-grid-modal" class="inventory-grid-large"></div>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <!-- Mini-Game Modal -->
     <div id="minigame-modal" class="modal">
