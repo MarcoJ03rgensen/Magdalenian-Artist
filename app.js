@@ -5441,9 +5441,11 @@ function setupBrushWeavingWorkshop(container, controls, instructions, fact, titl
   
   // Hair selection phase
   const hairGrid = document.createElement('div');
-  hairGrid.style.cssText = 'display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px; margin-bottom: 30px;';
-  
-  for (let i = 0; i < 18; i++) {
+  // Make the hair grid larger and scrollable so players can select up to 80 hairs
+  hairGrid.style.cssText = 'display: grid; grid-template-columns: repeat(12, 1fr); gap: 8px; margin-bottom: 18px; max-height: 260px; overflow-y: auto; padding-right: 8px;';
+
+  // Provide enough selectable hair items to reach bundle thresholds (50-80)
+  for (let i = 0; i < 80; i++) {
     const hair = document.createElement('div');
     const quality = Math.random() > 0.3 ? 'good' : 'bad';
     hair.dataset.quality = quality;
