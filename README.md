@@ -237,10 +237,7 @@ Magdalenian-Artist/
 
 ### Research Sources
 
-- Lascaux Cave Archaeological Studies
-- Experimental Archaeology Research
-- Peer-Reviewed Publications on Prehistoric Art
-- Museum Expert Consultations
+- (Will be updated when the project is finished)
 
 ### Development
 
