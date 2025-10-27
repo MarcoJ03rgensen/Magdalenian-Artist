@@ -1109,6 +1109,27 @@ body {
   justify-content: center;
 }
 
+/* Experience display (nav) */
+.xp-display {
+  min-width: 86px;
+  padding: 0 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font-weight: 700;
+  background: linear-gradient(180deg, rgba(218,165,32,0.12), rgba(218,165,32,0.06));
+  border: 2px solid rgba(218,165,32,0.2);
+  color: var(--ochre-yellow);
+  font-size: 0.95rem;
+  border-radius: 12px;
+}
+
+.xp-display #xp-count {
+  font-weight: 800;
+  color: var(--ochre-yellow);
+}
+
 .icon-btn:hover {
   background: rgba(94, 82, 64, 0.9);
   border-color: var(--ochre-yellow);
@@ -2326,7 +2347,40 @@ body {
 
 .craft-card {
   background: rgba(60, 50, 40, 0.9);
+  position: relative; /* for tooltip positioning */
   border: 3px solid var(--stone-gray);
+
+/* Tooltip for craft cards (shows have/need and XP shortfall) */
+.craft-tooltip {
+  position: absolute;
+  top: calc(100% + 10px);
+  left: 50%;
+  transform: translateX(-50%) scale(0.98);
+  background: rgba(26, 20, 16, 0.98);
+  color: var(--limestone, #efe7d6);
+  border: 1px solid rgba(255, 196, 77, 0.12);
+  padding: 10px 12px;
+  border-radius: 8px;
+  min-width: 200px;
+  box-shadow: 0 8px 28px rgba(6, 6, 6, 0.6);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 120ms ease, transform 120ms ease;
+  z-index: 1200;
+  font-size: 0.92rem;
+}
+
+.craft-card:hover .craft-tooltip,
+.craft-card:focus-within .craft-tooltip,
+.craft-card:focus .craft-tooltip {
+  opacity: 1;
+  transform: translateX(-50%) scale(1);
+  pointer-events: auto;
+}
+
+.craft-tooltip .tooltip-line { margin: 4px 0; }
+.craft-tooltip .tooltip-line:first-child { margin-top: 0; }
+.craft-tooltip .tooltip-line:last-child { margin-bottom: 0; font-weight: 600; }
   border-radius: 12px;
   padding: 1rem;
   cursor: pointer;
@@ -3078,16 +3132,26 @@ body {
 
 /* Inventory Modal */
 .inventory-modal-content {
-  max-width: 900px;
+  /* Allow the inventory modal to be wider on desktop while remaining responsive on small screens */
+  max-width: 1100px;
+  width: min(92vw, 1100px);
   max-height: 90vh;
-  width: auto;
   height: auto;
+  padding: 1.25rem 1.75rem;
 }
 
 .inventory-sections {
   display: grid;
   grid-template-columns: 1fr;
-  gap: 2rem;
+  gap: 1.25rem;
+}
+
+/* Desktop: show inventory sections side-by-side for more density */
+@media (min-width: 900px) {
+  .inventory-sections {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1.5rem;
+  }
 }
 
 .inventory-section {
@@ -3108,8 +3172,16 @@ body {
 
 .inventory-grid-large {
   display: grid;
+  /* on small screens keep compact tiles, on larger screens use slightly larger tiles */
   grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
-  gap: 1rem;
+  gap: 0.75rem;
+}
+
+@media (min-width: 900px) {
+  .inventory-grid-large {
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: 1rem;
+  }
 }
 
 .inventory-grid-large .inventory-item,
@@ -3117,15 +3189,15 @@ body {
 .inventory-grid-large .paint-item {
   position: relative;
   aspect-ratio: 1;
-  background: rgba(60, 50, 40, 0.8);
+  background: rgba(60, 50, 40, 0.9);
   border: 2px solid var(--stone-gray);
   border-radius: 8px;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  transition: all 0.3s ease;
-  padding: 0.5rem;
+  transition: all 0.18s ease;
+  padding: 0.45rem;
 }
 
 .inventory-grid-large .inventory-item:hover,
@@ -3138,8 +3210,21 @@ body {
 }
 
 .inventory-grid-large .item-icon {
-  font-size: 2.5rem;
-  margin-bottom: 0.3rem;
+  font-size: 2.25rem;
+  margin-bottom: 0.25rem;
+}
+
+@media (min-width: 900px) {
+  .inventory-grid-large .item-icon {
+    font-size: 2.75rem;
+  }
+  .inventory-grid-large .item-name {
+    font-size: 0.78rem;
+  }
+  .inventory-grid-large .item-count {
+    font-size: 0.85rem;
+    padding: 3px 7px;
+  }
 }
 
 .inventory-grid-large .item-count {

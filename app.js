@@ -21,6 +21,7 @@ const gameState = {
   selectedTool: 'finger',
   selectedTemplate: null,
   hasLight: false,
+  xp: 0,
   badges: {
     ochreExpert: false,
     manganesemaster: false,
@@ -58,33 +59,38 @@ const toolRecipes = {
   torch: {
     name: 'Torch',
     icon: '🔥',
-    requires: { wood: 1, animalFat: 1 },
+    requires: { wood: 10, animalFat: 10 },
+    xpCost: 50,
     description: 'Mobile lighting (20-40 min burn time)',
     isLight: true
   },
   lamp: {
     name: 'Stone Lamp',
     icon: '🪔',
-    requires: { stone: 1, animalFat: 1 },
+    requires: { stone: 8, animalFat: 8 },
+    xpCost: 50,
     description: 'Steady lighting (1-3 hours burn time)',
     isLight: true
   },
   brush: {
     name: 'Hair Brush',
     icon: '🖌️',
-    requires: { wood: 1, animalHair: 1 },
+    requires: { wood: 7, animalHair: 7 },
+    xpCost: 50,
     description: 'Fine detail work and flowing lines'
   },
   sprayBone: {
     name: 'Spray Bone',
     icon: '🦴',
-    requires: { bone: 1 },
+    requires: { bone: 10 },
+    xpCost: 50,
     description: 'For stenciling and diffuse spray effects'
   },
   mossPad: {
     name: 'Moss Pad',
     icon: '🌿',
-    requires: { wood: 1 },
+    requires: { wood: 7 },
+    xpCost: 50,
     description: 'Textured application for body masses'
   }
 };
@@ -94,31 +100,36 @@ const paintRecipes = {
   redPaint: {
     name: 'Red Paint',
     icon: '🔴',
-    requires: { redOchre: 1, animalFat: 1 },
+    requires: { redOchre: 2, animalFat: 2 },
+    xpCost: 10,
     color: '#8B4513'
   },
   yellowPaint: {
     name: 'Yellow Paint',
     icon: '🟡',
-    requires: { yellowOchre: 1, animalFat: 1 },
+    requires: { yellowOchre: 2, animalFat: 2 },
+    xpCost: 10,
     color: '#DAA520'
   },
   blackPaint: {
     name: 'Black Paint',
     icon: '⚫',
-    requires: { charcoal: 1, animalFat: 1 },
+    requires: { charcoal: 2, animalFat: 2 },
+    xpCost: 10,
     color: '#1C1C1C'
   },
   brownPaint: {
     name: 'Brown Paint',
     icon: '🟤',
-    requires: { manganese: 1, animalFat: 1 },
+    requires: { manganese: 2, animalFat: 2 },
+    xpCost: 10,
     color: '#5C4033'
   },
   whitePaint: {
     name: 'White Paint',
     icon: '⚪',
-    requires: { limestone: 1, animalFat: 1 },
+    requires: { limestone: 2, animalFat: 2 },
+    xpCost: 10,
     color: '#F5F5DC'
   }
 };
@@ -576,6 +587,7 @@ function saveGameState() {
       paints: gameState.paints,
       badges: gameState.badges,
       hasLight: gameState.hasLight,
+      xp: gameState.xp || 0,
       timestamp: Date.now()
     };
     localStorage.setItem('magdalenianGame', JSON.stringify(saveData));
@@ -594,6 +606,7 @@ function loadGameState() {
       gameState.paints = data.paints || {};
       gameState.badges = data.badges || {};
       gameState.hasLight = data.hasLight || false;
+      gameState.xp = data.xp || 0;
       
       updateUI();
       updateBadges();
@@ -929,14 +942,15 @@ function initDynamicLandscape() {
     for (let i = 0; i < 50; i++) {
       const blade = document.createElement('div');
       blade.className = 'grass-blade';
-      blade.style.left = `${Math.random() * 100}%`;
       blade.style.height = `${15 + Math.random() * 10}px`;
+      blade.style.left = `${Math.random() * 100}%`;
       blade.style.animationDelay = `${Math.random() * 3}s`;
       grassLayer.appendChild(blade);
     }
   }
 
   // Add trees to mid-hill layer
+
   const treeMidLayer = document.querySelector('.tree-layer-mid');
   if (treeMidLayer) {
     const midTreePositions = [8, 25, 45, 62, 78, 92];
@@ -1124,7 +1138,7 @@ function createCraftCard(key, recipe, type) {
   const card = document.createElement('div');
   card.className = 'craft-card';
   
-  const canCraft = checkRequirements(recipe.requires);
+  const canCraft = checkRequirements(recipe.requires, recipe.xpCost || 0);
   const alreadyCrafted = type === 'paint' ? gameState.paints[key] : gameState.tools[key];
   
   // Only disable if already crafted OR can't craft
@@ -1143,6 +1157,11 @@ function createCraftCard(key, recipe, type) {
       return `<span style="color: ${color};">${icon}×${count}</span>`;
     })
     .join(' ');
+
+  // XP requirement display
+  const xpReq = recipe.xpCost || 0;
+  const hasXP = gameState.xp >= xpReq;
+  const xpHtml = xpReq > 0 ? `<span style="margin-left:8px;color:${hasXP ? '#FFD54F' : '#C00000'};">⚡×${xpReq}</span>` : '';
   
   let statusHtml = '';
   if (alreadyCrafted) {
@@ -1156,7 +1175,7 @@ function createCraftCard(key, recipe, type) {
   card.innerHTML = `
     <div class="craft-icon">${recipe.icon}</div>
     <div class="craft-name">${recipe.name}</div>
-    <div class="craft-requirements">${requirementsText}</div>
+    <div class="craft-requirements">${requirementsText} ${xpHtml}</div>
     ${statusHtml}
   `;
   
@@ -1172,8 +1191,8 @@ function createCraftCard(key, recipe, type) {
   return card;
 }
 
-function checkRequirements(requires) {
-  const canCraft = Object.entries(requires).every(([mat, count]) => {
+function checkRequirements(requires, xpCost = 0) {
+  const materialsOk = Object.entries(requires).every(([mat, count]) => {
     const hasAmount = gameState.inventory[mat] || 0;
     const needed = count;
     const hasEnough = hasAmount >= needed;
@@ -1185,8 +1204,13 @@ function checkRequirements(requires) {
     
     return hasEnough;
   });
-  
-  return canCraft;
+
+  const xpOk = (gameState.xp || 0) >= xpCost;
+  if (!xpOk) {
+    console.log(`Missing XP: Has ${gameState.xp || 0}, needs ${xpCost}`);
+  }
+
+  return materialsOk && xpOk;
 }
 
 function craftItem(key, recipe, type, cardElement) {
@@ -1481,6 +1505,9 @@ function updateUI() {
   if (workshopScene && workshopScene.classList.contains('active')) {
     renderCraftingUI();
   }
+  // Update XP display in nav
+  const xpEl = document.getElementById('xp-count');
+  if (xpEl) xpEl.textContent = gameState.xp || 0;
 }
 
 function updateInventory() {
@@ -2078,6 +2105,11 @@ function endMiniGame(success) {
       gameState.badges[gameData.badge] = true;
       updateBadges();
     }
+    // Award experience points for completing a mini-game
+    gameState.xp = (gameState.xp || 0) + 10;
+    showNotification('⚡ Earned 10 XP for completing the challenge!', 1800);
+    updateUI();
+    saveGameState();
   } else {
     // Check if this is a manganese expedition death (no reward)
     const isManganeseExpedition = miniGameState.materialKey === 'manganese';
@@ -4843,6 +4875,12 @@ function completeWorkshopCraft() {
     Object.entries(craftingRecipe.requires).forEach(([mat, count]) => {
       gameState.inventory[mat] -= count;
     });
+    // Consume XP if required
+    const xpCost = craftingRecipe.xpCost || 0;
+    if (xpCost > 0) {
+      gameState.xp = Math.max(0, (gameState.xp || 0) - xpCost);
+      showNotification(`⚡ Spent ${xpCost} XP on crafting`, 1800);
+    }
     
     // Add to appropriate storage
     if (craftingType === 'paint') {
