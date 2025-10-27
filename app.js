@@ -289,7 +289,7 @@ const miniGames = {
   aurochs: {
     name: 'Pattern Master',
     type: 'template-creation',
-    duration: 55,
+    duration: 0,
     badge: 'templateMaker',
     fact: 'Magdalenian artists studied animal anatomy extensively. Proportions: Horse 2.5:1 length:height, Aurochs 2.2:1, Bison 2:1. "Twisted perspective" convention: body profile, horns frontal view. Cave wall relief integrated into compositions. Preliminary sketches with charcoal, then outline, then polychrome fill.',
     rewardMultiplier: 2,
@@ -818,16 +818,50 @@ function initNavigation() {
   });
   
   document.getElementById('nav-cave').addEventListener('click', () => {
-    if (gameState.hasLight) {
-      switchToScene('cave');
-      showNotification('Cave Painting - Select paint and tool, then draw on the wall', 2000);
-    } else {
+    // Check both requirements
+    const requiredBadges = [
+      'ochreExpert', 'manganesemaster', 'woodWhisperer', 'charcoalCrafter',
+      'fatRenderer', 'boneArtisan', 'lampMaster', 'brushMaker',
+      'pigmentMaster', 'paintMixer', 'lightPlanner', 'templateMaker'
+    ];
+    
+    const incompleteBadges = requiredBadges.filter(badge => !gameState.badges[badge]);
+    const hasLight = gameState.hasLight;
+    const allBadgesComplete = incompleteBadges.length === 0;
+    
+    // Show appropriate message based on what's missing
+    if (!hasLight && !allBadgesComplete) {
+      const badgeCount = requiredBadges.length - incompleteBadges.length;
+      showNotification(`⚠️ To enter the cave you need:\n1. A LIGHT SOURCE (torch/lamp)\n2. All 12 challenges completed (${badgeCount}/12 done)`, 4500);
+      document.getElementById('nav-cave').classList.add('shake');
+      setTimeout(() => {
+        document.getElementById('nav-cave').classList.remove('shake');
+      }, 500);
+      return;
+    }
+    
+    if (!hasLight) {
       showNotification('⚠️ You need a LIGHT SOURCE (torch or lamp) to enter the cave! Craft one in the Workshop.', 3000);
       document.getElementById('nav-cave').classList.add('shake');
       setTimeout(() => {
         document.getElementById('nav-cave').classList.remove('shake');
       }, 500);
+      return;
     }
+    
+    if (!allBadgesComplete) {
+      const badgeNames = incompleteBadges.map(badge => badgeInfo[badge].name).join(', ');
+      showNotification(`⚠️ Complete all 12 challenges first! Missing: ${badgeNames}`, 4500);
+      document.getElementById('nav-cave').classList.add('shake');
+      setTimeout(() => {
+        document.getElementById('nav-cave').classList.remove('shake');
+      }, 500);
+      return;
+    }
+    
+    // All requirements met - enter cave!
+    switchToScene('cave');
+    showNotification('🎨 Cave Painting - All challenges mastered! Select paint and tool, then draw on the wall', 2500);
   });
 }
 
@@ -1015,6 +1049,13 @@ function cleanupDynamicLandscape() {
 
 function gatherMaterial(materialKey, buttonElement, multiplier = 1) {
   try {
+    // Check if this is a failed attempt (multiplier = 0)
+    if (multiplier === 0) {
+      const material = materials[materialKey];
+      showNotification(`❌ Failed! Collected 0 ${material.name}`, 2000);
+      return;
+    }
+    
     // Add to inventory
     if (!gameState.inventory[materialKey]) {
       gameState.inventory[materialKey] = 0;
@@ -2013,13 +2054,24 @@ function endMiniGame(success) {
   if (success) {
     const gameData = miniGames[miniGameState.materialKey];
     const multiplier = gameData.rewardMultiplier;
+    const materialData = materials[miniGameState.materialKey];
     
-    overlay.innerHTML = `
-      <div class="result-icon">🎉</div>
-      <div class="result-text">SUCCESS!</div>
-      <div class="result-reward">Collected ${multiplier}x ${materials[miniGameState.materialKey].name}</div>
-      <button class="btn-primary" onclick="closeMiniGame(true)">Continue</button>
-    `;
+    // Some games (like template-creation) don't have materials, just badges
+    if (!materialData) {
+      overlay.innerHTML = `
+        <div class="result-icon">🎉</div>
+        <div class="result-text">SUCCESS!</div>
+        <div class="result-reward">${gameData.name} completed!</div>
+        <button class="btn-primary" onclick="closeMiniGame(true)">Continue</button>
+      `;
+    } else {
+      overlay.innerHTML = `
+        <div class="result-icon">🎉</div>
+        <div class="result-text">SUCCESS!</div>
+        <div class="result-reward">Collected ${multiplier}x ${materialData.name}</div>
+        <button class="btn-primary" onclick="closeMiniGame(true)">Continue</button>
+      `;
+    }
     
     // Award badge
     if (gameData.badge) {
@@ -2079,7 +2131,11 @@ function closeMiniGame(success) {
     multiplier = miniGameState.totalMultiplier || miniGames[miniGameState.materialKey].rewardMultiplier;
   }
   
-  gatherMaterial(miniGameState.materialKey, gameState.currentGatherButton, multiplier);
+  // Only gather material if this game has an associated material
+  if (materials[miniGameState.materialKey]) {
+    gatherMaterial(miniGameState.materialKey, gameState.currentGatherButton, multiplier);
+  }
+  
   document.getElementById('minigame-modal').classList.remove('active');
 }
 
@@ -2087,18 +2143,86 @@ function closeMiniGame(success) {
 function initMiniGameCloseHandler() {
   document.getElementById('close-minigame').addEventListener('click', () => {
     if (miniGameState.active) {
-      const isManganeseExpedition = miniGameState.materialKey === 'manganese';
-      const message = isManganeseExpedition 
-        ? 'Abandon the expedition? You\'ll return empty-handed!' 
-        : 'Exit mini-game? You\'ll get 1x material instead.';
+      const isTemplateGame = miniGameState.materialKey === 'aurochs';
+      
+      let message;
+      if (isTemplateGame && miniGameState.animalProgress) {
+        // Show how many templates collected
+        const completed = Object.values(miniGameState.animalProgress).filter(a => a.completed).length;
+        message = completed > 0 
+          ? `Exit Pattern Master? You've studied ${completed}/5 animals but won't get the badge unless you complete all 5.`
+          : 'Exit Pattern Master? You haven\'t studied any animals yet!';
+      } else {
+        message = 'Exit mini-game? You\'ll get nothing and fail the challenge.';
+      }
       
       if (confirm(message)) {
+        // For template game, award partial progress
+        if (isTemplateGame && miniGameState.animalProgress) {
+          const completed = Object.values(miniGameState.animalProgress).filter(a => a.completed).length;
+          if (completed > 0) {
+            showTemplateExitReward(completed);
+            return;
+          }
+        }
         endMiniGame(false);
       }
     } else {
       document.getElementById('minigame-modal').classList.remove('active');
     }
   });
+}
+
+function showTemplateExitReward(templatesCollected) {
+  clearInterval(miniGameState.timerInterval);
+  miniGameState.active = false;
+  
+  const container = document.getElementById('minigame-container');
+  const overlay = document.createElement('div');
+  overlay.className = 'result-overlay';
+  
+  // Get the animals that were completed
+  const completedAnimals = Object.entries(miniGameState.animalProgress)
+    .filter(([key, data]) => data.completed)
+    .map(([key]) => key);
+  
+  const animalEmojis = {
+    horse: '🐴',
+    aurochs: '🐂',
+    bison: '🦬',
+    deer: '🦌',
+    ibex: '🐐'
+  };
+  
+  const animalNames = {
+    horse: 'Horse',
+    aurochs: 'Aurochs',
+    bison: 'Bison',
+    deer: 'Deer',
+    ibex: 'Ibex'
+  };
+  
+  const collectedEmojis = completedAnimals.map(animal => animalEmojis[animal]).join(' ');
+  const collectedNames = completedAnimals.map(animal => animalNames[animal]).join(', ');
+  
+  overlay.innerHTML = `
+    <div class="result-icon">📋</div>
+    <div class="result-text">Templates Collected!</div>
+    <div style="font-size: 2.5rem; margin: 15px 0;">${collectedEmojis}</div>
+    <div class="result-reward">You studied ${templatesCollected}/5 animals:<br>${collectedNames}</div>
+    <div style="color: rgba(255,255,255,0.7); margin-top: 15px; font-size: 0.9rem;">
+      Progress saved! Continue next time to master all 5 templates.
+    </div>
+    <button class="btn-primary" onclick="closeMiniGame(true)">Continue</button>
+  `;
+  
+  container.appendChild(overlay);
+  
+  // Award partial badge credit if they got at least 3
+  if (templatesCollected >= 3) {
+    gameState.badges.templateMaker = true;
+    updateBadges();
+  }
 }
 
 // Call during initialization
@@ -4011,69 +4135,311 @@ function setupCaveLightingGame(container, controls, instructions, gameData) {
 }
 
 function setupTemplateGame(container, controls, instructions, gameData) {
-  instructions.innerHTML = `
-    <strong>Pattern Master - Template Creation</strong><br>
-    Study animal proportions and create accurate template.<br>
-    Horse: 2.5:1 L:H | Aurochs: 2.2:1 | Bison: 2:1<br>
-    <em>95%+ anatomical accuracy in Magdalenian art!</em>
-  `;
+  // Initialize tracking for all animals
+  if (!miniGameState.animalProgress) {
+    miniGameState.animalProgress = {
+      horse: { completed: false },
+      aurochs: { completed: false },
+      bison: { completed: false },
+      deer: { completed: false },
+      ibex: { completed: false }
+    };
+    miniGameState.currentAnimal = null;
+  }
+  
+  // Animal data with proportions
+  const animalData = {
+    horse: { name: 'Horse', emoji: '🐴', ratio: 2.5, color: '#8B4513' },
+    aurochs: { name: 'Aurochs', emoji: '🐂', ratio: 2.2, color: '#654321' },
+    bison: { name: 'Bison', emoji: '🦬', ratio: 2.0, color: '#704214' },
+    deer: { name: 'Deer', emoji: '🦌', ratio: 2.3, color: '#A0522D' },
+    ibex: { name: 'Ibex', emoji: '🐐', ratio: 1.8, color: '#8B7355' }
+  };
+  
+  // Exercise types - randomly assigned
+  const exerciseTypes = ['proportions', 'skeleton', 'movement'];
   
   container.innerHTML = '';
   container.style.background = 'linear-gradient(135deg, #2C1810 0%, #1a1410 100%)';
   
+  // Check if all animals completed
+  const completed = Object.values(miniGameState.animalProgress).filter(a => a.completed).length;
+  const total = Object.keys(animalData).length;
+  
+  if (completed === total) {
+    // All animals studied - show final success
+    container.innerHTML = `
+      <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center;">
+        <div style="font-size: 3rem; margin-bottom: 20px;">🐴 🐂 🦬 🦌 🐐</div>
+        <div style="color: #4CAF50; font-size: 2.5rem; margin: 20px 0;">✓ All Templates Mastered!</div>
+        <div style="color: white; font-size: 1.3rem; margin: 15px 0;">
+          You've studied all 5 Lascaux animals!
+        </div>
+        <div style="color: #FFD700; font-size: 1.1rem; margin: 10px 0;">
+          🐴 Horse (2.5:1) • 🐂 Aurochs (2.2:1) • 🦬 Bison (2.0:1)<br>
+          🦌 Deer (2.3:1) • 🐐 Ibex (1.8:1)
+        </div>
+        <div style="color: rgba(255,255,255,0.7); margin-top: 25px; max-width: 500px; font-size: 0.95rem;">
+          Magdalenian artists memorized these proportions perfectly,<br>
+          creating anatomically accurate cave art without modern references!
+        </div>
+      </div>
+    `;
+    controls.innerHTML = '<button class="btn-primary" id="final-continue-btn" style="width: 100%; font-size: 1.2rem;">Collect Templates! 🎨</button>';
+    
+    document.getElementById('final-continue-btn').addEventListener('click', () => {
+      endMiniGame(true);
+    });
+    
+    return;
+  }
+  
+  // Select next animal to study
+  if (!miniGameState.currentAnimal) {
+    const incomplete = Object.keys(animalData).filter(key => !miniGameState.animalProgress[key].completed);
+    miniGameState.currentAnimal = incomplete[0];
+    miniGameState.currentExercise = exerciseTypes[Math.floor(Math.random() * exerciseTypes.length)];
+  }
+  
+  const animal = animalData[miniGameState.currentAnimal];
+  const exercise = miniGameState.currentExercise;
+  
+  instructions.innerHTML = `
+    <strong>Pattern Master - Template Study (${completed}/${total} completed)</strong><br>
+    Study the ${animal.emoji} ${animal.name} anatomy and proportions<br>
+    <em>Master all 5 animals to complete your template collection!</em>
+  `;
+  
+  // Render appropriate exercise
+  if (exercise === 'proportions') {
+    setupProportionExercise(container, controls, animal);
+  } else if (exercise === 'skeleton') {
+    setupSkeletonExercise(container, controls, animal);
+  } else if (exercise === 'movement') {
+    setupMovementExercise(container, controls, animal);
+  }
+}
+
+function setupProportionExercise(container, controls, animal) {
+  const targetLength = 300;
+  const targetHeight = targetLength / animal.ratio;
+  
+  miniGameState.currentLength = 200;
+  miniGameState.currentHeight = 150;
+  
   controls.innerHTML = `
-    <div class="progress-bar" style="width: 300px;">
-      <div class="progress-fill" id="minigame-timer">Time: ${miniGameState.timeRemaining}s</div>
+    <div style="color: white; text-align: center; margin-bottom: 15px;">
+      <h3 style="margin: 0; color: #FFA500; font-size: 1.5rem;">${animal.emoji} ${animal.name} Proportions</h3>
+      <p style="margin: 5px 0; font-size: 0.9rem; color: #FFD700;">Target Ratio: ${animal.ratio}:1 (Length:Height)</p>
+      <p style="margin: 5px 0; font-size: 1.1rem; font-weight: bold;" id="current-ratio">Your Ratio: 1.33:1</p>
+      <p style="margin: 5px 0; font-size: 0.9rem; color: #90EE90;" id="accuracy-feedback">Adjust sliders to match!</p>
     </div>
-    <div style="margin-top: 10px; display: flex; gap: 10px; flex-wrap: wrap;">
-      <button class="btn-secondary animal-select" data-animal="🐴" data-ratio="2.5">Horse (2.5:1)</button>
-      <button class="btn-secondary animal-select" data-animal="🐂" data-ratio="2.2">Aurochs (2.2:1)</button>
-      <button class="btn-secondary animal-select" data-animal="🦬" data-ratio="2.0">Bison (2:1)</button>
+    <div style="background: rgba(0,0,0,0.5); padding: 15px; border-radius: 8px;">
+      <div style="margin-bottom: 15px;">
+        <label style="color: white; display: block; margin-bottom: 5px;">Length: <span id="length-value">200</span>px</label>
+        <input type="range" id="length-slider" min="150" max="450" value="200" step="10" style="width: 100%;">
+      </div>
+      <div style="margin-bottom: 15px;">
+        <label style="color: white; display: block; margin-bottom: 5px;">Height: <span id="height-value">150</span>px</label>
+        <input type="range" id="height-slider" min="80" max="250" value="150" step="10" style="width: 100%;">
+      </div>
+      <button class="btn-primary" id="verify-btn" style="width: 100%;">Lock In Template</button>
     </div>
-    <button class="btn-primary" id="verify-btn" disabled style="margin-top: 10px;">Verify Proportions</button>
   `;
   
   const canvas = document.createElement('div');
-  canvas.className = 'template-canvas';
+  canvas.style.cssText = 'position: absolute; top: 45%; left: 50%; transform: translate(-50%, -50%); text-align: center;';
   canvas.innerHTML = `
-    <div class="template-grid"></div>
-    <div class="animal-reference" id="animal-ref" style="opacity: 0;"></div>
-    <div class="drawing-overlay" id="drawing-overlay"></div>
+    <div style="color: white; margin-bottom: 15px; font-size: 1.1rem;">
+      Match your <span style="color: #4CAF50;">green template</span> to the <span style="color: #FFD700;">golden reference</span>
+    </div>
+    <div style="position: relative; display: inline-block;">
+      <div id="reference-animal" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: linear-gradient(135deg, rgba(255, 215, 0, 0.4), rgba(255, 165, 0, 0.4)); border: 3px dashed #FFD700; border-radius: 25px 60px 25px 15px; width: ${targetLength}px; height: ${targetHeight}px; z-index: 1;">
+        <div style="position: absolute; top: 10px; left: 20%; width: 30px; height: 30px; background: rgba(255, 215, 0, 0.6); border-radius: 50%;"></div>
+        <div style="position: absolute; bottom: 5px; left: 15%; width: 20px; height: 40px; background: rgba(255, 215, 0, 0.5); border-radius: 5px;"></div>
+        <div style="position: absolute; bottom: 5px; left: 35%; width: 20px; height: 40px; background: rgba(255, 215, 0, 0.5); border-radius: 5px;"></div>
+        <div style="position: absolute; bottom: 5px; right: 35%; width: 20px; height: 40px; background: rgba(255, 215, 0, 0.5); border-radius: 5px;"></div>
+        <div style="position: absolute; bottom: 5px; right: 15%; width: 20px; height: 40px; background: rgba(255, 215, 0, 0.5); border-radius: 5px;"></div>
+      </div>
+      <div id="player-template" style="position: relative; background: linear-gradient(135deg, rgba(76, 175, 80, 0.6), rgba(46, 125, 50, 0.6)); border: 3px solid #4CAF50; border-radius: 25px 60px 25px 15px; width: 200px; height: 150px; z-index: 2; transition: all 0.2s ease;">
+        <div style="position: absolute; top: 10px; left: 20%; width: 30px; height: 30px; background: rgba(76, 175, 80, 0.7); border-radius: 50%;"></div>
+        <div style="position: absolute; bottom: 5px; left: 15%; width: 20px; height: 40px; background: rgba(76, 175, 80, 0.6); border-radius: 5px;"></div>
+        <div style="position: absolute; bottom: 5px; left: 35%; width: 20px; height: 40px; background: rgba(76, 175, 80, 0.6); border-radius: 5px;"></div>
+        <div style="position: absolute; bottom: 5px; right: 35%; width: 20px; height: 40px; background: rgba(76, 175, 80, 0.6); border-radius: 5px;"></div>
+        <div style="position: absolute; bottom: 5px; right: 15%; width: 20px; height: 40px; background: rgba(76, 175, 80, 0.6); border-radius: 5px;"></div>
+      </div>
+    </div>
   `;
-  canvas.style.position = 'absolute';
-  canvas.style.top = '35%';
-  canvas.style.left = '50%';
-  canvas.style.transform = 'translate(-50%, -50%)';
   container.appendChild(canvas);
   
-  const infoBox = document.createElement('div');
-  infoBox.style.cssText = 'position: absolute; bottom: 50px; left: 50%; transform: translateX(-50%); color: white; text-align: center; font-size: 0.9rem;';
-  infoBox.textContent = 'Select an animal to study...';
-  container.appendChild(infoBox);
+  const playerTemplate = document.getElementById('player-template');
   
-  let selectedAnimal = '';
-  let selectedRatio = 0;
+  function updateTemplate() {
+    const ratio = miniGameState.currentLength / miniGameState.currentHeight;
+    playerTemplate.style.width = miniGameState.currentLength + 'px';
+    playerTemplate.style.height = miniGameState.currentHeight + 'px';
+    document.getElementById('current-ratio').textContent = `Your Ratio: ${ratio.toFixed(2)}:1`;
+    
+    const diff = Math.abs(ratio - animal.ratio);
+    if (diff <= 0.1) {
+      document.getElementById('current-ratio').style.color = '#4CAF50';
+      document.getElementById('accuracy-feedback').textContent = '✓ Perfect match! Lock it in!';
+      playerTemplate.style.boxShadow = '0 0 30px rgba(76, 175, 80, 0.8)';
+    } else if (diff <= 0.2) {
+      document.getElementById('current-ratio').style.color = '#90EE90';
+      document.getElementById('accuracy-feedback').textContent = 'Very close!';
+      playerTemplate.style.boxShadow = '0 0 15px rgba(255, 215, 0, 0.5)';
+    } else {
+      document.getElementById('current-ratio').style.color = '#FFA500';
+      document.getElementById('accuracy-feedback').textContent = 'Keep adjusting...';
+      playerTemplate.style.boxShadow = 'none';
+    }
+  }
   
-  document.querySelectorAll('.animal-select').forEach(btn => {
-    btn.addEventListener('click', function() {
-      selectedAnimal = this.dataset.animal;
-      selectedRatio = parseFloat(this.dataset.ratio);
-      document.getElementById('animal-ref').textContent = selectedAnimal;
-      document.getElementById('animal-ref').style.opacity = '0.3';
-      document.querySelectorAll('.animal-select').forEach(b => b.style.borderColor = '');
+  document.getElementById('length-slider').addEventListener('input', function() {
+    miniGameState.currentLength = parseInt(this.value);
+    document.getElementById('length-value').textContent = this.value;
+    updateTemplate();
+  });
+  
+  document.getElementById('height-slider').addEventListener('input', function() {
+    miniGameState.currentHeight = parseInt(this.value);
+    document.getElementById('height-value').textContent = this.value;
+    updateTemplate();
+  });
+  
+  updateTemplate();
+  
+  document.getElementById('verify-btn').addEventListener('click', () => {
+    const ratio = miniGameState.currentLength / miniGameState.currentHeight;
+    const diff = Math.abs(ratio - animal.ratio);
+    
+    if (diff <= 0.15) {
+      completeAnimalStudy(container, controls, animal);
+    } else {
+      showNotification(`Not accurate enough! Target: ${animal.ratio}:1, Current: ${ratio.toFixed(2)}:1`, 3000);
+    }
+  });
+}
+
+function setupSkeletonExercise(container, controls, animal) {
+  controls.innerHTML = `
+    <div style="color: white; text-align: center; margin-bottom: 15px;">
+      <h3 style="margin: 0; color: #FFA500; font-size: 1.5rem;">${animal.emoji} ${animal.name} Skeleton Study</h3>
+      <p style="margin: 5px 0; font-size: 0.9rem;">Click the <span style="color: #4CAF50;">3 key skeletal landmarks</span></p>
+      <p style="margin: 5px 0; font-size: 1.1rem;" id="points-found">Found: <span style="color: #FFD700;">0/3</span></p>
+    </div>
+    <button class="btn-primary" id="verify-btn" disabled style="width: 100%; margin-top: 10px;">Confirm Study</button>
+  `;
+  
+  miniGameState.pointsFound = 0;
+  
+  const canvas = document.createElement('div');
+  canvas.style.cssText = 'position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center;';
+  canvas.innerHTML = `
+    <div style="color: white; margin-bottom: 15px;">Identify key anatomical points:</div>
+    <div style="position: relative; display: inline-block; background: ${animal.color}; opacity: 0.4; border: 3px solid #FFD700; border-radius: 25px 60px 25px 15px; width: 300px; height: ${300/animal.ratio}px;">
+      <div class="skeleton-point" style="position: absolute; top: 15%; left: 25%; width: 40px; height: 40px; border: 3px dashed white; border-radius: 50%; cursor: pointer;"></div>
+      <div class="skeleton-point" style="position: absolute; top: 50%; left: 50%; width: 40px; height: 40px; border: 3px dashed white; border-radius: 50%; cursor: pointer;"></div>
+      <div class="skeleton-point" style="position: absolute; bottom: 15%; left: 70%; width: 40px; height: 40px; border: 3px dashed white; border-radius: 50%; cursor: pointer;"></div>
+    </div>
+    <div style="color: rgba(255,255,255,0.6); margin-top: 15px;">Head, Shoulder, Hip</div>
+  `;
+  container.appendChild(canvas);
+  
+  document.querySelectorAll('.skeleton-point').forEach(point => {
+    point.addEventListener('click', function() {
+      if (this.classList.contains('found')) return;
+      this.classList.add('found');
+      this.style.background = '#4CAF50';
       this.style.borderColor = '#4CAF50';
-      document.getElementById('verify-btn').disabled = false;
+      miniGameState.pointsFound++;
+      document.getElementById('points-found').innerHTML = `Found: <span style="color: #FFD700;">${miniGameState.pointsFound}/3</span>`;
       
-      const names = { '🐴': 'Horse', '🐂': 'Aurochs', '🦬': 'Bison' };
-      infoBox.textContent = `Studying ${names[selectedAnimal]} anatomy (${selectedRatio}:1 length:height ratio)`;
+      if (miniGameState.pointsFound >= 3) {
+        document.getElementById('verify-btn').disabled = false;
+      }
     });
   });
   
   document.getElementById('verify-btn').addEventListener('click', () => {
-    const names = { '🐴': 'Horse', '🐂': 'Aurochs', '🦬': 'Bison' };
-    showNotification(`✓ ${names[selectedAnimal]} template verified! Proportions accurate: ${selectedRatio}:1`, 2500);
-    setTimeout(() => endMiniGame(true), 2000);
+    completeAnimalStudy(container, controls, animal);
   });
+}
+
+function setupMovementExercise(container, controls, animal) {
+  controls.innerHTML = `
+    <div style="color: white; text-align: center; margin-bottom: 15px;">
+      <h3 style="margin: 0; color: #FFA500; font-size: 1.5rem;">${animal.emoji} ${animal.name} Movement Study</h3>
+      <p style="margin: 5px 0; font-size: 0.9rem;">Select the <span style="color: #4CAF50;">running ${animal.name}</span> posture</p>
+    </div>
+  `;
+  
+  const canvas = document.createElement('div');
+  canvas.style.cssText = 'position: absolute; top: 45%; left: 50%; transform: translate(-50%, -50%); text-align: center;';
+  canvas.innerHTML = `
+    <div style="color: white; margin-bottom: 20px; font-size: 1.1rem;">Which posture shows running motion?</div>
+    <div style="display: flex; gap: 30px; justify-content: center;">
+      <div class="movement-option" data-correct="false" style="cursor: pointer; padding: 20px; background: rgba(0,0,0,0.5); border: 3px solid #666; border-radius: 10px;">
+        <div style="font-size: 4rem;">${animal.emoji}</div>
+        <div style="color: white; margin-top: 10px;">Standing</div>
+      </div>
+      <div class="movement-option" data-correct="true" style="cursor: pointer; padding: 20px; background: rgba(0,0,0,0.5); border: 3px solid #666; border-radius: 10px;">
+        <div style="font-size: 4rem; transform: skewX(-10deg);">${animal.emoji}</div>
+        <div style="color: white; margin-top: 10px;">Running</div>
+      </div>
+      <div class="movement-option" data-correct="false" style="cursor: pointer; padding: 20px; background: rgba(0,0,0,0.5); border: 3px solid #666; border-radius: 10px;">
+        <div style="font-size: 4rem; transform: scaleX(-1);">${animal.emoji}</div>
+        <div style="color: white; margin-top: 10px;">Grazing</div>
+      </div>
+    </div>
+  `;
+  container.appendChild(canvas);
+  
+  document.querySelectorAll('.movement-option').forEach(option => {
+    option.addEventListener('click', function() {
+      const correct = this.dataset.correct === 'true';
+      if (correct) {
+        this.style.borderColor = '#4CAF50';
+        this.style.background = 'rgba(76, 175, 80, 0.2)';
+        showNotification('✓ Correct! Running pose identified!', 2000);
+        setTimeout(() => completeAnimalStudy(container, controls, animal), 1500);
+      } else {
+        this.style.borderColor = '#FF6B6B';
+        this.style.background = 'rgba(255, 107, 107, 0.2)';
+        showNotification('✗ Not quite - try another pose!', 2000);
+        setTimeout(() => {
+          this.style.borderColor = '#666';
+          this.style.background = 'rgba(0,0,0,0.5)';
+        }, 1000);
+      }
+    });
+  });
+}
+
+function completeAnimalStudy(container, controls, animal) {
+  miniGameState.animalProgress[miniGameState.currentAnimal].completed = true;
+  
+  container.innerHTML = '';
+  controls.innerHTML = '';
+  
+  const successDiv = document.createElement('div');
+  successDiv.style.cssText = 'position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center;';
+  successDiv.innerHTML = `
+    <div style="font-size: 5rem;">${animal.emoji}</div>
+    <div style="color: #4CAF50; font-size: 2rem; margin: 20px 0;">✓ ${animal.name} Mastered!</div>
+    <div style="color: white; font-size: 1.2rem; margin: 10px 0;">
+      Proportions: ${animal.ratio}:1 memorized
+    </div>
+  `;
+  container.appendChild(successDiv);
+  
+  miniGameState.currentAnimal = null;
+  miniGameState.currentExercise = null;
+  
+  setTimeout(() => {
+    setupTemplateGame(container, controls, document.querySelector('.minigame-instructions'));
+  }, 2000);
 }
 
 function setupIdentificationGame(container, controls, instructions) {
@@ -4490,7 +4856,7 @@ function completeWorkshopCraft() {
       gameState.tools[craftingKey] = true;
       if (craftingRecipe.isLight) {
         gameState.hasLight = true;
-        showNotification(`✨ Created ${craftingRecipe.name}! You can now enter the CAVE!`, 3000);
+        showNotification(`✨ Created ${craftingRecipe.name}! This is 1 of 2 requirements to enter the cave.`, 3000);
       } else {
         showNotification(`🛠️ Created ${craftingRecipe.name}!`, 2000);
       }
