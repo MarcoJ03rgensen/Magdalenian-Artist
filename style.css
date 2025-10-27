@@ -2199,11 +2199,11 @@ body {
 }
 
 .craft-section {
-  background: transparent;
-  border: none;
+  background: rgba(26, 20, 16, 0.95);
+  border: 3px solid var(--ochre-yellow);
   border-radius: 16px;
   padding: 1.5rem;
-  backdrop-filter: none;
+  backdrop-filter: blur(10px);
   position: relative;
   z-index: 15;
 }
