@@ -2,6 +2,14 @@
 // MAGDALENIAN CAVE ART EXPERIENCE
 // Highly Visual HTML5 Game
 // ========================================
+//
+// Copyright (c) 2025 Marco Birkedahl Jørgensen
+// Licensed under CC BY-NC-ND 4.0
+// https://creativecommons.org/licenses/by-nc-nd/4.0/
+//
+// This work is for educational and non-commercial use only.
+// All commercial rights reserved to the creator.
+// ========================================
 
 // Game State
 const gameState = {

@@ -3,7 +3,7 @@
 > An educational cave art painting game set 17,000 years ago - Journey to the caves of Lascaux
 
 [![Live Demo](https://img.shields.io/badge/demo-live-success)](https://your-demo-url.com)
-[![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
+[![License: CC BY-NC-ND 4.0](https://img.shields.io/badge/License-CC%20BY--NC--ND%204.0-lightgrey.svg)](https://creativecommons.org/licenses/by-nc-nd/4.0/)
 
 ## 🌟 Overview
 
@@ -254,22 +254,60 @@ Created by [Marco Birkedahl Jørgensen](https://marcoj03rgensen.github.io/)
 
 ## 📄 License
 
+**Creative Commons Attribution-NonCommercial-NoDerivatives 4.0 International (CC BY-NC-ND 4.0)**
+
 © 2025 Marco Birkedahl Jørgensen. All rights reserved.
+
+### ✓ Permitted Uses (Non-Commercial Only)
+- Educational and academic use
+- Personal learning and study
+- Non-commercial research
+- Classroom demonstrations
+- Museum exhibitions (non-profit)
+
+### ✗ Prohibited Without Permission
+- Commercial exploitation or use
+- Selling or licensing the software
+- Using in commercial products or services
+- Creating and distributing derivative works
+- Removing attribution to the creator
+
+### Attribution Required
+When sharing or using this work, you must:
+1. Give appropriate credit to **Marco Birkedahl Jørgensen**
+2. Provide a link to the license
+3. Indicate if any changes were made
+4. Not suggest the creator endorses your use
+
+### Commercial Licensing
+All commercial rights are reserved exclusively to Marco Birkedahl Jørgensen.
+
+For commercial use, licensing inquiries, or permission to create derivative works, please contact the creator directly.
+
+**Full License**: See [LICENSE](LICENSE) file or visit [CC BY-NC-ND 4.0](https://creativecommons.org/licenses/by-nc-nd/4.0/)
 
 ## 🤝 Contributing
 
-Contributions welcome! Please:
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Submit a pull request
+**Note**: This project is licensed under CC BY-NC-ND 4.0, which does not permit distribution of derivative works without express permission. However, you may:
 
-Areas for contribution:
-- Bug fixes
-- Performance improvements
-- Additional mini-games
-- Translations
-- Accessibility enhancements
+- Report bugs and issues
+- Suggest improvements and features
+- Contribute bug fixes (requires permission to merge)
+- Help with documentation and translations
+- Share educational use cases
+
+For any contributions that modify the codebase, please:
+1. Open an issue first to discuss the proposed changes
+2. Request permission for derivative work
+3. Fork the repository (for personal study only)
+4. Contact the creator about contribution terms
+
+Areas where input is welcome:
+- Bug reports and fixes
+- Performance optimization suggestions
+- Accessibility improvement ideas
+- Translation contributions
+- Educational feedback
 
 ## 📞 Contact
 
