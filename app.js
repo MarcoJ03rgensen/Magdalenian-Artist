@@ -1,6 +1,6 @@
 ﻿// ========================================
 // MAGDALENIAN CAVE ART EXPERIENCE
-// Highly Visual HTML5 Game
+// Visual HTML5 Game
 // ========================================
 //
 // Copyright (c) 2025 Marco Birkedahl Jørgensen
@@ -2489,11 +2489,7 @@ function showCharacterPicker(container, controls, instructions, gameData) {
 
 function setupMultiDayExpedition(container, controls, instructions, gameData) {
   instructions.innerHTML = `
-    <strong>🏔️ The Mountain Expedition - A 50+ km Journey for Manganese</strong><br>
-    Travel through valleys, forests, and mountains to find rare manganese deposits.<br>
-    <span style="color: #FFD700;">⭐ Survive the journey - manage stamina, food, and water</span><br>
-    <span style="color: #4CAF50;">✓ No time limit - only success matters! Complete the journey or fail.</span><br>
-    <span style="color: #FF6B35;">⚠️ Death means failure - you get NOTHING if you don't reach the deposits!</span>
+    <strong>🏔️ The Mountain Expedition</strong> - A 50+ km Journey for Manganese - Travel through valleys, forests, and mountains to find rare manganese deposits
   `;
   
   container.innerHTML = '';
@@ -2572,74 +2568,70 @@ function setupMultiDayExpedition(container, controls, instructions, gameData) {
   journeyUI.className = 'mountain-journey-ui';
   journeyUI.style.cssText = `
     position: absolute;
-    top: 10px;
+    top: 5px;
     left: 50%;
     transform: translateX(-50%);
-    background: rgba(0, 0, 0, 0.9);
-    padding: 12px 20px;
-    border-radius: 12px;
+    background: rgba(0, 0, 0, 0.92);
+    padding: 6px 12px;
+    border-radius: 8px;
     border: 2px solid var(--ochre-yellow);
     backdrop-filter: blur(10px);
     box-shadow: 0 8px 30px rgba(0, 0, 0, 0.8);
     z-index: 100;
-    max-width: 90%;
-    font-size: 0.9rem;
+    max-width: 95%;
+    font-size: 0.75rem;
   `;
   
   journeyUI.innerHTML = `
-    <div style="text-align: center; margin-bottom: 10px;">
-      <div style="font-size: 1.2rem; font-weight: bold; color: var(--ochre-yellow); margin-bottom: 3px;">
+    <div style="text-align: center; margin-bottom: 4px;">
+      <div style="font-size: 0.9rem; font-weight: bold; color: var(--ochre-yellow); margin-bottom: 2px;">
         <span id="stage-icon">${stages[0].icon}</span> <span id="stage-name">${stages[0].name}</span>
       </div>
-      <div style="color: var(--limestone); font-size: 0.8rem;">
+      <div style="color: var(--limestone); font-size: 0.65rem;">
         Day <span id="day-counter">1</span> | Distance: <span id="total-distance">0</span>/65 km | 
         <span id="weather-display">🌤️ Clear</span>
       </div>
     </div>
     
-    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 10px;">
-      <div class="stat-panel" style="padding: 6px;">
-        <div class="stat-label" style="font-size: 0.75rem; margin-bottom: 3px;">💪 Stamina</div>
-        <div class="stat-bar-bg" style="height: 12px; margin-bottom: 3px;">
+    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-bottom: 4px;">
+      <div class="stat-panel" style="padding: 3px;">
+        <div class="stat-label" style="font-size: 0.65rem; margin-bottom: 1px;">💪 Stamina</div>
+        <div class="stat-bar-bg" style="height: 8px; margin-bottom: 1px;">
           <div class="stat-bar-fill stamina-bar" id="stamina-bar" style="width: 100%; background: linear-gradient(90deg, #4CAF50, #8BC34A);"></div>
         </div>
-        <div class="stat-value" style="font-size: 0.7rem;" id="stamina-value">100%</div>
+        <div class="stat-value" style="font-size: 0.6rem;" id="stamina-value">100%</div>
       </div>
-      <div class="stat-panel" style="padding: 6px;">
-        <div class="stat-label" style="font-size: 0.75rem; margin-bottom: 3px;">🍖 Food</div>
-        <div class="stat-bar-bg" style="height: 12px; margin-bottom: 3px;">
+      <div class="stat-panel" style="padding: 3px;">
+        <div class="stat-label" style="font-size: 0.65rem; margin-bottom: 1px;">🍖 Food</div>
+        <div class="stat-bar-bg" style="height: 8px; margin-bottom: 1px;">
           <div class="stat-bar-fill food-bar" id="food-bar" style="width: 100%; background: linear-gradient(90deg, #FF6B35, #FDB813);"></div>
         </div>
-        <div class="stat-value" style="font-size: 0.7rem;" id="food-value">100%</div>
+        <div class="stat-value" style="font-size: 0.6rem;" id="food-value">100%</div>
       </div>
-      <div class="stat-panel" style="padding: 6px;">
-        <div class="stat-label" style="font-size: 0.75rem; margin-bottom: 3px;">💧 Water</div>
-        <div class="stat-bar-bg" style="height: 12px; margin-bottom: 3px;">
+      <div class="stat-panel" style="padding: 3px;">
+        <div class="stat-label" style="font-size: 0.65rem; margin-bottom: 1px;">💧 Water</div>
+        <div class="stat-bar-bg" style="height: 8px; margin-bottom: 1px;">
           <div class="stat-bar-fill water-bar" id="water-bar" style="width: 100%; background: linear-gradient(90deg, #2196F3, #03A9F4);"></div>
         </div>
-        <div class="stat-value" style="font-size: 0.7rem;" id="water-value">100%</div>
+        <div class="stat-value" style="font-size: 0.6rem;" id="water-value">100%</div>
       </div>
     </div>
     
-    <div style="background: rgba(139, 69, 19, 0.3); padding: 6px 10px; border-radius: 6px; margin-bottom: 8px;">
-      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 3px;">
-        <span style="color: var(--limestone); font-weight: bold; font-size: 0.8rem;">Stage Progress</span>
-        <span style="color: var(--ochre-yellow); font-size: 0.8rem;" id="stage-progress-text">0 / ${stages[0].distance} km</span>
+    <div style="background: rgba(139, 69, 19, 0.3); padding: 3px 6px; border-radius: 4px; margin-bottom: 4px;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1px;">
+        <span style="color: var(--limestone); font-weight: bold; font-size: 0.65rem;">Stage Progress</span>
+        <span style="color: var(--ochre-yellow); font-size: 0.65rem;" id="stage-progress-text">0 / ${stages[0].distance} km</span>
       </div>
-      <div style="background: rgba(0,0,0,0.5); border-radius: 4px; overflow: hidden; height: 14px;">
+      <div style="background: rgba(0,0,0,0.5); border-radius: 3px; overflow: hidden; height: 8px;">
         <div id="stage-progress-bar" style="height: 100%; background: linear-gradient(90deg, #DAA520, #FFD700); width: 0%; transition: width 0.5s ease;"></div>
       </div>
     </div>
     
-    <div id="hazard-warning" style="display: none; background: rgba(255, 107, 53, 0.9); padding: 8px; border-radius: 6px; margin-bottom: 8px; text-align: center; font-weight: bold; color: white; border: 2px solid #FF6B35;">
-      <span id="hazard-text">Hazard!</span>
-    </div>
-    
-    <div id="biome-description" style="background: rgba(0, 0, 0, 0.5); padding: 6px; border-radius: 6px; margin-bottom: 8px; font-size: 0.75rem; color: var(--limestone); text-align: center; font-style: italic;">
+    <div id="biome-description" style="background: rgba(0, 0, 0, 0.5); padding: 3px; border-radius: 4px; margin-bottom: 3px; font-size: 0.65rem; color: var(--limestone); text-align: center; font-style: italic;">
       ${stages[0].description}
     </div>
     
-    <div id="event-log" style="background: rgba(0, 0, 0, 0.6); padding: 6px; border-radius: 6px; max-height: 50px; overflow-y: auto; font-size: 0.75rem; color: var(--limestone);">
+    <div id="event-log" style="background: rgba(0, 0, 0, 0.6); padding: 3px; border-radius: 4px; max-height: 35px; overflow-y: auto; font-size: 0.65rem; color: var(--limestone);">
       <div class="log-entry">🚶 Journey begins from the settlement...</div>
     </div>
   `;
@@ -2790,16 +2782,23 @@ function setupMultiDayExpedition(container, controls, instructions, gameData) {
   
   // Journey controls
   controls.innerHTML = `
-    <div style="display: flex; gap: 10px; align-items: center; justify-content: center; flex-wrap: wrap;">
-      <button class="btn-primary expedition-action-btn" id="continue-journey-btn" style="font-size: 1rem; padding: 10px 20px;">
-        🚶 Continue Journey
-      </button>
-      <button class="btn-secondary expedition-action-btn" id="rest-btn" style="padding: 10px 20px;">
-        😴 Rest
-      </button>
-      <button class="btn-secondary expedition-action-btn" id="forage-btn" style="padding: 10px 20px;">
-        🔍 Forage
-      </button>
+    <div style="display: flex; gap: 10px; align-items: flex-start; justify-content: space-between; flex-wrap: wrap;">
+      <div style="flex: 1; min-width: 250px; background: rgba(0,0,0,0.5); padding: 6px 10px; border-radius: 6px; font-size: 0.7rem; line-height: 1.3;">
+        <div style="color: #FFD700; margin-bottom: 2px;">⭐ Manage stamina, food, and water</div>
+        <div style="color: #4CAF50; margin-bottom: 2px;">✓ No time limit - only success matters!</div>
+        <div style="color: #FF6B35;">⚠️ Death means failure - you get NOTHING!</div>
+      </div>
+      <div style="display: flex; gap: 10px; align-items: center;">
+        <button class="btn-primary expedition-action-btn" id="continue-journey-btn" style="font-size: 1rem; padding: 10px 20px;">
+          🚶 Continue Journey
+        </button>
+        <button class="btn-secondary expedition-action-btn" id="rest-btn" style="padding: 10px 20px;">
+          😴 Rest
+        </button>
+        <button class="btn-secondary expedition-action-btn" id="forage-btn" style="padding: 10px 20px;">
+          🔍 Forage
+        </button>
+      </div>
     </div>
     <div id="rock-testing-area" style="display: none; margin-top: 20px;">
       <div style="background: rgba(0, 0, 0, 0.8); padding: 20px; border-radius: 12px; border: 3px solid var(--ochre-yellow);">
@@ -2807,7 +2806,7 @@ function setupMultiDayExpedition(container, controls, instructions, gameData) {
         <p style="color: var(--limestone); text-align: center; margin-bottom: 15px; font-style: italic;">
           Rub each rock on unglazed ceramic. <strong>Black streak = Manganese (MnO₂)</strong>
         </p>
-        <div id="rock-samples-container" style="display: flex; gap: 15px; justify-content: center; flex-wrap: wrap;">
+        <div id="rock-samples-container" style="display: flex; gap: 15px; justify-center; flex-wrap: wrap;">
         </div>
       </div>
     </div>
