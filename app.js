@@ -868,6 +868,139 @@ function initLandscapeScene() {
     });
     gatheringSpots.appendChild(btn);
   });
+  
+  // Initialize dynamic landscape effects
+  initDynamicLandscape();
+}
+
+// ========================================
+// DYNAMIC WEATHER & DAY/NIGHT SYSTEM
+// ========================================
+
+let weatherInterval;
+let dayNightInterval;
+
+function initDynamicLandscape() {
+  // Add grass blades
+  const grassLayer = document.querySelector('.grass-layer');
+  if (grassLayer) {
+    for (let i = 0; i < 50; i++) {
+      const blade = document.createElement('div');
+      blade.className = 'grass-blade';
+      blade.style.left = `${Math.random() * 100}%`;
+      blade.style.height = `${15 + Math.random() * 10}px`;
+      blade.style.animationDelay = `${Math.random() * 3}s`;
+      grassLayer.appendChild(blade);
+    }
+  }
+
+  // Add trees to mid-hill layer
+  const treeMidLayer = document.querySelector('.tree-layer-mid');
+  if (treeMidLayer) {
+    const midTreePositions = [8, 25, 45, 62, 78, 92];
+    midTreePositions.forEach(pos => {
+      const tree = createTree('distant');
+      tree.style.left = `${pos}%`;
+      tree.style.bottom = `${10 + Math.random() * 20}%`;
+      treeMidLayer.appendChild(tree);
+    });
+  }
+
+  // Add trees to front layer
+  const treeFrontLayer = document.querySelector('.tree-layer-front');
+  if (treeFrontLayer) {
+    const frontTreePositions = [3, 15, 28, 52, 68, 85, 95];
+    frontTreePositions.forEach(pos => {
+      const sizes = ['small', 'medium', 'large'];
+      const size = sizes[Math.floor(Math.random() * sizes.length)];
+      const tree = createTree(size);
+      tree.style.left = `${pos}%`;
+      tree.style.bottom = '10%';
+      treeFrontLayer.appendChild(tree);
+    });
+  }
+
+  // Add more stars
+  const starsContainer = document.querySelector('.stars');
+  if (starsContainer) {
+    for (let i = 0; i < 20; i++) {
+      const star = document.createElement('div');
+      star.textContent = '✦';
+      star.style.position = 'absolute';
+      star.style.top = `${Math.random() * 50}%`;
+      star.style.left = `${Math.random() * 100}%`;
+      star.style.color = 'rgba(255, 255, 255, 0.8)';
+      star.style.fontSize = `${8 + Math.random() * 6}px`;
+      star.style.animation = `twinkle ${2 + Math.random() * 2}s ease-in-out infinite`;
+      star.style.animationDelay = `${Math.random() * 3}s`;
+      starsContainer.appendChild(star);
+    }
+  }
+
+  // Day/Night cycle (changes every 2 minutes)
+  dayNightInterval = setInterval(() => {
+    const landscape = document.getElementById('landscape-scene');
+    if (landscape && landscape.classList.contains('active')) {
+      landscape.classList.toggle('night-mode');
+    }
+  }, 120000); // 2 minutes
+
+  // Weather system (random weather changes)
+  weatherInterval = setInterval(() => {
+    const landscape = document.getElementById('landscape-scene');
+    if (landscape && landscape.classList.contains('active')) {
+      const shouldRain = Math.random() > 0.7;
+      
+      if (shouldRain && !landscape.classList.contains('rainy-mode')) {
+        startRain(landscape);
+      } else if (!shouldRain && landscape.classList.contains('rainy-mode')) {
+        stopRain(landscape);
+      }
+    }
+  }, 45000); // Check every 45 seconds
+}
+
+function createTree(size) {
+  const tree = document.createElement('div');
+  tree.className = `tree ${size}`;
+  
+  const trunk = document.createElement('div');
+  trunk.className = 'tree-trunk';
+  
+  const foliage = document.createElement('div');
+  foliage.className = 'tree-foliage';
+  
+  tree.appendChild(trunk);
+  tree.appendChild(foliage);
+  
+  return tree;
+}
+
+function startRain(landscape) {
+  landscape.classList.add('rainy-mode');
+  const rainContainer = landscape.querySelector('.rain-container');
+  
+  // Create rain drops
+  for (let i = 0; i < 100; i++) {
+    const drop = document.createElement('div');
+    drop.className = 'rain-drop';
+    drop.style.left = `${Math.random() * 100}%`;
+    drop.style.animationDuration = `${0.5 + Math.random() * 0.5}s`;
+    drop.style.animationDelay = `${Math.random() * 2}s`;
+    rainContainer.appendChild(drop);
+  }
+}
+
+function stopRain(landscape) {
+  landscape.classList.remove('rainy-mode');
+  const rainContainer = landscape.querySelector('.rain-container');
+  rainContainer.innerHTML = '';
+}
+
+// Clean up intervals when leaving
+function cleanupDynamicLandscape() {
+  if (weatherInterval) clearInterval(weatherInterval);
+  if (dayNightInterval) clearInterval(dayNightInterval);
 }
 
 // Quick gather removed - all gathering now requires mini-games!

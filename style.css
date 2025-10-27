@@ -1295,6 +1295,15 @@ body {
 
 #landscape-scene {
   background: linear-gradient(180deg, #87CEEB 0%, #B0D4E3 40%, #D4C5A9 70%, #8B7355 100%);
+  transition: background 10s ease-in-out;
+}
+
+#landscape-scene.night-mode {
+  background: linear-gradient(180deg, #0B1026 0%, #1A1A3E 40%, #2C3E50 70%, #2A1A0A 100%);
+}
+
+#landscape-scene.rainy-mode {
+  background: linear-gradient(180deg, #6B7A8F 0%, #8B9AAF 40%, #A4B3C8 70%, #8B7355 100%);
 }
 
 .parallax-layer {
@@ -1307,6 +1316,7 @@ body {
 .sky-layer {
   background: linear-gradient(180deg, #4A90E2 0%, #87CEEB 50%, #B0D4E3 100%);
   z-index: 1;
+  transition: background 10s ease-in-out;
 }
 
 .sun {
@@ -1319,6 +1329,7 @@ body {
   border-radius: 50%;
   box-shadow: 0 0 60px rgba(253, 184, 19, 0.8);
   animation: sunGlow 4s ease-in-out infinite;
+  transition: opacity 8s ease-in-out;
 }
 
 @keyframes sunGlow {
@@ -1331,6 +1342,7 @@ body {
   background: rgba(255, 255, 255, 0.7);
   border-radius: 100px;
   animation: cloudFloat 60s linear infinite;
+  transition: background 8s ease-in-out;
 }
 
 .cloud::before, .cloud::after {
@@ -1338,6 +1350,7 @@ body {
   position: absolute;
   background: rgba(255, 255, 255, 0.7);
   border-radius: 100px;
+  transition: background 8s ease-in-out;
 }
 
 .cloud-1 {
@@ -1399,16 +1412,40 @@ body {
 /* Hills */
 .hills-distant {
   bottom: 30%;
-  background: linear-gradient(to bottom, transparent 0%, #6B8E23 40%, #5C7A1F 100%);
+  background: 
+    linear-gradient(135deg, transparent 0%, rgba(107, 142, 35, 0.3) 20%, transparent 40%),
+    linear-gradient(-135deg, transparent 0%, rgba(85, 107, 47, 0.3) 20%, transparent 40%),
+    linear-gradient(to bottom, 
+      transparent 0%, 
+      #7BA428 30%,
+      #6B8E23 40%, 
+      #5F7A1F 60%,
+      #556B2F 80%,
+      #4A5F28 100%
+    );
   clip-path: polygon(0 70%, 15% 50%, 30% 60%, 50% 45%, 70% 55%, 85% 50%, 100% 65%, 100% 100%, 0 100%);
   z-index: 2;
+  transition: background 10s ease-in-out;
+  filter: brightness(1.1);
 }
 
 .hills-mid {
   bottom: 20%;
-  background: linear-gradient(to bottom, transparent 0%, #556B2F 50%, #4A5F28 100%);
+  background: 
+    radial-gradient(ellipse at 20% 40%, rgba(139, 162, 47, 0.4) 0%, transparent 50%),
+    radial-gradient(ellipse at 60% 30%, rgba(107, 142, 35, 0.3) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 50%, rgba(85, 107, 47, 0.3) 0%, transparent 50%),
+    linear-gradient(to bottom, 
+      transparent 0%, 
+      #6B8E23 40%,
+      #556B2F 50%, 
+      #4F6328 70%,
+      #4A5F28 90%,
+      #3F5020 100%
+    );
   clip-path: polygon(0 75%, 20% 55%, 40% 65%, 60% 50%, 80% 60%, 100% 70%, 100% 100%, 0 100%);
   z-index: 3;
+  transition: background 10s ease-in-out;
 }
 
 /* Ground */
@@ -1417,6 +1454,7 @@ body {
   height: 40%;
   background: linear-gradient(180deg, #8B7355 0%, #6B5844 50%, #5C4033 100%);
   z-index: 4;
+  transition: background 10s ease-in-out;
 }
 
 .river {
@@ -1440,6 +1478,451 @@ body {
 @keyframes riverShimmer {
   0%, 100% { opacity: 0.7; }
   50% { opacity: 0.9; }
+}
+
+/* Moon and Stars */
+.moon {
+  position: absolute;
+  top: 100px;
+  right: 150px;
+  width: 70px;
+  height: 70px;
+  background: radial-gradient(circle at 30% 30%, #F4F4F4 0%, #D3D3D3 70%);
+  border-radius: 50%;
+  box-shadow: 0 0 40px rgba(244, 244, 244, 0.6);
+  opacity: 0;
+  transition: opacity 8s ease-in-out;
+}
+
+.moon::before {
+  content: '';
+  position: absolute;
+  top: 15px;
+  left: 10px;
+  width: 12px;
+  height: 12px;
+  background: rgba(169, 169, 169, 0.3);
+  border-radius: 50%;
+}
+
+.moon::after {
+  content: '';
+  position: absolute;
+  bottom: 20px;
+  right: 15px;
+  width: 8px;
+  height: 8px;
+  background: rgba(169, 169, 169, 0.3);
+  border-radius: 50%;
+}
+
+.stars {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  transition: opacity 8s ease-in-out;
+}
+
+.stars::before,
+.stars::after {
+  content: '✦';
+  position: absolute;
+  color: rgba(255, 255, 255, 0.8);
+  animation: twinkle 3s ease-in-out infinite;
+}
+
+.stars::before {
+  top: 15%;
+  left: 20%;
+  font-size: 12px;
+}
+
+.stars::after {
+  top: 25%;
+  right: 30%;
+  font-size: 10px;
+  animation-delay: 1.5s;
+}
+
+@keyframes twinkle {
+  0%, 100% { opacity: 0.3; }
+  50% { opacity: 1; }
+}
+
+/* Additional cloud */
+.cloud-4 {
+  width: 100px;
+  height: 40px;
+  top: 90px;
+  left: -180px;
+  animation-delay: -30s;
+}
+
+/* Weather Effects */
+.weather-effects {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  z-index: 6;
+  pointer-events: none;
+}
+
+.rain-container {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  transition: opacity 6s ease-in-out;
+}
+
+.rain-drop {
+  position: absolute;
+  width: 2px;
+  height: 20px;
+  background: linear-gradient(to bottom, transparent, rgba(174, 194, 224, 0.5));
+  animation: rainFall 1s linear infinite;
+}
+
+@keyframes rainFall {
+  0% {
+    transform: translateY(-100px);
+    opacity: 0;
+  }
+  10% {
+    opacity: 0.5;
+  }
+  90% {
+    opacity: 0.3;
+  }
+  100% {
+    transform: translateY(100vh);
+    opacity: 0;
+  }
+}
+
+/* Grass Layer */
+.grass-layer {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 30px;
+  overflow: hidden;
+}
+
+.grass-blade {
+  position: absolute;
+  bottom: 0;
+  width: 3px;
+  height: 20px;
+  background: linear-gradient(to top, #4A5F28, #6B8E23);
+  transform-origin: bottom center;
+  animation: grassSway 3s ease-in-out infinite;
+}
+
+@keyframes grassSway {
+  0%, 100% { transform: rotate(-2deg); }
+  50% { transform: rotate(2deg); }
+}
+
+/* Tree Layers */
+.tree-layer-mid {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.tree-layer-front {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  bottom: 0;
+  pointer-events: none;
+}
+
+.tree {
+  position: absolute;
+  bottom: 0;
+}
+
+.tree-trunk {
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 8px;
+  background: linear-gradient(to right, #4A3428, #6B4A3A, #4A3428);
+  border-radius: 2px;
+}
+
+.tree-foliage {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 0;
+  height: 0;
+  border-style: solid;
+}
+
+/* Small tree style */
+.tree.small .tree-trunk {
+  width: 6px;
+  height: 25px;
+}
+
+.tree.small .tree-foliage {
+  bottom: 20px;
+  border-width: 0 15px 25px 15px;
+  border-color: transparent transparent #4A5F28 transparent;
+}
+
+.tree.small .tree-foliage::before {
+  content: '';
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: 10px;
+  width: 0;
+  height: 0;
+  border-style: solid;
+  border-width: 0 12px 20px 12px;
+  border-color: transparent transparent #556B2F transparent;
+}
+
+.tree.small .tree-foliage::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: 18px;
+  width: 0;
+  height: 0;
+  border-style: solid;
+  border-width: 0 10px 18px 10px;
+  border-color: transparent transparent #6B8E23 transparent;
+}
+
+/* Medium tree style */
+.tree.medium .tree-trunk {
+  width: 10px;
+  height: 40px;
+}
+
+.tree.medium .tree-foliage {
+  bottom: 35px;
+  border-width: 0 20px 35px 20px;
+  border-color: transparent transparent #556B2F transparent;
+}
+
+.tree.medium .tree-foliage::before {
+  content: '';
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: 15px;
+  width: 0;
+  height: 0;
+  border-style: solid;
+  border-width: 0 18px 30px 18px;
+  border-color: transparent transparent #6B8E23 transparent;
+}
+
+.tree.medium .tree-foliage::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: 25px;
+  width: 0;
+  height: 0;
+  border-style: solid;
+  border-width: 0 15px 25px 15px;
+  border-color: transparent transparent #7BA428 transparent;
+}
+
+/* Large tree style */
+.tree.large .tree-trunk {
+  width: 12px;
+  height: 50px;
+}
+
+.tree.large .tree-foliage {
+  bottom: 45px;
+  border-width: 0 25px 45px 25px;
+  border-color: transparent transparent #4A5F28 transparent;
+}
+
+.tree.large .tree-foliage::before {
+  content: '';
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: 18px;
+  width: 0;
+  height: 0;
+  border-style: solid;
+  border-width: 0 22px 38px 22px;
+  border-color: transparent transparent #556B2F transparent;
+}
+
+.tree.large .tree-foliage::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: 30px;
+  width: 0;
+  height: 0;
+  border-style: solid;
+  border-width: 0 18px 30px 18px;
+  border-color: transparent transparent #6B8E23 transparent;
+}
+
+/* Distant tree style (on hills) */
+.tree.distant .tree-trunk {
+  width: 5px;
+  height: 20px;
+  opacity: 0.8;
+}
+
+.tree.distant .tree-foliage {
+  bottom: 18px;
+  border-width: 0 12px 20px 12px;
+  border-color: transparent transparent #556B2F transparent;
+  opacity: 0.8;
+}
+
+.tree.distant .tree-foliage::before {
+  content: '';
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: 8px;
+  width: 0;
+  height: 0;
+  border-style: solid;
+  border-width: 0 10px 15px 10px;
+  border-color: transparent transparent #6B8E23 transparent;
+}
+
+/* Tree sway animation */
+.tree {
+  animation: treeSway 4s ease-in-out infinite;
+}
+
+@keyframes treeSway {
+  0%, 100% { transform: rotate(0deg); }
+  25% { transform: rotate(0.5deg); }
+  75% { transform: rotate(-0.5deg); }
+}
+
+.tree:nth-child(2n) {
+  animation-delay: -1s;
+}
+
+.tree:nth-child(3n) {
+  animation-delay: -2s;
+}
+
+/* Night mode trees */
+.night-mode .tree-foliage,
+.night-mode .tree-foliage::before,
+.night-mode .tree-foliage::after {
+  filter: brightness(0.6);
+  transition: filter 10s ease-in-out;
+}
+
+/* Day/Night Classes */
+.night-mode .sky-layer {
+  background: linear-gradient(180deg, #0B1026 0%, #1A1A3E 50%, #2C3E50 100%);
+  transition: background 10s ease-in-out;
+}
+
+.night-mode .sun {
+  opacity: 0;
+  transition: opacity 8s ease-in-out;
+}
+
+.night-mode .moon {
+  opacity: 1;
+  transition: opacity 8s ease-in-out;
+}
+
+.night-mode .stars {
+  opacity: 1;
+  transition: opacity 8s ease-in-out;
+}
+
+.night-mode .cloud {
+  background: rgba(100, 100, 120, 0.4);
+  transition: background 8s ease-in-out;
+}
+
+.night-mode .cloud::before,
+.night-mode .cloud::after {
+  background: rgba(100, 100, 120, 0.4);
+  transition: background 8s ease-in-out;
+}
+
+.night-mode .hills-distant {
+  background: 
+    linear-gradient(135deg, transparent 0%, rgba(58, 74, 47, 0.3) 20%, transparent 40%),
+    linear-gradient(-135deg, transparent 0%, rgba(44, 58, 34, 0.3) 20%, transparent 40%),
+    linear-gradient(to bottom, 
+      transparent 0%, 
+      #4A5F2F 30%,
+      #3A4A2F 40%, 
+      #324028 60%,
+      #2C3A22 80%,
+      #1F2A18 100%
+    );
+  transition: background 10s ease-in-out;
+  filter: brightness(0.8);
+}
+
+.night-mode .hills-mid {
+  background: 
+    radial-gradient(ellipse at 20% 40%, rgba(58, 74, 47, 0.3) 0%, transparent 50%),
+    radial-gradient(ellipse at 60% 30%, rgba(44, 58, 34, 0.2) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 50%, rgba(32, 42, 24, 0.2) 0%, transparent 50%),
+    linear-gradient(to bottom, 
+      transparent 0%, 
+      #3A4A2F 40%,
+      #2C3A22 50%, 
+      #283420 70%,
+      #1F2A18 90%,
+      #182010 100%
+    );
+  transition: background 10s ease-in-out;
+}
+
+.night-mode .ground-layer {
+  background: linear-gradient(180deg, #4A3A2A 0%, #3A2A1A 50%, #2A1A0A 100%);
+  transition: background 10s ease-in-out;
+}
+
+/* Rainy Mode */
+.rainy-mode .rain-container {
+  opacity: 1;
+  transition: opacity 6s ease-in-out;
+}
+
+.rainy-mode .cloud {
+  background: rgba(120, 120, 130, 0.8);
+  transition: background 8s ease-in-out;
+}
+
+.rainy-mode .cloud::before,
+.rainy-mode .cloud::after {
+  background: rgba(120, 120, 130, 0.8);
+  transition: background 8s ease-in-out;
+}
+
+.rainy-mode .sky-layer {
+  background: linear-gradient(180deg, #6B7A8F 0%, #8B9AAF 50%, #A4B3C8 100%);
+  transition: background 8s ease-in-out;
 }
 
 /* Foreground */
@@ -1517,17 +2000,24 @@ body {
    ======================================== */
 
 #workshop-scene {
-  background: linear-gradient(135deg, #3C2A1E 0%, #2C1810 50%, #1a1410 100%);
+  background: linear-gradient(180deg, #87CEEB 0%, #B0D4E3 40%, #D4C5A9 70%, #8B7355 100%);
 }
 
 .workshop-bg {
   position: absolute;
   width: 100%;
   height: 100%;
-  background: radial-gradient(ellipse at 30% 60%, rgba(80, 60, 40, 0.4) 0%, transparent 50%);
+  background: 
+    /* Ground/grass layer at bottom */
+    linear-gradient(to top, 
+      #5a7c4a 0%,
+      #6b8c5b 15%,
+      rgba(107, 140, 91, 0.8) 30%,
+      transparent 50%
+    );
 }
 
-/* Fire Pit */
+/* Campfire */
 .fire-pit {
   position: absolute;
   bottom: 20%;
@@ -1535,6 +2025,44 @@ body {
   width: 150px;
   height: 150px;
   z-index: 5;
+}
+
+.fire-pit::before {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 180px;
+  height: 25px;
+  background: 
+    /* Stones around campfire */
+    radial-gradient(ellipse at 20% 50%, #5a5a5a 0%, #4a4a4a 40%, transparent 45%),
+    radial-gradient(ellipse at 40% 50%, #666666 0%, #555555 40%, transparent 45%),
+    radial-gradient(ellipse at 60% 50%, #5c5c5c 0%, #4c4c4c 40%, transparent 45%),
+    radial-gradient(ellipse at 80% 50%, #636363 0%, #535353 40%, transparent 45%),
+    radial-gradient(ellipse at 30% 80%, #585858 0%, #484848 35%, transparent 40%),
+    radial-gradient(ellipse at 70% 80%, #606060 0%, #505050 35%, transparent 40%),
+    /* Ground shadow */
+    radial-gradient(ellipse at 50% 50%, rgba(0, 0, 0, 0.4) 0%, transparent 70%);
+  border-radius: 50%;
+  z-index: -1;
+}
+
+.fire-pit::after {
+  content: '';
+  position: absolute;
+  bottom: 15px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 100px;
+  height: 40px;
+  background: 
+    /* Wood logs */
+    linear-gradient(95deg, transparent 0%, transparent 20%, #4a3426 20%, #5c4433 30%, #4a3426 40%, transparent 40%, transparent 60%, #5c4433 60%, #6d5544 70%, #5c4433 80%, transparent 80%),
+    linear-gradient(85deg, transparent 0%, transparent 15%, #563d2e 15%, #6d5544 25%, #563d2e 35%, transparent 35%, transparent 55%, #4a3426 55%, #5c4433 65%, #4a3426 75%, transparent 75%);
+  border-radius: 5px;
+  z-index: -1;
 }
 
 .flames {
@@ -1545,7 +2073,7 @@ body {
 
 .flame {
   position: absolute;
-  bottom: 0;
+  bottom: 20px;
   width: 40px;
   height: 80px;
   background: linear-gradient(to top, var(--fire-orange) 0%, var(--fire-yellow) 50%, transparent 100%);
@@ -1792,15 +2320,67 @@ body {
    ======================================== */
 
 #cave-scene {
-  background: var(--cave-dark);
+  background: 
+    /* Rock formations - various grey stones */
+    radial-gradient(ellipse at 12% 15%, rgba(85, 82, 78, 0.4) 0%, transparent 8%),
+    radial-gradient(ellipse at 25% 22%, rgba(65, 63, 60, 0.45) 0%, transparent 10%),
+    radial-gradient(ellipse at 38% 18%, rgba(75, 72, 68, 0.35) 0%, transparent 9%),
+    radial-gradient(ellipse at 52% 25%, rgba(70, 68, 65, 0.4) 0%, transparent 11%),
+    radial-gradient(ellipse at 68% 20%, rgba(80, 77, 73, 0.38) 0%, transparent 8.5%),
+    radial-gradient(ellipse at 82% 17%, rgba(60, 58, 55, 0.42) 0%, transparent 9.5%),
+    radial-gradient(ellipse at 15% 45%, rgba(72, 70, 67, 0.36) 0%, transparent 12%),
+    radial-gradient(ellipse at 30% 52%, rgba(68, 65, 62, 0.4) 0%, transparent 10%),
+    radial-gradient(ellipse at 45% 48%, rgba(78, 75, 71, 0.35) 0%, transparent 11%),
+    radial-gradient(ellipse at 60% 55%, rgba(63, 61, 58, 0.43) 0%, transparent 9%),
+    radial-gradient(ellipse at 75% 50%, rgba(74, 71, 68, 0.37) 0%, transparent 10.5%),
+    radial-gradient(ellipse at 88% 48%, rgba(82, 79, 75, 0.39) 0%, transparent 8%),
+    radial-gradient(ellipse at 10% 75%, rgba(67, 65, 62, 0.41) 0%, transparent 11%),
+    radial-gradient(ellipse at 28% 78%, rgba(76, 73, 70, 0.36) 0%, transparent 9.5%),
+    radial-gradient(ellipse at 42% 82%, rgba(71, 68, 65, 0.38) 0%, transparent 10%),
+    radial-gradient(ellipse at 58% 77%, rgba(64, 62, 59, 0.44) 0%, transparent 12%),
+    radial-gradient(ellipse at 72% 85%, rgba(79, 76, 72, 0.34) 0%, transparent 9%),
+    radial-gradient(ellipse at 90% 80%, rgba(69, 67, 64, 0.4) 0%, transparent 10.5%),
+    /* Darker crevices between rocks */
+    radial-gradient(ellipse at 20% 30%, rgba(30, 28, 26, 0.6) 0%, transparent 5%),
+    radial-gradient(ellipse at 48% 38%, rgba(28, 26, 24, 0.65) 0%, transparent 4.5%),
+    radial-gradient(ellipse at 65% 65%, rgba(32, 30, 28, 0.55) 0%, transparent 5.5%),
+    radial-gradient(ellipse at 35% 70%, rgba(25, 23, 21, 0.7) 0%, transparent 4%),
+    /* Stone texture variations */
+    radial-gradient(ellipse at 50% 50%, rgba(55, 53, 50, 0.3) 0%, transparent 30%),
+    radial-gradient(ellipse at 25% 60%, rgba(60, 58, 55, 0.25) 0%, transparent 25%),
+    radial-gradient(ellipse at 75% 40%, rgba(50, 48, 46, 0.28) 0%, transparent 28%),
+    /* Base grey cave gradient */
+    radial-gradient(ellipse at 50% 30%, #4a4742 0%, #3e3b37 20%, #35322e 40%, #2c2925 60%, #24211e 80%, #1c1916 100%);
+  position: relative;
+}
+
+#cave-scene::before {
+  content: '';
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  background: 
+    radial-gradient(ellipse at 20% 20%, rgba(80, 64, 48, 0.1) 0%, transparent 30%),
+    radial-gradient(ellipse at 80% 30%, rgba(70, 56, 42, 0.1) 0%, transparent 25%),
+    radial-gradient(ellipse at 40% 70%, rgba(60, 48, 36, 0.1) 0%, transparent 35%);
+  pointer-events: none;
+  z-index: 0;
 }
 
 .cave-darkness {
   position: absolute;
   width: 100%;
   height: 100%;
-  background: radial-gradient(ellipse at 10% 90%, rgba(10, 8, 6, 0.8) 0%, #0a0806 50%);
+  background: 
+    radial-gradient(ellipse at 10% 90%, rgba(255, 140, 0, 0.15) 0%, transparent 40%),
+    radial-gradient(ellipse at 10% 90%, rgba(10, 8, 6, 0.6) 0%, rgba(10, 8, 6, 0.95) 50%);
   z-index: 1;
+  animation: ambientFlicker 4s ease-in-out infinite;
+}
+
+@keyframes ambientFlicker {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.95; }
 }
 
 /* Torch Light Effect */
@@ -1808,8 +2388,8 @@ body {
   position: absolute;
   bottom: 80px;
   left: 80px;
-  width: 400px;
-  height: 400px;
+  width: 600px;
+  height: 600px;
   z-index: 2;
   pointer-events: none;
 }
@@ -1818,19 +2398,33 @@ body {
   position: absolute;
   width: 100%;
   height: 100%;
-  background: radial-gradient(circle, 
-    rgba(255, 140, 0, 0.4) 0%,
-    rgba(255, 140, 0, 0.2) 30%,
-    rgba(255, 100, 0, 0.1) 60%,
-    transparent 100%
-  );
+  background: 
+    radial-gradient(ellipse at 30% 30%, 
+      rgba(255, 180, 60, 0.5) 0%,
+      rgba(255, 140, 40, 0.35) 15%,
+      rgba(255, 120, 20, 0.25) 30%,
+      rgba(255, 100, 0, 0.15) 45%,
+      rgba(200, 80, 0, 0.08) 60%,
+      transparent 100%
+    );
   border-radius: 50%;
-  animation: torchFlicker 0.3s ease-in-out infinite;
+  animation: torchFlicker 2s ease-in-out infinite, torchMove 5s ease-in-out infinite;
+  filter: blur(20px);
 }
 
 @keyframes torchFlicker {
-  0%, 100% { opacity: 0.8; transform: scale(1); }
-  50% { opacity: 1; transform: scale(1.05); }
+  0% { opacity: 0.85; transform: scale(1) translateY(0); }
+  25% { opacity: 0.95; transform: scale(1.08) translateY(-5px); }
+  50% { opacity: 0.9; transform: scale(1.05) translateY(-2px); }
+  75% { opacity: 0.88; transform: scale(1.03) translateY(-8px); }
+  100% { opacity: 0.85; transform: scale(1) translateY(0); }
+}
+
+@keyframes torchMove {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  25% { transform: translate(10px, -15px) scale(1.05); }
+  50% { transform: translate(-8px, -10px) scale(0.98); }
+  75% { transform: translate(12px, -20px) scale(1.03); }
 }
 
 .torch-flame {
@@ -1839,6 +2433,91 @@ body {
   left: 20px;
   width: 60px;
   height: 80px;
+}
+
+/* Additional warm glow overlay */
+#cave-scene::after {
+  content: '';
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  background: 
+    radial-gradient(ellipse at 10% 85%, rgba(255, 140, 0, 0.08) 0%, transparent 35%),
+    radial-gradient(ellipse at 8% 88%, rgba(255, 100, 0, 0.05) 0%, transparent 25%);
+  pointer-events: none;
+  z-index: 1;
+  animation: warmGlow 3s ease-in-out infinite;
+}
+
+@keyframes warmGlow {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+
+/* Cave Wall Details */
+.cave-wall-details {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+  pointer-events: none;
+}
+
+.rock-formation {
+  position: absolute;
+  border-radius: 50%;
+  background: radial-gradient(ellipse at 30% 30%, #3a302a, #2a2018);
+  box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.5);
+}
+
+.rock-1 {
+  width: 180px;
+  height: 150px;
+  top: 15%;
+  right: 5%;
+  border-radius: 40% 60% 50% 50%;
+  opacity: 0.4;
+}
+
+.rock-2 {
+  width: 220px;
+  height: 180px;
+  bottom: 10%;
+  right: 15%;
+  border-radius: 50% 40% 60% 50%;
+  opacity: 0.3;
+}
+
+.rock-3 {
+  width: 160px;
+  height: 140px;
+  top: 40%;
+  left: 3%;
+  border-radius: 60% 50% 50% 40%;
+  opacity: 0.35;
+}
+
+.stalactite {
+  position: absolute;
+  top: 0;
+  width: 0;
+  height: 0;
+  border-style: solid;
+  opacity: 0.3;
+}
+
+.stalactite-1 {
+  left: 20%;
+  border-width: 0 15px 100px 15px;
+  border-color: transparent transparent #3a302a transparent;
+  filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.6));
+}
+
+.stalactite-2 {
+  right: 25%;
+  border-width: 0 12px 80px 12px;
+  border-color: transparent transparent #2a2018 transparent;
+  filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.6));
 }
 
 .cave-wall-texture {
@@ -1873,11 +2552,201 @@ body {
 }
 
 #painting-canvas {
-  border: 4px solid var(--stone-gray);
+  border: none;
   border-radius: 8px;
-  background: linear-gradient(135deg, #3C3020 0%, #2C2418 100%);
+  background: 
+    /* Granular texture - lots of tiny spots */
+    radial-gradient(circle at 8% 12%, rgba(55, 48, 40, 0.3) 0%, transparent 0.8%),
+    radial-gradient(circle at 23% 8%, rgba(50, 43, 36, 0.25) 0%, transparent 0.6%),
+    radial-gradient(circle at 15% 25%, rgba(52, 45, 38, 0.28) 0%, transparent 0.7%),
+    radial-gradient(circle at 34% 18%, rgba(48, 42, 35, 0.26) 0%, transparent 0.65%),
+    radial-gradient(circle at 45% 9%, rgba(54, 47, 39, 0.29) 0%, transparent 0.75%),
+    radial-gradient(circle at 52% 22%, rgba(51, 44, 37, 0.27) 0%, transparent 0.7%),
+    radial-gradient(circle at 67% 14%, rgba(49, 43, 36, 0.28) 0%, transparent 0.65%),
+    radial-gradient(circle at 78% 19%, rgba(53, 46, 38, 0.3) 0%, transparent 0.8%),
+    radial-gradient(circle at 85% 11%, rgba(50, 44, 37, 0.26) 0%, transparent 0.7%),
+    radial-gradient(circle at 92% 24%, rgba(52, 45, 37, 0.28) 0%, transparent 0.75%),
+    radial-gradient(circle at 12% 38%, rgba(51, 45, 38, 0.27) 0%, transparent 0.7%),
+    radial-gradient(circle at 28% 42%, rgba(49, 42, 35, 0.29) 0%, transparent 0.8%),
+    radial-gradient(circle at 38% 48%, rgba(53, 46, 39, 0.26) 0%, transparent 0.65%),
+    radial-gradient(circle at 47% 39%, rgba(50, 43, 36, 0.28) 0%, transparent 0.7%),
+    radial-gradient(circle at 59% 45%, rgba(52, 45, 38, 0.27) 0%, transparent 0.75%),
+    radial-gradient(circle at 71% 41%, rgba(51, 44, 37, 0.3) 0%, transparent 0.8%),
+    radial-gradient(circle at 83% 47%, rgba(49, 43, 36, 0.26) 0%, transparent 0.7%),
+    radial-gradient(circle at 91% 38%, rgba(54, 47, 39, 0.28) 0%, transparent 0.75%),
+    radial-gradient(circle at 9% 58%, rgba(50, 44, 37, 0.27) 0%, transparent 0.7%),
+    radial-gradient(circle at 19% 64%, rgba(52, 45, 38, 0.29) 0%, transparent 0.8%),
+    radial-gradient(circle at 31% 61%, rgba(48, 42, 35, 0.26) 0%, transparent 0.65%),
+    radial-gradient(circle at 43% 68%, rgba(53, 46, 38, 0.28) 0%, transparent 0.75%),
+    radial-gradient(circle at 56% 62%, rgba(51, 44, 37, 0.27) 0%, transparent 0.7%),
+    radial-gradient(circle at 68% 66%, rgba(49, 43, 36, 0.3) 0%, transparent 0.8%),
+    radial-gradient(circle at 77% 59%, rgba(52, 45, 38, 0.26) 0%, transparent 0.7%),
+    radial-gradient(circle at 88% 65%, rgba(50, 44, 37, 0.28) 0%, transparent 0.75%),
+    radial-gradient(circle at 14% 78%, rgba(51, 45, 38, 0.27) 0%, transparent 0.7%),
+    radial-gradient(circle at 26% 82%, rgba(53, 46, 39, 0.29) 0%, transparent 0.8%),
+    radial-gradient(circle at 37% 76%, rgba(49, 42, 35, 0.26) 0%, transparent 0.65%),
+    radial-gradient(circle at 49% 84%, rgba(52, 45, 37, 0.28) 0%, transparent 0.75%),
+    radial-gradient(circle at 61% 79%, rgba(50, 43, 36, 0.27) 0%, transparent 0.7%),
+    radial-gradient(circle at 73% 85%, rgba(51, 44, 38, 0.3) 0%, transparent 0.8%),
+    radial-gradient(circle at 84% 77%, rgba(48, 43, 36, 0.26) 0%, transparent 0.7%),
+    radial-gradient(circle at 95% 81%, rgba(54, 47, 39, 0.28) 0%, transparent 0.75%),
+    /* Larger mineral deposits and color variations */
+    radial-gradient(ellipse at 18% 15%, rgba(65, 58, 48, 0.25) 0%, transparent 8%),
+    radial-gradient(ellipse at 42% 28%, rgba(58, 52, 44, 0.22) 0%, transparent 6%),
+    radial-gradient(ellipse at 65% 35%, rgba(62, 55, 46, 0.24) 0%, transparent 7%),
+    radial-gradient(ellipse at 82% 22%, rgba(60, 54, 45, 0.23) 0%, transparent 6.5%),
+    radial-gradient(ellipse at 25% 58%, rgba(63, 56, 47, 0.26) 0%, transparent 7.5%),
+    radial-gradient(ellipse at 54% 64%, rgba(59, 53, 44, 0.23) 0%, transparent 6%),
+    radial-gradient(ellipse at 78% 72%, rgba(61, 55, 46, 0.24) 0%, transparent 7%),
+    radial-gradient(ellipse at 35% 88%, rgba(64, 57, 48, 0.25) 0%, transparent 8%),
+    /* Subtle noise texture */
+    repeating-linear-gradient(
+      0deg,
+      rgba(40, 35, 28, 0.02) 0px,
+      rgba(38, 33, 27, 0.02) 1px,
+      rgba(42, 36, 29, 0.02) 2px
+    ),
+    /* Base limestone color */
+    linear-gradient(135deg, 
+      #3d3529 0%, 
+      #3a3226 15%,
+      #352e23 30%, 
+      #322b21 45%,
+      #2f281f 60%,
+      #2c251d 75%,
+      #29221b 90%,
+      #261f18 100%
+    );
   cursor: crosshair;
-  box-shadow: var(--shadow-deep);
+  box-shadow: 
+    inset 0 0 100px rgba(0, 0, 0, 0.95),
+    inset 8px 8px 40px rgba(0, 0, 0, 0.85),
+    inset -8px -8px 40px rgba(0, 0, 0, 0.7),
+    inset 0 0 60px rgba(0, 0, 0, 0.8),
+    0 10px 35px rgba(0, 0, 0, 0.95);
+  position: relative;
+  filter: contrast(1.15) brightness(0.85);
+}
+
+#painting-canvas::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: 
+    radial-gradient(ellipse 400px 350px at 20% 90%, 
+      rgba(255, 180, 60, 0.5) 0%, 
+      rgba(255, 140, 40, 0.35) 15%,
+      rgba(255, 120, 30, 0.25) 25%,
+      rgba(200, 100, 30, 0.15) 35%,
+      rgba(150, 80, 20, 0.08) 45%,
+      transparent 60%
+    ),
+    radial-gradient(ellipse 300px 280px at 85% 85%, 
+      rgba(255, 160, 50, 0.4) 0%, 
+      rgba(255, 130, 35, 0.25) 20%,
+      rgba(200, 100, 25, 0.12) 35%,
+      transparent 50%
+    );
+  pointer-events: none;
+  border-radius: 8px;
+  animation: canvasLightDance 3.5s ease-in-out infinite;
+  mix-blend-mode: screen;
+}
+
+#painting-canvas::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: 
+    radial-gradient(ellipse 350px 320px at 15% 92%, 
+      rgba(255, 140, 40, 0.35) 0%, 
+      rgba(200, 110, 30, 0.2) 20%,
+      rgba(150, 90, 25, 0.1) 35%,
+      transparent 50%
+    ),
+    radial-gradient(ellipse 280px 250px at 90% 88%, 
+      rgba(255, 150, 45, 0.3) 0%, 
+      rgba(180, 100, 30, 0.15) 25%,
+      transparent 45%
+    );
+  pointer-events: none;
+  border-radius: 8px;
+  animation: canvasLightFlicker 2.5s ease-in-out infinite;
+  mix-blend-mode: screen;
+}
+
+@keyframes canvasLightDance {
+  0% { 
+    opacity: 0.85;
+    transform: translate(0, 0) scale(1);
+  }
+  15% { 
+    opacity: 1;
+    transform: translate(-10px, 4px) scale(1.08);
+  }
+  30% { 
+    opacity: 0.7;
+    transform: translate(5px, -6px) scale(0.95);
+  }
+  45% { 
+    opacity: 0.95;
+    transform: translate(-7px, 8px) scale(1.05);
+  }
+  60% { 
+    opacity: 0.75;
+    transform: translate(8px, -4px) scale(0.98);
+  }
+  75% { 
+    opacity: 0.9;
+    transform: translate(-6px, 10px) scale(1.03);
+  }
+  90% { 
+    opacity: 0.8;
+    transform: translate(4px, 5px) scale(1.01);
+  }
+  100% { 
+    opacity: 0.85;
+    transform: translate(0, 0) scale(1);
+  }
+}
+
+@keyframes canvasLightFlicker {
+  0% { 
+    opacity: 0.7;
+  }
+  10% { 
+    opacity: 0.9;
+  }
+  20% { 
+    opacity: 0.6;
+  }
+  35% { 
+    opacity: 1;
+  }
+  45% { 
+    opacity: 0.55;
+  }
+  55% { 
+    opacity: 0.85;
+  }
+  70% { 
+    opacity: 0.65;
+  }
+  80% { 
+    opacity: 0.95;
+  }
+  90% { 
+    opacity: 0.75;
+  }
+  100% { 
+    opacity: 0.7;
+  }
 }
 
 /* Painting Toolbar */

@@ -89,14 +89,24 @@
             <div id="landscape-scene" class="scene active">
                 <div class="parallax-layer sky-layer">
                     <div class="sun"></div>
+                    <div class="moon"></div>
+                    <div class="stars"></div>
                     <div class="cloud cloud-1"></div>
                     <div class="cloud cloud-2"></div>
                     <div class="cloud cloud-3"></div>
+                    <div class="cloud cloud-4"></div>
+                </div>
+                <div class="weather-effects">
+                    <div class="rain-container"></div>
                 </div>
                 <div class="parallax-layer hills-distant"></div>
-                <div class="parallax-layer hills-mid"></div>
+                <div class="parallax-layer hills-mid">
+                    <div class="tree-layer-mid"></div>
+                </div>
                 <div class="parallax-layer ground-layer">
                     <div class="river"></div>
+                    <div class="grass-layer"></div>
+                    <div class="tree-layer-front"></div>
                 </div>
                 <div class="parallax-layer foreground-layer">
                     <div class="gathering-spots"></div>
@@ -135,6 +145,13 @@
 
             <!-- Cave Scene -->
             <div id="cave-scene" class="scene">
+                <div class="cave-wall-details">
+                    <div class="rock-formation rock-1"></div>
+                    <div class="rock-formation rock-2"></div>
+                    <div class="rock-formation rock-3"></div>
+                    <div class="stalactite stalactite-1"></div>
+                    <div class="stalactite stalactite-2"></div>
+                </div>
                 <div class="cave-darkness"></div>
                 <div class="torch-light" id="torch-light">
                     <div class="light-glow"></div>
@@ -144,7 +161,6 @@
                         <div class="flame flame-3"></div>
                     </div>
                 </div>
-                <div class="cave-wall-texture"></div>
                 <div class="painting-area">
                     <canvas id="painting-canvas" width="1200" height="700"></canvas>
                 </div>
