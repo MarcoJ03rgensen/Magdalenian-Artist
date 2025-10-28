@@ -148,7 +148,7 @@ const miniGames = {
   redOchre: {
     name: 'The Riverbank Journey',
     type: 'navigation-enhanced',
-    duration: 0, // No time limit - platformer mini-game
+    duration: 50,
     badge: 'ochreExpert',
     fact: 'Archaeological evidence from Lascaux shows ochre procurement from sites 15+ km away. Iron-rich hematite (Fe₂O₃) from riverbanks produces superior red-brown pigments. Quality varies by iron content: 20-40% iron = deep red, 10-20% = rust color.',
     rewardMultiplier: 3,
@@ -2328,21 +2328,32 @@ window.addEventListener('DOMContentLoaded', () => {
 // ========================================
 
 function setupEnhancedNavigationGame(container, controls, instructions, gameData) {
-  // Disable the global timer for this platformer game (no time limit)
-  clearInterval(miniGameState.timerInterval);
-  miniGameState.timeRemaining = 999; // Set high value to prevent timer display issues
-  
   instructions.innerHTML = `
-    <strong>🏞️ The Ochre Expedition</strong><br>
-    Navigate the terrain to collect ochre. Use <kbd>← →</kbd> to move, <kbd>Space</kbd> to jump!
+    <strong>🏞️ The Riverbank Journey</strong><br>
+    Explore the ochre-rich landscape. Walk into deposits to collect them.<br>
+    <span style="color: #FFD700;">🔴 Red ochre = Excellent quality</span> | 
+    <span style="color: #CD853F;">� Brown ochre = Good quality</span>
   `;
   
   // Create beautiful layered landscape
   container.innerHTML = '';
   container.style.background = 'linear-gradient(180deg, #87CEEB 0%, #D4A574 70%, #8B7355 100%)';
   
-  // Remove parallax layers - they're blocking the view
-  // Sky, mountains, and ground will be handled by stage backgrounds instead
+  // Sky with clouds
+  const sky = document.createElement('div');
+  sky.className = 'minigame-parallax minigame-sky';
+  container.appendChild(sky);
+  
+  // Distant mountains
+  const mountains = document.createElement('div');
+  mountains.className = 'minigame-parallax minigame-mountains';
+  container.appendChild(mountains);
+  
+  // Ground/riverbank
+  const ground = document.createElement('div');
+  ground.className = 'minigame-parallax minigame-ground';
+  ground.style.background = 'linear-gradient(180deg, #A0825A 0%, #8B7355 60%, #6B5842 100%)';
+  container.appendChild(ground);
   
   // Stamina bar (simplified UI)
   const staminaContainer = document.createElement('div');
@@ -2350,14 +2361,14 @@ function setupEnhancedNavigationGame(container, controls, instructions, gameData
   staminaContainer.innerHTML = `
     <div class="stat-bar">
       <div class="stat-bar-label">Progress</div>
-      <div style="background: rgba(0,0,0,0.5); border-radius: 4px; padding: 8px; color: white; font-weight: bold; text-align: center;" id="collected-count">0 / 20 deposits (Stage 1/5)</div>
+      <div style="background: rgba(0,0,0,0.5); border-radius: 4px; padding: 8px; color: white; font-weight: bold; text-align: center;" id="collected-count">0 / 12 deposits</div>
     </div>
   `;
   container.appendChild(staminaContainer);
   
   controls.innerHTML = `
     <div class="progress-bar" style="width: 300px;">
-      <div class="progress-fill" id="minigame-timer" style="display: none;">No Time Limit</div>
+      <div class="progress-fill" id="minigame-timer">Time: ${miniGameState.timeRemaining}s</div>
     </div>
   `;
   
@@ -2369,84 +2380,28 @@ function setupEnhancedNavigationGame(container, controls, instructions, gameData
   character.style.zIndex = '25';
   container.appendChild(character);
 
-  // 5-STAGE PLATFORMER WITH VARIED TERRAIN
+  // Remove complicated hazard systems - just exploration
   
-  // Multi-stage deposit system with platforms and hazards
+  // Multi-stage deposit system (collect by walking into deposits)
   const deposits = [];
-  const rivers = [];
-  const platforms = [];
-  
   const stages = [
     { 
-      name: 'Riverbank Crossing', 
-      deposits: 3,
-      theme: { sky: '#87CEEB', ground: '#D4A574', accent: '#4682B4' },
-      platforms: [
-        { x: 0, y: 50, width: 250, height: 60, color: 'linear-gradient(180deg, #C19A6B 0%, #8B7355 100%)' },
-        { x: 450, y: 50, width: 350, height: 60, color: 'linear-gradient(180deg, #C19A6B 0%, #8B7355 100%)' },
-      ],
-      rivers: [
-        { x: 250, y: 50, width: 200, height: 60 } // River gap
-      ],
+      name: 'Lower Banks', 
+      deposits: 4,
+      zone: { left: 80, width: 600, bottom: 80, height: 100 }, // Ground level
       palette: ['#CD853F','#A0714A','#8B6442']
     },
     { 
-      name: 'Forest Path', 
-      deposits: 4,
-      theme: { sky: '#87CEEB', ground: '#5C8A3D', accent: '#228B22' },
-      platforms: [
-        { x: 0, y: 50, width: 200, height: 60, color: 'linear-gradient(180deg, #6B8E23 0%, #556B2F 100%)', decoration: '🌲' },
-        { x: 250, y: 90, width: 150, height: 40, color: 'linear-gradient(180deg, #8FBC8F 0%, #6B8E23 100%)', decoration: '🌳' },
-        { x: 420, y: 130, width: 180, height: 40, color: 'linear-gradient(180deg, #90EE90 0%, #6B8E23 100%)', decoration: '🌲' },
-        { x: 620, y: 70, width: 180, height: 80, color: 'linear-gradient(180deg, #9ACD32 0%, #6B8E23 100%)', decoration: '🌿' },
-      ],
-      rivers: [],
-      palette: ['#8B4513','#CD853F','#D2691E']
-    },
-    { 
-      name: 'Rocky Cliffs', 
-      deposits: 4,
-      theme: { sky: '#B0C4DE', ground: '#A9A9A9', accent: '#778899' },
-      platforms: [
-        { x: 0, y: 50, width: 150, height: 60, color: 'linear-gradient(180deg, #A9A9A9 0%, #696969 100%)' },
-        { x: 200, y: 110, width: 120, height: 30, color: 'linear-gradient(180deg, #D3D3D3 0%, #A9A9A9 100%)', decoration: '🪨' },
-        { x: 370, y: 50, width: 100, height: 60, color: 'linear-gradient(180deg, #C0C0C0 0%, #808080 100%)' },
-        { x: 520, y: 50, width: 280, height: 60, color: 'linear-gradient(180deg, #BEBEBE 0%, #808080 100%)' },
-      ],
-      rivers: [
-        { x: 470, y: 50, width: 50, height: 60 } // Small gap
-      ],
+      name: 'Mid Terrain', 
+      deposits: 5,
+      zone: { left: 100, width: 550, bottom: 100, height: 120 }, // Mid ground
       palette: ['#8B0000','#CD5C5C','#A0522D']
     },
     { 
-      name: 'Rolling Hills', 
-      deposits: 5,
-      theme: { sky: '#87CEEB', ground: '#9ACD32', accent: '#6B8E23' },
-      platforms: [
-        { x: 0, y: 50, width: 150, height: 60, color: 'linear-gradient(180deg, #ADFF2F 0%, #7CFC00 100%)', decoration: '🌾' },
-        { x: 160, y: 90, width: 140, height: 100, color: 'linear-gradient(180deg, #9ACD32 0%, #6B8E23 100%)', decoration: '🌻' },
-        { x: 310, y: 50, width: 100, height: 60, color: 'linear-gradient(180deg, #ADFF2F 0%, #7CFC00 100%)' },
-        { x: 440, y: 110, width: 160, height: 120, color: 'linear-gradient(180deg, #7CFC00 0%, #6B8E23 100%)', decoration: '🌳' },
-        { x: 610, y: 70, width: 190, height: 80, color: 'linear-gradient(180deg, #9ACD32 0%, #6B8E23 100%)', decoration: '🌿' },
-      ],
-      rivers: [],
-      palette: ['#CD853F','#DEB887','#F4A460']
-    },
-    { 
-      name: 'Mountain Pass', 
-      deposits: 4,
-      theme: { sky: '#4682B4', ground: '#8B7355', accent: '#A0522D' },
-      platforms: [
-        { x: 0, y: 50, width: 180, height: 60, color: 'linear-gradient(180deg, #BC8F8F 0%, #8B7355 100%)' },
-        { x: 230, y: 110, width: 140, height: 30, color: 'linear-gradient(180deg, #D2B48C 0%, #A0826D 100%)', decoration: '⛰️' },
-        { x: 420, y: 50, width: 120, height: 60, color: 'linear-gradient(180deg, #C19A6B 0%, #8B7355 100%)' },
-        { x: 590, y: 50, width: 210, height: 60, color: 'linear-gradient(180deg, #D2B48C 0%, #8B7355 100%)' },
-      ],
-      rivers: [
-        { x: 180, y: 50, width: 50, height: 60 }, // Gap 1
-        { x: 540, y: 50, width: 50, height: 60 }  // Gap 2
-      ],
-      palette: ['#B8860B','#DAA520','#FFD700']
+      name: 'Upper Deposits', 
+      deposits: 3,
+      zone: { left: 150, width: 500, bottom: 140, height: 100 }, // Upper area
+      palette: ['#8B4513','#CD853F','#D2691E']
     }
   ];
 
@@ -2457,106 +2412,29 @@ function setupEnhancedNavigationGame(container, controls, instructions, gameData
   miniGameState.totalDepositsNeeded = stages.reduce((sum, s) => sum + s.deposits, 0);
 
   function clearDeposits() {
-    deposits.forEach(d => { try { d.el.remove(); } catch(e){} });
+    deposits.forEach(d => { try { d.remove(); } catch(e){} });
     deposits.length = 0;
   }
-  
-  function clearPlatforms() {
-    platforms.forEach(p => { 
-      try { 
-        p.el.remove(); 
-        // Also remove decorations
-        if (p.decorations) {
-          p.decorations.forEach(d => { try { d.remove(); } catch(e){} });
-        }
-      } catch(e){} 
-    });
-    platforms.length = 0;
-  }
-  
-  function clearRivers() {
-    rivers.forEach(r => { try { r.el.remove(); } catch(e){} });
-    rivers.length = 0;
-  }
 
-  function createDeposit(x, y, palette) {
+  function createDeposit(opts) {
     const el = document.createElement('div');
-    const qualityRoll = Math.random();
-    const quality = qualityRoll > 0.7 ? 'high' : (qualityRoll > 0.4 ? 'medium' : 'low');
-    const multiplier = quality === 'high' ? 3 : (quality === 'medium' ? 2 : 1);
-    const icon = quality === 'high' ? '🔴' : (quality === 'medium' ? '🟠' : '🟤');
-    
     el.className = `resource-deposit deposit-ochre`;
-    el.innerHTML = icon;
-    el.style.left = x + 'px';
-    el.style.bottom = y + 'px';
-    el.style.background = palette[Math.floor(Math.random()*palette.length)];
+    el.innerHTML = opts.icon || '●';
+    const zone = opts.zone;
+    el.style.left = (zone.left + Math.random() * zone.width) + 'px';
+    el.style.bottom = (zone.bottom + Math.random() * zone.height) + 'px';
+    el.style.background = opts.color || opts.palette[Math.floor(Math.random()*opts.palette.length)];
     el.style.zIndex = '20';
-    el.dataset.multiplier = multiplier;
-    el.dataset.quality = quality === 'high' ? 'Excellent' : (quality === 'medium' ? 'Good' : 'Fair');
+    el.dataset.multiplier = opts.multiplier || 1;
+    el.dataset.quality = opts.label || 'Ochre';
     el.dataset.collected = 'false';
     container.appendChild(el);
-    
-    // Pop-in animation
+    deposits.push(el);
+    // subtle pop-in
     el.style.transform = 'scale(0)';
     el.style.transition = 'transform 220ms ease, opacity 220ms ease';
     setTimeout(() => { el.style.transform = 'scale(1)'; el.style.opacity = '1'; }, 40);
-    
-    deposits.push({ el, x, y, multiplier });
     return el;
-  }
-  
-  function createPlatform(platData) {
-    const el = document.createElement('div');
-    el.style.cssText = `
-      position: absolute;
-      left: ${platData.x}px;
-      bottom: ${platData.y}px;
-      width: ${platData.width}px;
-      height: ${platData.height}px;
-      background: ${platData.color || 'linear-gradient(180deg, #A0825A 0%, #8B7355 100%)'};
-      z-index: 5;
-      border-radius: 4px 4px 0 0;
-      box-shadow: 0 3px 8px rgba(0,0,0,0.3);
-    `;
-    container.appendChild(el);
-    platforms.push({ ...platData, el });
-    
-    // Add decorations (grass, trees, rocks) on top of platforms
-    if (platData.decoration) {
-      const decorEl = document.createElement('div');
-      const isTree = platData.decoration.includes('🌲') || platData.decoration.includes('🌳');
-      decorEl.style.cssText = `
-        position: absolute;
-        left: ${platData.x + platData.width/2 - 15}px;
-        bottom: ${platData.y + platData.height}px;
-        font-size: ${isTree ? '2.5rem' : '1.5rem'};
-        z-index: 6;
-        line-height: 1;
-      `;
-      decorEl.innerHTML = platData.decoration;
-      container.appendChild(decorEl);
-      // Store decoration element for cleanup
-      if (!platData.decorations) platData.decorations = [];
-      platData.decorations.push(decorEl);
-    }
-  }
-  
-  function createRiver(riverData) {
-    const el = document.createElement('div');
-    el.style.cssText = `
-      position: absolute;
-      left: ${riverData.x}px;
-      bottom: ${riverData.y}px;
-      width: ${riverData.width}px;
-      height: ${riverData.height}px;
-      background: linear-gradient(180deg, #4682B4 0%, #1E90FF 50%, #4169E1 100%);
-      z-index: 4;
-      box-shadow: inset 0 2px 8px rgba(0,0,0,0.4);
-    `;
-    el.innerHTML = '<div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:2rem;opacity:0.6;">🌊</div>';
-    container.appendChild(el);
-    rivers.push({ ...riverData, el });
   }
 
   function enterStage(index) {
@@ -2564,84 +2442,49 @@ function setupEnhancedNavigationGame(container, controls, instructions, gameData
     miniGameState.stageDeposits = 0;
     const stage = stages[index];
     
-    // Clear old elements
-    clearDeposits();
-    clearPlatforms();
-    clearRivers();
-    
-    // Update theme
-    container.style.background = `linear-gradient(180deg, ${stage.theme.sky} 0%, ${stage.theme.ground} 100%)`;
-    
     // Update instructions
     instructions.innerHTML = `
-      <strong>🏞️ ${stage.name} (Stage ${index + 1}/5)</strong><br>
-      Jump over rivers! Falling in = Game Over. Collect ${stage.deposits} deposits.
+      <strong>🏞️ The Riverbank Journey — ${stage.name}</strong><br>
+      Walk into ochre deposits to collect them. Explore the landscape freely!
     `;
-    
-    // Create platforms
-    stage.platforms.forEach(platData => createPlatform(platData));
-    
-    // Create rivers (hazards)
-    stage.rivers.forEach(riverData => createRiver(riverData));
-    
-    // Place deposits on platforms - spread them out across different platforms
-    const usedPositions = [];
-    for (let i = 0; i < stage.deposits; i++) {
-      // Pick a random platform (favor different platforms)
-      let platIndex;
-      if (i < stage.platforms.length && stage.platforms.length >= stage.deposits) {
-        // First deposits: one per platform
-        platIndex = i;
-      } else {
-        // Extra deposits: random placement
-        platIndex = Math.floor(Math.random() * stage.platforms.length);
-      }
-      const plat = stage.platforms[platIndex];
-      
-      // Generate position with spacing to avoid overlap
-      let x, attempts = 0;
-      do {
-        x = plat.x + 60 + Math.random() * Math.max(20, plat.width - 120);
-        attempts++;
-      } while (usedPositions.some(pos => Math.abs(pos.x - x) < 80 && pos.platIndex === platIndex) && attempts < 20);
-      
-      const y = plat.y + plat.height + 10;
-      usedPositions.push({ x, platIndex });
-      createDeposit(x, y, stage.palette);
-    }
-    
-    // Reset character position - spawn on first platform
-    const firstPlat = stage.platforms[0];
-    charX = firstPlat.x + 50; // Start 50px from left edge of first platform
-    charY = firstPlat.y + firstPlat.height + 5; // Spawn just above platform surface
-    velocityX = 0;
-    velocityY = 0;
-    isGrounded = false;
-    
-    // Reset game start time to prevent instant river collision
-    gameStartTime = Date.now();
 
-    showNotification(`🏞️ ${stage.name} — Collect ${stage.deposits} deposits!`, 1800);
+    // Create deposits for this stage
+    for (let i = 0; i < stage.deposits; i++) {
+      const qualityRoll = Math.random();
+      const quality = qualityRoll > 0.7 ? 'high' : (qualityRoll > 0.4 ? 'medium' : 'low');
+      const multiplier = quality === 'high' ? 3 : (quality === 'medium' ? 2 : 1);
+      const icon = quality === 'high' ? '🔴' : (quality === 'medium' ? '🟠' : '🟤');
+      createDeposit({ 
+        type: 'ochre', 
+        icon, 
+        multiplier, 
+        label: quality === 'high' ? 'Excellent' : (quality === 'medium' ? 'Good' : 'Fair'), 
+        zone: stage.zone, 
+        palette: stage.palette 
+      });
+    }
+
+    showNotification(`🏞️ ${stage.name} — Collect ${stage.deposits} deposits`, 1800);
   }
 
-  function collectDeposit(dep) {
-    if (!dep || dep.el.dataset.collected === 'true') return;
+  function collectDeposit(el) {
+    if (!el || el.dataset.collected === 'true') return;
     
-    dep.el.dataset.collected = 'true';
-    const mult = parseInt(dep.el.dataset.multiplier) || 1;
-    const qual = dep.el.dataset.quality || 'Ochre';
+    el.dataset.collected = 'true';
+    const mult = parseInt(el.dataset.multiplier) || 1;
+    const qual = el.dataset.quality || 'Ochre';
     miniGameState.depositsCollected++;
     miniGameState.totalMultiplier += mult;
     miniGameState.stageDeposits++;
     
     // Visual collect cue
-    dep.el.classList.add('collected');
-    dep.el.style.transform = 'scale(1.3)';
-    dep.el.style.opacity = '0.3';
-    setTimeout(() => { try { dep.el.remove(); } catch(e) {} }, 300);
+    el.classList.add('collected');
+    el.style.transform = 'scale(1.3)';
+    el.style.opacity = '0.3';
+    setTimeout(() => { try { el.remove(); } catch(e) {} }, 300);
     
     document.getElementById('collected-count').textContent = 
-      `${miniGameState.depositsCollected} / ${miniGameState.totalDepositsNeeded} deposits (Stage ${miniGameState.stageIndex + 1}/5)`;
+      `${miniGameState.depositsCollected} / ${miniGameState.totalDepositsNeeded} deposits`;
     showNotification(`✓ ${qual} ochre (+${mult}x)`, 1000);
 
     // Stage progression
@@ -2649,11 +2492,11 @@ function setupEnhancedNavigationGame(container, controls, instructions, gameData
     if (miniGameState.stageDeposits >= stage.deposits) {
       // Finished this stage
       if (miniGameState.stageIndex + 1 < stages.length) {
-        showNotification(`✅ Stage ${miniGameState.stageIndex + 1} complete! Next terrain...`, 1400);
+        showNotification(`Stage complete! Moving to next area...`, 1400);
         setTimeout(() => enterStage(miniGameState.stageIndex + 1), 1200);
       } else {
         // All stages complete -> success
-        showNotification(`🎉 All 5 stages conquered!`, 1200);
+        showNotification(`🎉 All deposits collected!`, 1200);
         setTimeout(() => endMiniGame(true), 800);
       }
     }
@@ -2662,159 +2505,80 @@ function setupEnhancedNavigationGame(container, controls, instructions, gameData
   function checkPickups() {
     if (!deposits.length) return;
     const charRect = character.getBoundingClientRect();
-    deposits.forEach(dep => {
+    deposits.slice().forEach(d => {
       try {
-        if (dep.el.dataset.collected === 'true') return;
-        const depRect = dep.el.getBoundingClientRect();
-        if (rectsOverlap(charRect, depRect)) {
-          collectDeposit(dep);
+        if (d.dataset.collected === 'true') return;
+        const dRect = d.getBoundingClientRect();
+        if (rectsOverlap(charRect, dRect)) {
+          collectDeposit(d);
         }
       } catch (e) {}
     });
-  }
-  
-  function checkRiverCollision() {
-    // Don't check river collision in first 500ms to prevent instant death at spawn
-    if (Date.now() - gameStartTime < 500) return false;
-    
-    const charRect = character.getBoundingClientRect();
-    for (const river of rivers) {
-      const riverRect = river.el.getBoundingClientRect();
-      if (rectsOverlap(charRect, riverRect)) {
-        // Fell in river - game over!
-        showNotification('💀 You fell in the river!', 1500);
-        setTimeout(() => endMiniGame(false), 800);
-        return true;
-      }
-    }
-    return false;
   }
 
   function rectsOverlap(a, b) {
     return !(a.right < b.left || a.left > b.right || a.bottom < b.top || a.top > b.bottom);
   }
 
-  // Physics state - must be declared BEFORE enterStage is called
-  let charX = 80;
-  let charY = 300;
-  let velocityX = 0;
-  let velocityY = 0;
-  const GRAVITY = 0.6;
-  const JUMP_STRENGTH = -12;
-  const MOVE_SPEED = 4;
-  const MAX_FALL_SPEED = 15;
-  let isGrounded = false;
-  let canJump = true;
-  let gameStartTime = 0; // Track when game starts to prevent instant river collision
-  
-  // Input state  
-  const keys = { left: false, right: false, jump: false };
-
   // Start the first stage
-  gameStartTime = Date.now();
   enterStage(0);
 
   
   // Movement - simplified, no stamina drain or complex hazards
   let moveInterval = null;
   
-  document.addEventListener('keydown', handleKeyDown);
-  document.addEventListener('keyup', handleKeyUp);
+  document.addEventListener('keydown', handleMovement);
+  document.addEventListener('keyup', handleMovementStop);
   
-  function handleKeyDown(e) {
+  function handleMovement(e) {
     if (!miniGameState.active) return;
-    if (e.key === 'ArrowLeft' || e.key === 'a') { keys.left = true; e.preventDefault(); }
-    if (e.key === 'ArrowRight' || e.key === 'd') { keys.right = true; e.preventDefault(); }
-    if (e.key === ' ' || e.key === 'ArrowUp' || e.key === 'w') { keys.jump = true; e.preventDefault(); }
-  }
-  
-  function handleKeyUp(e) {
-    if (e.key === 'ArrowLeft' || e.key === 'a') keys.left = false;
-    if (e.key === 'ArrowRight' || e.key === 'd') keys.right = false;
-    if (e.key === ' ' || e.key === 'ArrowUp' || e.key === 'w') { keys.jump = false; canJump = true; }
-  }
-  
-  // Game loop with gravity and physics
-  function gameLoop() {
-    if (!miniGameState.active) return;
-    
-    const rect = container.getBoundingClientRect();
-    const containerHeight = rect.height || 400;
-    const containerWidth = rect.width || 800;
-    
-    // Apply gravity
-    velocityY += GRAVITY;
-    if (velocityY > MAX_FALL_SPEED) velocityY = MAX_FALL_SPEED;
-    
-    // Horizontal movement
-    if (keys.left) {
-      velocityX = -MOVE_SPEED;
-      character.style.transform = 'scaleX(-1)';
-    } else if (keys.right) {
-      velocityX = MOVE_SPEED;
-      character.style.transform = 'scaleX(1)';
-    } else {
-      velocityX = 0;
-    }
-    
-    // Jump
-    if (keys.jump && canJump && isGrounded) {
-      velocityY = JUMP_STRENGTH;
-      isGrounded = false;
-      canJump = false;
-    }
-    
-    // Update position (charY is distance from bottom, increases upward)
-    charX += velocityX;
-    charY -= velocityY; // Subtract because velocityY increases downward but charY is from bottom
-    
-    // Bounds
-    if (charX < 0) charX = 0;
-    if (charX > containerWidth - 32) charX = containerWidth - 32;
-    if (charY < 0) charY = 0; // Don't fall below bottom
-    
-    // Platform collision detection (charY is distance from bottom)
-    isGrounded = false;
-    const charLeft = charX;
-    const charRight = charX + 28;
-    
-    for (const plat of platforms) {
-      const platTop = plat.y + plat.height;
+    const key = e.key;
+    if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'a', 'd', 'w', 's'].includes(key)) {
+      e.preventDefault();
+      character.classList.add('walking');
       
-      // Check if character is landing on platform from above
-      if (velocityY >= 0 && 
-          charY >= plat.y && charY <= platTop + 10 &&
-          charRight > plat.x + 5 && charLeft < plat.x + plat.width - 5) {
-        charY = platTop; // Land on top of platform
-        velocityY = 0;
-        isGrounded = true;
-        canJump = true;
-        break;
+      if (!moveInterval) {
+        moveInterval = setInterval(() => {
+          moveCharacter(key);
+        }, 50);
       }
     }
-    
-    // Check if fell off screen or fell too far without landing
-    if (charY < -50 || (velocityY > 8 && !isGrounded && charY < 50)) {
-      showNotification('💀 You fell!', 1200);
-      setTimeout(() => endMiniGame(false), 600);
-      return;
-    }
-    
-    // Update visuals (CSS bottom property)
-    character.style.left = charX + 'px';
-    character.style.bottom = charY + 'px';
-    
-    // Check collisions (add 500ms grace period at start)
-    checkPickups();
-    if (Date.now() - gameStartTime > 500) {
-      if (checkRiverCollision()) return; // Stop if fell in river
-    }
-    
-    requestAnimationFrame(gameLoop);
   }
   
-  // Start game loop
-  gameLoop();
+  function handleMovementStop(e) {
+    if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'a', 'd', 'w', 's'].includes(e.key)) {
+      character.classList.remove('walking');
+      clearInterval(moveInterval);
+      moveInterval = null;
+    }
+  }
+  
+  function moveCharacter(key) {
+    const rect = container.getBoundingClientRect();
+    let currentLeft = parseInt(character.style.left);
+    let currentBottom = parseInt(character.style.bottom);
+    const moveSpeed = 5;
+    
+    if (key === 'ArrowLeft' || key === 'a') currentLeft -= moveSpeed;
+    if (key === 'ArrowRight' || key === 'd') currentLeft += moveSpeed;
+    if (key === 'ArrowUp' || key === 'w') currentBottom += 3;
+    if (key === 'ArrowDown' || key === 's') currentBottom -= 3;
+    
+    // Keep character on ground (pixel-based like manganese game)
+    currentLeft = Math.max(0, Math.min(currentLeft, rect.width - 32));
+    currentBottom = Math.max(60, Math.min(currentBottom, rect.height - 100));
+    
+    character.style.left = currentLeft + 'px';
+    character.style.bottom = currentBottom + 'px';
+    
+    // Subtle parallax effect for depth
+    const scrollPercent = currentLeft / rect.width;
+    mountains.style.transform = `translateX(${-scrollPercent * 40}px)`;
+    ground.style.transform = `translateX(${-scrollPercent * 10}px)`;
+    
+    // Check for pickups
+    try { checkPickups(); } catch(e) { /* ignore */ }
+  }
 }
 
 // ========================================
