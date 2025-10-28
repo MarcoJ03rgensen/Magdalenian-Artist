@@ -2297,7 +2297,9 @@ function startMiniGame(materialKey) {
       setupMultiDayExpedition(container, controls, instructions, gameData);
       break;
     case 'botanical-identification':
-      setupBotanicalGame(container, controls, instructions, gameData);
+      // Use the newer, more interactive identification implementation
+      // (inspect → collect flow, centered tree-field, species reference)
+      setupIdentificationGame(container, controls, instructions, gameData);
       break;
     case 'pyrolysis-control':
       setupPyrolysisGame(container, controls, instructions, gameData);
@@ -3878,9 +3880,9 @@ function setupMultiDayExpedition(container, controls, instructions, gameData) {
   `;
   landscapeContainer.appendChild(groundLayer);
   
-  // Character sprite
+  // Character sprite (image-based with CSS animation + graceful fallback)
   const character = document.createElement('div');
-  character.className = 'expedition-character';
+  character.className = 'expedition-character character-sprite';
   character.id = 'journey-character';
   character.style.cssText = `
     position: absolute;
@@ -3889,19 +3891,25 @@ function setupMultiDayExpedition(container, controls, instructions, gameData) {
     z-index: 10;
     filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.8));
     transition: left 0.5s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
   `;
-  
-  // Display character as image or emoji
-  if (miniGameState.selectedCharacter && miniGameState.selectedCharacter.endsWith('.png')) {
-    const img = document.createElement('img');
-    img.src = miniGameState.selectedCharacter;
-    img.style.cssText = 'width: 60px; height: 60px; object-fit: contain;';
-    character.appendChild(img);
-  } else {
-    character.style.fontSize = '4rem';
-    character.textContent = miniGameState.selectedCharacter || '🚶';
-  }
-  
+
+  // Use provided PNG sprite if available (cha1.png) — fallback to emoji if loading fails
+  const charImg = document.createElement('img');
+  // Prefer user-selected character if it's a PNG, otherwise default to cha1.png
+  charImg.src = (miniGameState.selectedCharacter && miniGameState.selectedCharacter.endsWith('.png')) ? miniGameState.selectedCharacter : 'cha1.png';
+  charImg.alt = 'Explorer';
+  charImg.className = 'character-img';
+  charImg.style.cssText = 'width: 36px; height: 46px; object-fit: contain; display: block;';
+  // If image fails to load, remove it and show a simple emoji fallback
+  charImg.onerror = function() {
+    try { charImg.remove(); } catch(e) {}
+    character.textContent = '🚶';
+    character.style.fontSize = '2.8rem';
+  };
+  character.appendChild(charImg);
   landscapeContainer.appendChild(character);
   
   container.appendChild(landscapeContainer);
@@ -4599,231 +4607,291 @@ function setupMultiDayExpedition(container, controls, instructions, gameData) {
   }
 }
 
-// ========================================
-// BOTANICAL IDENTIFICATION - FOREST WISDOM
-// ========================================
-
-function setupBotanicalGame(container, controls, instructions, gameData) {
-  instructions.innerHTML = `
-    <strong>Forest Wisdom - Botanical Identification</strong><br>
-    Identify resinous trees for torch-making.<br>
-    <span style="color: #4CAF50;">✓ Correct: Pine (Pinus sylvestris), Juniper (Juniperus)</span><br>
-    <span style="color: #C00000;">✗ Wrong: Oak, Birch, Willow (low resin content)</span><br>
-    <em>Scientific fact: Pine has 15-20% resin, Oak only 2-3%</em>
-  `;
-  
-  container.innerHTML = '';
-  container.style.background = 'linear-gradient(180deg, #87CEEB 0%, #6B8E23 50%, #5C4033 100%)';
-  
-  controls.innerHTML = `
-    <div class="progress-bar" style="width: 300px;">
-      <div class="progress-fill" id="minigame-timer">Time: ${miniGameState.timeRemaining}s</div>
-    </div>
-    <div style="color: white; font-weight: bold; font-size: 1.1rem; margin-top: 10px;">
-      Resinous Wood Collected: <span id="trees-collected">0</span> / ${miniGameState.treesNeeded}
-    </div>
-  `;
-  
-  const treeTypes = [
-    { species: 'pine', className: 'pine', correct: true, name: 'Scots Pine', resin: '15-20%' },
-    { species: 'pine', className: 'pine', correct: true, name: 'Scots Pine', resin: '15-20%' },
-    { species: 'juniper', className: 'juniper', correct: true, name: 'Juniper', resin: '10-15%' },
-    { species: 'oak', className: 'oak', correct: false, name: 'Oak', resin: '2-3%' },
-    { species: 'oak', className: 'oak', correct: false, name: 'Oak', resin: '2-3%' },
-    { species: 'birch', className: 'oak', correct: false, name: 'Birch', resin: '3-5%' },
-    { species: 'willow', className: 'willow', correct: false, name: 'Willow', resin: '1-2%' },
-    { species: 'willow', className: 'willow', correct: false, name: 'Willow', resin: '1-2%' }
-  ];
-  
-  treeTypes.sort(() => Math.random() - 0.5);
-  
-  treeTypes.forEach((treeData, index) => {
-    const tree = document.createElement('div');
-    tree.className = 'tree ' + treeData.className;
-    tree.innerHTML = `
-      <div class="tree-canopy"></div>
-      <div class="tree-trunk"></div>
-    `;
-    
-    const row = Math.floor(index / 4);
-    const col = index % 4;
-    tree.style.left = (80 + col * 180) + 'px';
-    tree.style.bottom = (120 + row * 150) + 'px';
-    tree.title = `${treeData.name} (${treeData.resin} resin)`;
-    
-    tree.addEventListener('click', function() {
-      if (this.classList.contains('correct') || this.classList.contains('wrong')) return;
-      
-      if (treeData.correct) {
-        this.classList.add('correct');
-        miniGameState.treesCollected++;
-        document.getElementById('trees-collected').textContent = miniGameState.treesCollected;
-        showNotification(`✓ ${treeData.name}: ${treeData.resin} resin. Excellent for torches!`, 2000);
-        
-        if (miniGameState.treesCollected >= miniGameState.treesNeeded) {
-          setTimeout(() => endMiniGame(true), 800);
-        }
-      } else {
-        this.classList.add('wrong');
-        showNotification(`✗ ${treeData.name}: Only ${treeData.resin} resin. Too low!`, 2000);
-        miniGameState.timeRemaining -= 5;
-      }
-    });
-    
-    container.appendChild(tree);
-  });
-}
+// NOTE: `setupBotanicalGame` removed — replaced by `setupIdentificationGame` which
+// provides a richer inspect→collect flow, visible centered tree field and species
+// reference panel. The dispatcher now calls `setupIdentificationGame`.
 
 // ========================================
 // PYROLYSIS CONTROL - THE FIRE MASTER
 // ========================================
 
 function setupPyrolysisGame(container, controls, instructions, gameData) {
+  // Intermediate Pyrolysis / Fire Master expansion
   instructions.innerHTML = `
     <strong>The Fire Master - Pyrolysis Control</strong><br>
-    Maintain temperature 400-450°C for optimal charcoal production.<br>
-    <span style="color: #4CAF50;">🟢 Green zone = Perfect charcoal (75-85% carbon)</span><br>
-    Too hot (&gt;600°C) = ash | Too cool (&lt;250°C) = incomplete<br>
-    <em>Chemistry: Wood + Heat (300-500°C) → Pure Carbon</em>
+    Manage wood, airflow and coverings to produce high-quality charcoal.<br>
+    Aim for 400–450°C and steady conditions. Avoid overheating (>600°C) or cooling (<250°C).
+    <em>Use wood selection, airflow slider, cover toggle and stir to control the burn.</em>
   `;
-  
-  container.style.background = 'linear-gradient(180deg, #4A4A4A 0%, #2C2C2C 50%, #1A1A1A 100%)';
+
+  container.style.background = 'linear-gradient(180deg,#3b3b3b, #1f1f1f)';
   container.innerHTML = '';
-  
-  // Create fire pit visual
-  const firePit = document.createElement('div');
-  firePit.style.cssText = `
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    width: 300px;
-    text-align: center;
-  `;
-  
-  const fireDisplay = document.createElement('div');
-  fireDisplay.style.cssText = `
-    font-size: 6rem;
-    margin-bottom: 20px;
-  `;
-  fireDisplay.textContent = '🔥';
-  firePit.appendChild(fireDisplay);
-  
+
+  // Visual fire area
+  const fireArea = document.createElement('div');
+  fireArea.style.cssText = 'position: absolute; top: 18%; left: 50%; transform: translateX(-50%); width: 420px; height: 320px; text-align: center;';
+
+  const fireEmoji = document.createElement('div');
+  fireEmoji.style.cssText = 'font-size: 6rem; margin-bottom: 6px;';
+  fireEmoji.textContent = '🔥';
+  fireArea.appendChild(fireEmoji);
+
   const tempDisplay = document.createElement('div');
   tempDisplay.id = 'temp-display';
-  tempDisplay.style.cssText = `
-    font-size: 2rem;
-    font-weight: bold;
-    color: white;
-    margin-bottom: 20px;
-  `;
+  tempDisplay.style.cssText = 'font-size: 1.6rem; font-weight: 700; color: #fff; margin-bottom: 6px;';
   tempDisplay.textContent = '400°C';
-  firePit.appendChild(tempDisplay);
-  
-  const zoneDisplay = document.createElement('div');
-  zoneDisplay.id = 'zone-display';
-  zoneDisplay.style.cssText = `
-    font-size: 1.2rem;
-    font-weight: bold;
-    color: #4CAF50;
-    margin-bottom: 30px;
+  fireArea.appendChild(tempDisplay);
+
+  const infoRow = document.createElement('div');
+  infoRow.style.cssText = 'display:flex;gap:12px;justify-content:center;align-items:center;margin-bottom:10px;';
+  infoRow.innerHTML = `
+    <div id="zone-display" style="font-weight:700;color:#4CAF50;">🟢 PERFECT ZONE</div>
+    <div id="pyro-volatiles" style="color:#FFD700;font-weight:700;">Volatiles: 0%</div>
+    <div id="pyro-carbon" style="color:#DAA520;font-weight:700;">Carbon: 0%</div>
   `;
-  zoneDisplay.textContent = '🟢 PERFECT ZONE';
-  firePit.appendChild(zoneDisplay);
-  
-  container.appendChild(firePit);
-  
-  // Timer display
+  fireArea.appendChild(infoRow);
+
+  // smoke and ember visuals
+  const smoke = document.createElement('div');
+  smoke.className = 'pyro-smoke';
+  smoke.style.cssText = 'position:absolute;left:50%;top:8%;transform:translateX(-50%);width:260px;height:260px;pointer-events:none;z-index:5;';
+  fireArea.appendChild(smoke);
+
+  const ember = document.createElement('div');
+  ember.className = 'pyro-ember';
+  ember.style.cssText = 'position:absolute;left:50%;bottom:28%;transform:translateX(-50%);width:18px;height:18px;border-radius:50%;pointer-events:none;z-index:6;';
+  fireArea.appendChild(ember);
+
+  container.appendChild(fireArea);
+
+  // Controls area
   controls.innerHTML = `
-    <div style="text-align: center; margin-bottom: 20px;">
-      <div id="minigame-timer" style="font-size: 1.5rem; color: white; font-weight: bold;">Time: ${miniGameState.timeRemaining}s</div>
-      <div id="quality-score" style="font-size: 1.2rem; color: #FFD700; margin-top: 10px;">Quality: 0%</div>
-    </div>
-    <div style="display: flex; justify-content: center; gap: 1rem;">
-      <button class="btn-primary" id="add-wood-btn">🪵 Add Wood (+Heat)</button>
-      <button class="btn-secondary" id="reduce-air-btn">💨 Reduce Air (-Heat)</button>
+    <div style="display:flex;flex-direction:column;gap:10px;">
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+        <label style="color:white;font-weight:700;">Wood:</label>
+        <button class="btn-secondary wood-type" data-type="hardwood">Hardwood</button>
+        <button class="btn-secondary wood-type" data-type="softwood">Softwood</button>
+        <button class="btn-secondary wood-type" data-type="kindling">Kindling</button>
+        <button class="btn-primary" id="add-wood-btn">➕ Add Piece</button>
+      </div>
+      <div style="display:flex;gap:12px;align-items:center;">
+        <label style="color:white;font-weight:700;">Airflow</label>
+        <input id="airflow-slider" type="range" min="0" max="1" step="0.01" value="0.6" style="width:220px;">
+        <label style="color:white;font-weight:700;">Cover</label>
+        <input id="cover-toggle" type="checkbox">
+        <button class="btn-secondary" id="stir-btn">🫙 Stir</button>
+        <button class="btn-primary" id="finish-pyro-btn">Finish Batch</button>
+      </div>
+      <div style="display:flex;gap:12px;align-items:center;justify-content:center;">
+        <div id="pyro-quality" style="color:#FFD700;font-weight:800;">Quality: 0%</div>
+        <div id="pyro-ash" style="color:#F44336;font-weight:700;">Ash: 0%</div>
+      </div>
     </div>
   `;
-  
-  // Game state
-  let temperature = 400;
-  let qualityScore = 0;
-  let timeInPerfectZone = 0;
-  
-  // Temperature drift
-  const tempDrift = setInterval(() => {
-    if (!miniGameState.active) {
-      clearInterval(tempDrift);
-      return;
+
+  // Internal pyro state
+  miniGameState.pyro = {
+    temperature: 400,
+    woodStack: 0,
+    woodEnergy: 0,
+    moisture: 0,
+    volatiles: 0,
+    carbonization: 0,
+    ash: 0,
+    incomplete: 0,
+    airflow: 0.6,
+    cover: 0,
+    timeInBand: 0,
+    lastTick: performance.now(),
+  };
+
+  // Wood type properties
+  const woodTypes = {
+    hardwood: { energy: 1.2, moisture: 0.12, label: 'Hardwood' },
+    softwood: { energy: 1.0, moisture: 0.20, label: 'Softwood' },
+    kindling: { energy: 0.6, moisture: 0.05, label: 'Kindling' }
+  };
+
+  // helpers
+  function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
+
+  // Event wiring
+  let selectedWood = 'hardwood';
+  controls.querySelectorAll('.wood-type').forEach(b => {
+    b.addEventListener('click', function() {
+      controls.querySelectorAll('.wood-type').forEach(x => x.classList.remove('active'));
+      this.classList.add('active');
+      selectedWood = this.dataset.type;
+      playSound && typeof playSound === 'function' && playSound('click');
+    });
+  });
+
+  const addWoodBtn = document.getElementById('add-wood-btn');
+  const airflowSlider = document.getElementById('airflow-slider');
+  const coverToggle = document.getElementById('cover-toggle');
+  const stirBtn = document.getElementById('stir-btn');
+  const finishBtn = document.getElementById('finish-pyro-btn');
+
+  addWoodBtn.addEventListener('click', () => {
+    const wt = woodTypes[selectedWood] || woodTypes.hardwood;
+    miniGameState.pyro.woodStack += 1;
+    miniGameState.pyro.woodEnergy += wt.energy * 30; // energy units
+    miniGameState.pyro.moisture = clamp(miniGameState.pyro.moisture + wt.moisture * 15, 0, 100);
+    playSound && typeof playSound === 'function' && playSound('click');
+  });
+
+  airflowSlider.addEventListener('input', () => {
+    miniGameState.pyro.airflow = parseFloat(airflowSlider.value);
+  });
+
+  coverToggle.addEventListener('change', () => {
+    miniGameState.pyro.cover = coverToggle.checked ? 1 : 0;
+  });
+
+  stirBtn.addEventListener('click', () => {
+    // even out temperature and release some volatiles faster
+    miniGameState.pyro.temperature = Math.max(200, miniGameState.pyro.temperature - 8);
+    miniGameState.pyro.timeInBand += 0.8; // small bonus for careful tending
+    playSound && typeof playSound === 'function' && playSound('click');
+  });
+
+  finishBtn.addEventListener('click', () => {
+    evaluatePyro();
+  });
+
+  // RAF update loop
+  let rafId = null;
+  let last = performance.now();
+
+  function pyroStep(now) {
+    if (!miniGameState.active) return;
+    const dt = Math.min(0.1, (now - last) / 1000); // clamp dt
+    last = now;
+
+    const p = miniGameState.pyro;
+
+    // Heating: wood and airflow drive temperature; cover reduces oxygen
+    const fuelPower = p.woodEnergy * 0.8; // available energy reservoir
+    const airFactor = p.airflow * (1 - p.cover * 0.6);
+    const heatGain = (fuelPower * airFactor) * dt * 0.06; // tuned constant
+    const cooling = (20 + (p.temperature - 300) * 0.02) * dt;
+    p.temperature += heatGain - cooling;
+
+    // Volatile release accelerates above 300C
+    if (p.temperature > 300 && p.woodEnergy > 0) {
+      const release = (p.temperature - 300) * 0.02 * dt * (1 + p.airflow);
+      p.volatiles = clamp(p.volatiles + release, 0, 200);
+      // consume a little wood energy as volatiles form
+      p.woodEnergy = Math.max(0, p.woodEnergy - release * 0.6);
     }
-    
-    // Temperature naturally decreases
-    temperature -= 5 + Math.random() * 5;
-    temperature = Math.max(200, Math.min(700, temperature));
-    updateDisplay();
-  }, 1000);
-  
-  // Control buttons
-  document.getElementById('add-wood-btn').addEventListener('click', () => {
-    temperature += 30 + Math.random() * 20;
-    temperature = Math.min(700, temperature);
-    sounds.click();
-    updateDisplay();
-  });
-  
-  document.getElementById('reduce-air-btn').addEventListener('click', () => {
-    temperature -= 20 + Math.random() * 15;
-    temperature = Math.max(200, temperature);
-    sounds.click();
-    updateDisplay();
-  });
-  
-  function updateDisplay() {
-    const tempEl = document.getElementById('temp-display');
-    const zoneEl = document.getElementById('zone-display');
-    const qualityEl = document.getElementById('quality-score');
-    
-    if (!tempEl) return;
-    
-    tempEl.textContent = Math.round(temperature) + '°C';
-    
-    // Determine zone
-    if (temperature >= 400 && temperature <= 450) {
-      zoneEl.textContent = '🟢 PERFECT ZONE!';
-      zoneEl.style.color = '#4CAF50';
-      fireDisplay.textContent = '🔥';
-      timeInPerfectZone++;
-      qualityScore = Math.min(100, (timeInPerfectZone / 20) * 100);
-    } else if (temperature >= 350 && temperature <= 500) {
-      zoneEl.textContent = '🟡 GOOD ZONE';
-      zoneEl.style.color = '#FFD700';
-      fireDisplay.textContent = '🔥';
-      qualityScore = Math.min(100, (timeInPerfectZone / 25) * 100);
-    } else if (temperature > 600) {
-      zoneEl.textContent = '🔴 TOO HOT - BURNING TO ASH!';
-      zoneEl.style.color = '#F44336';
-      fireDisplay.textContent = '💥';
-      qualityScore = Math.max(0, qualityScore - 5);
-    } else if (temperature < 250) {
-      zoneEl.textContent = '🔵 TOO COOL - INCOMPLETE';
-      zoneEl.style.color = '#2196F3';
-      fireDisplay.textContent = '💨';
-      qualityScore = Math.max(0, qualityScore - 3);
+
+    // Carbonization progress when in target band
+    if (p.temperature >= 400 && p.temperature <= 450) {
+      p.timeInBand += dt;
+      p.carbonization = clamp((p.timeInBand / 8) * 100, 0, 100); // ~8 seconds for full carbonization
+    }
+
+    // Ash formation when overheating
+    if (p.temperature > 600) {
+      p.ash = clamp(p.ash + (p.temperature - 600) * 0.05 * dt, 0, 100);
+    }
+
+    // Incomplete char when too cool
+    if (p.temperature < 250) {
+      p.incomplete = clamp(p.incomplete + (250 - p.temperature) * 0.02 * dt, 0, 100);
+    }
+
+    // Gradually reduce volatiles (they escape as smoke)
+    p.volatiles = Math.max(0, p.volatiles - (5 + p.airflow * 10) * dt);
+
+    // Natural decay of wood stack -> energy slowly decreases
+    p.woodEnergy = Math.max(0, p.woodEnergy - 2 * dt);
+
+    // Visual updates
+    try {
+      document.getElementById('temp-display').textContent = Math.round(p.temperature) + '°C';
+      const zoneEl = document.getElementById('zone-display');
+      if (p.temperature >= 400 && p.temperature <= 450) {
+        zoneEl.textContent = '🟢 PERFECT ZONE';
+        zoneEl.style.color = '#4CAF50';
+      } else if (p.temperature >= 350 && p.temperature <= 500) {
+        zoneEl.textContent = '🟡 GOOD ZONE';
+        zoneEl.style.color = '#FFD700';
+      } else if (p.temperature > 600) {
+        zoneEl.textContent = '🔴 TOO HOT';
+        zoneEl.style.color = '#F44336';
+      } else if (p.temperature < 250) {
+        zoneEl.textContent = '🔵 TOO COOL';
+        zoneEl.style.color = '#2196F3';
+      } else {
+        zoneEl.textContent = '⚪ ACCEPTABLE';
+        zoneEl.style.color = '#9E9E9E';
+      }
+
+      document.getElementById('pyro-volatiles').textContent = `Volatiles: ${Math.round(p.volatiles)}%`;
+      document.getElementById('pyro-carbon').textContent = `Carbon: ${Math.round(p.carbonization)}%`;
+      document.getElementById('pyro-quality').textContent = `Quality: ${Math.round(computeQuality())}%`;
+      document.getElementById('pyro-ash').textContent = `Ash: ${Math.round(p.ash)}%`;
+
+      // smoke & ember visuals
+      const smokeOpacity = clamp(p.volatiles / 120, 0, 1);
+      smoke.style.opacity = smokeOpacity;
+      smoke.style.transform = `scale(${1 + smokeOpacity * 0.6}) translateY(${-20 - smokeOpacity * 40}px)`;
+      ember.style.boxShadow = `0 0 ${8 + p.carbonization * 0.2}px rgba(255,${120 - p.carbonization},0,${0.6 + p.carbonization * 0.004})`;
+      ember.style.background = p.carbonization > 50 ? 'rgba(255,120,40,1)' : 'rgba(255,200,120,1)';
+    } catch (e) {}
+
+    // Random gust events
+    if (Math.random() < 0.002) {
+      // gust briefly increases airflow
+      const old = p.airflow;
+      p.airflow = clamp(p.airflow + 0.15, 0, 1);
+      setTimeout(() => { p.airflow = old; }, 800 + Math.random() * 1600);
+    }
+
+    rafId = requestAnimationFrame(pyroStep);
+  }
+
+  function computeQuality() {
+    const p = miniGameState.pyro;
+    // base from carbonization
+    const base = p.carbonization;
+    // penalties
+    const penalty = clamp((p.ash * 1.2 + p.incomplete * 1.1) / 200, 0, 0.9);
+    const q = clamp(base * (1 - penalty), 0, 100);
+    return Math.round(q);
+  }
+
+  function evaluatePyro() {
+    const q = computeQuality();
+    if (q >= 70 && miniGameState.pyro.carbonization >= 60) {
+      // success
+      miniGameState.totalMultiplier = gameData.rewardMultiplier || 1;
+      showNotification(`✓ Charcoal batch good (${q}%)!`, 1800);
+      cleanupPyro();
+      setTimeout(() => endMiniGame(true), 900);
     } else {
-      zoneEl.textContent = '⚪ ACCEPTABLE';
-      zoneEl.style.color = '#9E9E9E';
-      fireDisplay.textContent = '🔥';
-    }
-    
-    qualityEl.textContent = `Quality: ${Math.round(qualityScore)}%`;
-    
-    // Win condition
-    if (qualityScore >= 80) {
-      clearInterval(tempDrift);
-      miniGameState.totalMultiplier = gameData.rewardMultiplier;
-      setTimeout(() => endMiniGame(true), 500);
+      showNotification(`✗ Batch failed (${q}%). Try to hold the temperature and reduce ash.`, 2200);
+      cleanupPyro();
+      setTimeout(() => endMiniGame(false), 1200);
     }
   }
+
+  function cleanupPyro() {
+    try { cancelAnimationFrame(rafId); } catch (e) {}
+    // remove listeners added (we used elements referenced above)
+    try { addWoodBtn.removeEventListener('click', () => {}); } catch (e) {}
+    try { airflowSlider.removeEventListener('input', () => {}); } catch (e) {}
+    try { coverToggle.removeEventListener('change', () => {}); } catch (e) {}
+    try { stirBtn.removeEventListener('click', () => {}); } catch (e) {}
+  }
+
+  // store cleanup so endMiniGame can call it as part of general cleanup
+  miniGameState.pyroCleanup = cleanupPyro;
+
+  // Start
+  last = performance.now();
+  rafId = requestAnimationFrame(pyroStep);
 }
 
 // ========================================
@@ -5478,9 +5546,18 @@ function setupCaveLightingGame(container, controls, instructions, gameData) {
     const prevCharX = charX;
     const prevCharY = charY;
     // movement
-    if (keys.left) { velX = -SPEED; character.style.transform = 'scaleX(-1)'; }
-    else if (keys.right) { velX = SPEED; character.style.transform = 'scaleX(1)'; }
-    else velX = 0;
+    if (keys.left) { 
+      velX = -SPEED; 
+      character.classList.add('facing-left');
+      character.classList.add('running');
+    } else if (keys.right) { 
+      velX = SPEED; 
+      character.classList.remove('facing-left');
+      character.classList.add('running');
+    } else {
+      velX = 0;
+      character.classList.remove('running');
+    }
     if (keys.jump && grounded && canJump) { velY = JUMP; grounded = false; canJump = false; }
 
   velY += GRAV;
@@ -5997,66 +6074,190 @@ function completeAnimalStudy(container, controls, animal) {
 }
 
 function setupIdentificationGame(container, controls, instructions) {
-  instructions.textContent = 'Click on resinous trees (pine, juniper) for torch-making. Avoid wrong trees!';
-  
-  container.style.background = 'linear-gradient(180deg, #87CEEB 0%, #6B8E23 50%, #5C4033 100%)';
-  
-  controls.innerHTML = `
-    <div class="progress-bar" style="width: 300px;">
-      <div class="progress-fill" id="minigame-timer">Time: ${miniGameState.timeRemaining}s</div>
-    </div>
-    <div style="color: white; font-weight: bold; font-size: 1.1rem;">Collected: <span id="trees-collected">0</span> / ${miniGameState.treesNeeded}</div>
+  // Make the identification game more interactive:
+  // - Two-stage: inspect (reveals a hint) then collect
+  // - Hover/idle animation to make the scene feel alive
+  // - Particle/resin effect on successful collect
+  instructions.innerHTML = `
+    <strong>Forest Wisdom - Botanical Identification</strong><br>
+    Inspect trees first (click once) to reveal clues, then click again to collect resinous wood.<br>
+    Look for resinous bark and sticky sap. Incorrect picks cost time.
   `;
-  
-  // Create trees
+
+  container.style.background = 'linear-gradient(180deg, #87CEEB 0%, #6B8E23 50%, #5C4033 100%)';
+  container.innerHTML = '';
+
+  controls.innerHTML = `
+    <div style="display:flex;gap:24px;align-items:center;flex-wrap:wrap;">
+      <div class="progress-bar" style="width: 300px;">
+        <div class="progress-fill" id="minigame-timer">Time: ${miniGameState.timeRemaining}s</div>
+      </div>
+      <div style="color: white; font-weight: bold; font-size: 1.1rem;">Resinous Wood Collected: <span id="trees-collected">0</span> / ${miniGameState.treesNeeded}</div>
+    </div>
+    <div style="color: rgba(255,255,255,0.9); font-size: 0.9rem; margin-top:8px;">Tip: Inspect to reveal smell/appearance clues before collecting.</div>
+  `;
+
+  // Create a visible tree field so all trees are visible (centered) and not clipped
+  const field = document.createElement('div');
+  field.className = 'tree-field';
+  field.style.cssText = 'position: relative; width: 980px; height: 440px; margin: 12px auto; background: linear-gradient(180deg, rgba(255,255,255,0.03), rgba(0,0,0,0.03)); border-radius: 10px; border: 2px solid rgba(255,255,255,0.03); overflow: hidden;';
+  container.appendChild(field);
+
+  // Make container scrollable if needed, but keep field centered/visible
+  container.style.overflow = 'auto';
+
+  // Small species reference overlay (hidden by default)
+  const refPanel = document.createElement('div');
+  refPanel.className = 'species-ref';
+  refPanel.style.cssText = 'position: absolute; right: 18px; top: 12px; width: 360px; max-height: 420px; overflow: auto; background: rgba(10,10,10,0.88); color: var(--limestone); border: 2px solid rgba(218,165,32,0.5); padding: 12px; border-radius: 10px; display: none; z-index: 250;';
+  refPanel.innerHTML = `<strong>Species Reference</strong><div style="font-size:0.9rem;margin-top:8px;line-height:1.25;">Use these clues when inspecting trees: bark texture, leaves/needles, scent, sap/resin presence.</div>`;
+  refPanel.innerHTML += `
+    <ul style="margin-top:8px;font-size:0.9rem;line-height:1.3;padding-left:18px;">
+      <li><strong>Pine</strong> — needle clusters, sticky resin on bark, aromatic scent; good for torches.</li>
+      <li><strong>Juniper</strong> — small needle-like leaves, resinous berries, aromatic; good for torches and scent.</li>
+      <li><strong>Oak</strong> — deep furrowed bark, hard wood, low resin content.</li>
+      <li><strong>Birch</strong> — papery, light-colored bark; not resinous.</li>
+      <li><strong>Willow</strong> — flexible, smooth bark and high moisture; poor resin.
+      <li><strong>Ash</strong> — straight trunk, compound leaves, low-resin hardwood.</li>
+    </ul>
+  `;
+  container.appendChild(refPanel);
+
+  // Reference toggle button
+  const refToggle = document.createElement('button');
+  refToggle.className = 'icon-btn';
+  refToggle.style.cssText = 'position: absolute; right: 18px; bottom: 18px; z-index: 260;';
+  refToggle.title = 'Toggle species reference';
+  refToggle.innerHTML = 'ℹ️';
+  refToggle.addEventListener('click', () => {
+    refPanel.style.display = refPanel.style.display === 'none' ? 'block' : 'none';
+    try { playSound && playSound('click'); } catch(e){}
+  });
+  container.appendChild(refToggle);
+
+  // Create trees with a more dynamic interaction model
   const treeTypes = [
-    { type: 'pine', correct: true },
-    { type: 'pine', correct: true },
-    { type: 'pine', correct: true },
-    { type: 'oak', correct: false },
-    { type: 'oak', correct: false },
-    { type: 'oak', correct: false },
-    { type: 'willow', correct: false },
-    { type: 'willow', correct: false }
+    { type: 'pine', correct: true, hint: 'Aromatic resin on bark; sticky sap.' },
+    { type: 'juniper', correct: true, hint: 'Needle clusters and resinous scent.' },
+    { type: 'pine', correct: true, hint: 'Thick bark with sticky sap.' },
+    { type: 'oak', correct: false, hint: 'Hard wood, low resin.' },
+    { type: 'birch', correct: false, hint: 'Papery bark, low resin.' },
+    { type: 'willow', correct: false, hint: 'Flexible, watery wood.' },
+    { type: 'ash', correct: false, hint: 'Dry, non-resinous.' },
+    { type: 'juniper', correct: true, hint: 'Juniper berries and resinous smell.' }
   ];
-  
-  // Shuffle trees
+
+  // Shuffle
   treeTypes.sort(() => Math.random() - 0.5);
-  
+
   treeTypes.forEach((treeData, index) => {
     const tree = document.createElement('div');
-    tree.className = 'tree ' + treeData.type;
+    tree.className = 'tree ' + treeData.type + ' interactive';
     tree.innerHTML = `
       <div class="tree-canopy"></div>
       <div class="tree-trunk"></div>
     `;
-    
-    const row = Math.floor(index / 4);
-    const col = index % 4;
-    tree.style.left = (100 + col * 180) + 'px';
-    tree.style.bottom = (100 + row * 150) + 'px';
-    
+
+  const row = Math.floor(index / 4);
+  const col = index % 4;
+  // place tree inside the field (absolute coordinates relative to field)
+  tree.style.position = 'absolute';
+  tree.style.left = (40 + col * 220 + Math.random() * 30 - 15) + 'px';
+  tree.style.top = (20 + row * 180 + Math.random() * 20 - 10) + 'px';
+
+    // metadata
+    tree.dataset.correct = treeData.correct ? '1' : '0';
+    tree.dataset.inspected = '0';
+
     tree.addEventListener('click', () => {
-      if (tree.classList.contains('correct') || tree.classList.contains('wrong')) return;
-      
-      if (treeData.correct) {
-        tree.classList.add('correct');
-        miniGameState.treesCollected++;
-        document.getElementById('trees-collected').textContent = miniGameState.treesCollected;
-        showNotification('✓ Good choice! Resinous wood.', 1000);
-        
+      if (tree.classList.contains('collected') || tree.classList.contains('wrong')) return;
+
+      // First click: inspect
+      if (tree.dataset.inspected === '0') {
+        tree.dataset.inspected = '1';
+        // small hint tooltip
+  const tip = document.createElement('div');
+  tip.className = 'tree-tip';
+  tip.textContent = treeData.hint || (treeData.correct ? 'Resinous scent' : 'Low resin');
+  tip.style.position = 'absolute';
+  // tip position relative to field
+  tip.style.left = (parseFloat(tree.style.left) + 20) + 'px';
+  tip.style.top = (parseFloat(tree.style.top) - 36) + 'px';
+        tip.style.padding = '6px 10px';
+        tip.style.background = 'rgba(20,20,20,0.85)';
+        tip.style.color = 'white';
+        tip.style.border = '2px solid rgba(218,165,32,0.6)';
+        tip.style.borderRadius = '8px';
+        tip.style.zIndex = 100;
+  field.appendChild(tip);
+        setTimeout(() => { try { tip.remove(); } catch (e) {} }, 1600);
+        // small highlight and sound
+        tree.classList.add('inspected');
+        try { playSound && playSound('click'); } catch(e){}
+        return;
+      }
+
+      // Second click: attempt to collect
+      if (tree.dataset.correct === '1') {
+        tree.classList.add('collected');
+        miniGameState.treesCollected = (miniGameState.treesCollected || 0) + 1;
+        const display = document.getElementById('trees-collected');
+        if (display) display.textContent = miniGameState.treesCollected;
+        showNotification('✓ Resinous! Collected.', 1200);
+        try { playSound && playSound('click'); } catch(e){}
+
+        // particle/resin burst at tree center
+        try {
+          try {
+            const rect = tree.getBoundingClientRect();
+            createParticleBurst(rect.left + rect.width / 2, rect.top + rect.height / 2, '#FFD166', 14);
+          } catch (e) {}
+        } catch (e) {}
+
         if (miniGameState.treesCollected >= miniGameState.treesNeeded) {
-          setTimeout(() => endMiniGame(true), 500);
+          setTimeout(() => endMiniGame(true), 700);
         }
       } else {
         tree.classList.add('wrong');
-        showNotification('✗ Wrong tree type!', 1000);
-        miniGameState.timeRemaining -= 5; // Penalty
+        showNotification('✗ Not resinous — wrong tree!', 1200);
+        miniGameState.timeRemaining = Math.max(0, (miniGameState.timeRemaining || 0) - 6);
+        // shake animation for feedback
+        try {
+          tree.animate([
+            { transform: 'translateX(0)' },
+            { transform: 'translateX(-10px)' },
+            { transform: 'translateX(10px)' },
+            { transform: 'translateX(0)' }
+          ], { duration: 450 });
+        } catch (e) {}
+        try { playSound && playSound('click'); } catch(e){}
       }
     });
-    
-    container.appendChild(tree);
+
+    field.appendChild(tree);
   });
+
+  // Auto-scroll + highlight so the tree field is immediately visible to the player
+  // (helps when modal layout/scrolling hides the field). Briefly open the reference
+  // and play a click so it's obvious something changed.
+  setTimeout(() => {
+    try {
+      // Scroll field into view (centered in modal)
+      field.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      // Brief visual highlight
+      field.style.outline = '4px solid rgba(255,200,60,0.95)';
+      field.style.boxShadow = '0 6px 30px rgba(255,200,60,0.12)';
+      // Temporarily show the species reference panel so users notice the new info
+      try { refPanel.style.display = 'block'; } catch (e) {}
+      // play a gentle click so audio users notice the change
+      try { playSound && typeof playSound === 'function' && playSound('click'); } catch(e){}
+      // Remove temporary highlights after a short delay
+      setTimeout(() => {
+        try { field.style.outline = ''; field.style.boxShadow = ''; } catch (e) {}
+        try { refPanel.style.display = 'none'; } catch (e) {}
+      }, 3000);
+    } catch (e) {}
+  }, 140);
 }
 
 // ========================================

@@ -1950,6 +1950,38 @@ body {
   animation-delay: -2s;
 }
 
+/* Character sprite animation for cave explorer / red ochre mini-game */
+.character-sprite { pointer-events: auto; }
+.character-sprite .character-img {
+  width: 36px;
+  height: 46px;
+  display: block;
+  will-change: transform;
+  /* Idle bob animation */
+  animation: charIdle 1200ms ease-in-out infinite;
+  transform-origin: center bottom;
+}
+.character-sprite.running .character-img {
+  /* Running/state animation (faster, more pronounced) */
+  animation: charRun 360ms steps(4) infinite;
+}
+.character-sprite.facing-left .character-img {
+  /* Mirror using scaleX; implemented as separate rule so animation transform isn't overridden */
+  transform: scaleX(-1);
+}
+
+@keyframes charIdle {
+  0% { transform: translateY(0); }
+  50% { transform: translateY(-4px); }
+  100% { transform: translateY(0); }
+}
+
+@keyframes charRun {
+  0% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+  100% { transform: translateY(0); }
+}
+
 /* Night mode trees */
 .night-mode .tree-foliage,
 .night-mode .tree-foliage::before,
@@ -5300,3 +5332,61 @@ kbd {
 }
 
 /* Simplified - removed old hazard styles */
+
+/* Pyrolysis visuals and controls */
+.pyro-smoke {
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(220,220,220,0.28) 0%, rgba(160,160,160,0.16) 30%, rgba(0,0,0,0) 70%);
+  filter: blur(10px) saturate(0.7);
+  opacity: 0;
+  transition: opacity 240ms ease, transform 400ms ease;
+  pointer-events: none;
+}
+
+.pyro-ember {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: rgba(255,160,80,1);
+  box-shadow: 0 0 12px rgba(255,140,40,0.85);
+  transition: box-shadow 200ms ease, background 200ms ease;
+}
+
+/* Styling for inline pyro controls to look slightly more compact */
+#minigame-controls .btn-secondary.wood-type.active {
+  border-color: #4CAF50;
+  background: rgba(76,175,80,0.12);
+}
+
+#minigame-controls input[type="range"] {
+  -webkit-appearance: none;
+  height: 6px;
+  border-radius: 6px;
+  background: linear-gradient(90deg, #444 0%, #777 100%);
+}
+
+#minigame-controls input[type="checkbox"] {
+  width: 18px; height: 18px;
+}
+
+/* Tree identification enhancements */
+.tree.interactive { cursor: pointer; transition: transform 180ms ease, box-shadow 180ms ease; }
+.tree.interactive:hover { transform: translateY(-6px) scale(1.02); box-shadow: 0 8px 24px rgba(0,0,0,0.3); }
+.tree.inspected { outline: 3px solid rgba(218,165,32,0.25); box-shadow: 0 8px 24px rgba(218,165,32,0.08); }
+.tree.collected { opacity: 0.6; transform: scale(0.98) translateY(-4px); filter: saturate(1.1); }
+.tree.wrong { filter: grayscale(60%) brightness(0.9); }
+
+.tree-tip {
+  pointer-events: none;
+  font-size: 0.85rem;
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: rgba(10,10,10,0.85);
+  color: var(--limestone);
+  border: 2px solid rgba(218,165,32,0.55);
+  box-shadow: 0 6px 18px rgba(0,0,0,0.6);
+}
+
+/* small resin particle styling used by createParticleBurst */
+.resin-particle { width:8px; height:8px; border-radius:50%; background:#FFD166; box-shadow:0 2px 6px rgba(255,180,80,0.8); }
+
