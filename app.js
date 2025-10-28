@@ -286,7 +286,7 @@ const miniGames = {
   torch: {
     name: 'Illumination Strategy',
     type: 'cave-lighting-planning',
-    duration: 65,
+    duration: 0, // No time limit for cave lighting planning (player places lamps at their own pace)
     badge: 'lightPlanner',
     fact: 'Cave lighting engineering: Deep chambers (>100m) require multiple light sources. Torch burn rate: 8-12 minutes per 100g bundle. Lamp fuel: 15ml/hour. Smoke management critical in confined spaces. Archaeological soot analysis shows strategic lamp placement. Light needed for 2-4 hour painting sessions.',
     rewardMultiplier: 3,
@@ -2086,6 +2086,20 @@ function endMiniGame(success) {
     console.warn('Error clearing mini-game intervals', e);
   }
   miniGameState.active = false;
+  // Remove any UI elements appended to document.body by mini-games (like the fixed progress bar)
+  try {
+    if (miniGameState.staminaContainer) {
+      try { miniGameState.staminaContainer.remove(); } catch (e) {}
+      delete miniGameState.staminaContainer;
+    }
+  } catch (e) {}
+  // Run any mini-game specific cleanup (e.g., remove cave listeners/lights)
+  try {
+    if (miniGameState.caveCleanup) {
+      try { miniGameState.caveCleanup(); } catch (e) {}
+      delete miniGameState.caveCleanup;
+    }
+  } catch (e) {}
   
   const container = document.getElementById('minigame-container');
   const overlay = document.createElement('div');
@@ -2362,6 +2376,8 @@ function setupEnhancedNavigationGame(container, controls, instructions, gameData
     </div>
   `;
   document.body.appendChild(staminaContainer);
+  // Remember this element so we can clean it up when the mini-game ends
+  miniGameState.staminaContainer = staminaContainer;
   
   controls.innerHTML = `
     <div class="progress-bar" style="width: 300px;">
@@ -2534,30 +2550,40 @@ function setupEnhancedNavigationGame(container, controls, instructions, gameData
       box-shadow: 0 3px 8px rgba(0,0,0,0.3);
     `;
     container.appendChild(el);
-    platforms.push({ ...platData, el });
-    
+    // Create a platform object we can mutate (store decorations on it for reliable cleanup)
+    const platformObj = { ...platData, el, decorations: [] };
+    platforms.push(platformObj);
+
     // Add decorations (grass, trees, rocks) on top of platforms
     if (platData.decoration) {
-      const decorEl = document.createElement('div');
-      const isTree = platData.decoration.includes('🌲') || platData.decoration.includes('🌳');
-      // Place decoration somewhere across the platform (not off its edges)
-      const decorX = platData.x + 10 + Math.random() * Math.max(0, platData.width - 20);
-      // Slight negative offset so tree base sits visually on the platform
-      const bottomOffset = isTree ? (platData.height - 6) : platData.height;
-      decorEl.style.cssText = `
-        position: absolute;
-        left: ${decorX}px;
-        bottom: ${platData.y + bottomOffset}px;
-        font-size: ${isTree ? '3rem' : '1.4rem'};
-        z-index: 6;
-        line-height: 1;
-        pointer-events: none;
-      `;
-      decorEl.innerHTML = platData.decoration;
-      container.appendChild(decorEl);
-      // Store decoration element for cleanup
-      if (!platData.decorations) platData.decorations = [];
-      platData.decorations.push(decorEl);
+      const decor = platData.decoration;
+      const isTree = decor.includes('🌲') || decor.includes('🌳') || decor.includes('🌻') || decor.includes('🌾');
+      const isRock = decor.includes('🪨') || decor.includes('⛰️');
+
+      // Only place vegetation decorations (trees/plants) on near-ground platforms to avoid floating foliage
+      const groundThreshold = 80; // platforms above this are considered elevated cliffs
+      if (isTree && platformObj.y > groundThreshold) {
+        // skip placing trees on high platforms
+      } else {
+        const decorEl = document.createElement('div');
+        // Place decoration somewhere across the platform (not off its edges)
+        const decorX = Math.floor(platformObj.x + 8 + Math.random() * Math.max(0, platformObj.width - 16));
+        // Position decoration base at platform top
+        const decorBottom = platformObj.y + platformObj.height;
+        decorEl.style.cssText = `
+          position: absolute;
+          left: ${decorX}px;
+          bottom: ${decorBottom}px;
+          font-size: ${isTree ? '3rem' : '1.4rem'};
+          z-index: 6;
+          line-height: 1;
+          pointer-events: none;
+          transform: translateY(-6%);
+        `;
+        decorEl.innerHTML = decor;
+        container.appendChild(decorEl);
+        platformObj.decorations.push(decorEl);
+      }
     }
   }
   
@@ -2878,7 +2904,11 @@ function setupEnhancedNavigationGame(container, controls, instructions, gameData
     
     dep.el.dataset.collected = 'true';
     const mult = parseInt(dep.el.dataset.multiplier) || 1;
-    const qual = dep.el.dataset.quality || 'Ochre';
+    // Prefer explicit dataset quality, fall back to a label based on multiplier
+    const qualFromData = (dep.el.dataset.quality || '').trim();
+    const qual = qualFromData || (mult >= 3 ? 'High-quality' : (mult === 2 ? 'Good' : 'Fair'));
+    // Log for debugging in case notifications are not visible in the UI
+    try { console.log('collectDeposit triggered:', { x: dep.x, y: dep.y, multiplier: mult, quality: qual }); } catch (e) {}
     miniGameState.depositsCollected++;
     miniGameState.totalMultiplier += mult;
     miniGameState.stageDeposits++;
@@ -2891,7 +2921,14 @@ function setupEnhancedNavigationGame(container, controls, instructions, gameData
     
     document.getElementById('collected-count').textContent = 
       `${miniGameState.stageDeposits} / ${stage.deposits} deposits (Stage ${miniGameState.stageIndex + 1}/5)`;
-    showNotification(`✓ ${qual} ochre (+${mult}x)`, 1000);
+
+    // Always show a quality + multiplier notification. Use a slightly longer duration so players see it.
+    try {
+      showNotification(`✓ ${qual} ochre (+${mult}x)`, 1200);
+    } catch (e) {
+      // Fallback: ensure at least a console message if showing the UI fails
+      try { console.log(`Collected ochre: ${qual} (+${mult}x)`); } catch (e) {}
+    }
 
     // Stage progression: do NOT auto-advance here. Player must reach the goal area to finish the stage.
     // We intentionally do not notify here when the required deposits are collected to avoid implying auto-advance.
@@ -2940,6 +2977,14 @@ function setupEnhancedNavigationGame(container, controls, instructions, gameData
     // Don't exceed maxX
     if (!stage || stage.nextX >= stage.maxX) return;
 
+    // If a goal area exists, avoid generating new terrain that lies at or beyond it
+    try {
+      if (goalArea) {
+        const goalLeft = parseFloat(goalArea.style.left) || stage.maxX;
+        if (stage.nextX >= goalLeft - 60) return; // already near or past goal
+      }
+    } catch (e) {}
+
     // Create a few new platforms ahead of nextX
     const pieces = 2 + Math.floor(Math.random() * 3);
     for (let i = 0; i < pieces && stage.nextX < stage.maxX; i++) {
@@ -2947,6 +2992,22 @@ function setupEnhancedNavigationGame(container, controls, instructions, gameData
       // Vary height but keep mostly ground-level
       const y = 40 + Math.floor(Math.random() * 120);
       const plat = { x: stage.nextX, y: y, width: w, height: 12, decoration: Math.random() > 0.6 ? (Math.random()>0.5? '🌳':'🌿') : null };
+
+      // If placing this platform would put it beyond the goal area, skip
+      if (goalArea) {
+        try {
+          const goalLeft = parseFloat(goalArea.style.left) || stage.maxX;
+          if (plat.x >= goalLeft - 40) {
+            // do not create platforms past the goal
+            break;
+          }
+          if (plat.x + plat.width >= goalLeft - 8) {
+            // shrink platform so it doesn't cross into the goal zone
+            plat.width = Math.max(24, Math.floor(goalLeft - 12 - plat.x));
+          }
+        } catch (e) {}
+      }
+
       stage.platforms.push(plat);
       createPlatform(plat);
 
@@ -2954,16 +3015,40 @@ function setupEnhancedNavigationGame(container, controls, instructions, gameData
       if (Math.random() > 0.7 && stage.nextX > 200) {
         const gapW = 80 + Math.floor(Math.random() * 160);
         const river = { x: stage.nextX + Math.floor(Math.random() * Math.max(10, w - 20)), y: 0, width: gapW, height: 60 };
-        stage.rivers.push(river);
-        createRiver(river);
+        // Don't place a river that would overlap the goal
+        if (goalArea) {
+          try {
+            const goalLeft = parseFloat(goalArea.style.left) || stage.maxX;
+            if (river.x >= goalLeft - 40) {
+              // skip river
+            } else {
+              stage.rivers.push(river);
+              createRiver(river);
+            }
+          } catch (e) { stage.rivers.push(river); createRiver(river); }
+        } else {
+          stage.rivers.push(river);
+          createRiver(river);
+        }
       }
 
       // Place a deposit with a good chance on this new platform
       if (Math.random() > 0.3) {
         const depX = plat.x + 20 + Math.random() * Math.max(10, plat.width - 40);
         const depY = plat.y + plat.height;
-        createDeposit(depX, depY, stage.palette);
-        miniGameState.totalDepositsNeeded = (miniGameState.totalDepositsNeeded || 0) + 1;
+        // ensure deposit isn't placed beyond the goal area
+        if (goalArea) {
+          try {
+            const goalLeft = parseFloat(goalArea.style.left) || stage.maxX;
+            if (depX < goalLeft - 40) {
+              createDeposit(depX, depY, stage.palette);
+              miniGameState.totalDepositsNeeded = (miniGameState.totalDepositsNeeded || 0) + 1;
+            }
+          } catch (e) { createDeposit(depX, depY, stage.palette); miniGameState.totalDepositsNeeded = (miniGameState.totalDepositsNeeded || 0) + 1; }
+        } else {
+          createDeposit(depX, depY, stage.palette);
+          miniGameState.totalDepositsNeeded = (miniGameState.totalDepositsNeeded || 0) + 1;
+        }
       }
 
       stage.nextX += w + 80 + Math.floor(Math.random() * 120);
@@ -4766,104 +4851,533 @@ function setupPaintMixingGame(container, controls, instructions, gameData) {
 }
 
 function setupCaveLightingGame(container, controls, instructions, gameData) {
+  // Platformer-style cave lighting minigame inspired by the Red Ochre game
+  miniGameState.active = true;
   instructions.innerHTML = `
-    <strong>Illumination Strategy - Cave Lighting Planning</strong><br>
-    Plan lighting for deep cave painting session (2-4 hours).<br>
-    Place torches and lamps strategically. Calculate fuel needs!<br>
-    <em>Torch: 10 min per 100g | Lamp: 60 min per 15ml | Smoke management critical</em>
+    <strong>Illumination Strategy - Cave Lighting</strong><br>
+    Navigate the cave, avoid holes, and place a lamp in each chamber to progress.
+    Use <kbd>← →</kbd> to move and <kbd>Space</kbd> to jump. Click "Place Lamp" to install a lamp at your position.
   `;
-  
+
   container.innerHTML = '';
-  container.style.background = 'linear-gradient(135deg, #0a0806 0%, #1a1410 100%)';
-  
+  container.style.background = '#070503';
+  container.style.overflow = 'hidden';
+  // Ensure container is positioned so absolute children (world) can align to bottom
+  container.style.position = 'relative';
+
   controls.innerHTML = `
-    <div class="progress-bar" style="width: 300px;">
+    <div style="display:flex;gap:10px;align-items:center;">
       <div class="progress-fill" id="minigame-timer">Time: ${miniGameState.timeRemaining}s</div>
-    </div>
-    <div style="margin-top: 10px; display: flex; gap: 10px;">
-      <button class="btn-secondary" id="place-torch-btn">🔥 Place Torch</button>
       <button class="btn-secondary" id="place-lamp-btn">🪔 Place Lamp</button>
-      <button class="btn-primary" id="calculate-btn">Calculate Fuel Needs</button>
+      <div id="lamp-status" style="color:var(--ochre-yellow); font-weight:bold; margin-left:8px;">Lamps placed: 0</div>
     </div>
-    <div style="color: white; margin-top: 10px; text-align: center;" id="fuel-display"></div>
   `;
-  
-  const caveMap = document.createElement('div');
-  caveMap.className = 'cave-map';
-  
-  // Create cave passages
-  const passages = [
-    { x: '10%', y: '10%', w: '30%', h: '20%', name: 'Entrance' },
-    { x: '40%', y: '15%', w: '25%', h: '25%', name: 'Main Chamber' },
-    { x: '65%', y: '20%', w: '25%', h: '30%', name: 'Gallery' },
-    { x: '30%', y: '50%', w: '40%', h: '35%', name: 'Deep Chamber' }
+
+  // Create world container (large so we can have side-scrolling chambers)
+  const world = document.createElement('div');
+  // Make world absolute and bottom-aligned so platforms sit at the container bottom
+  world.style.position = 'absolute';
+  world.style.left = '0px';
+  world.style.bottom = '0px';
+  world.style.height = '520px';
+  world.style.width = '2600px'; // 4 stages ~ each 600px
+  world.style.background = 'linear-gradient(180deg,#040302,#0b0908)';
+  container.appendChild(world);
+
+  // Lighting visuals
+  const torchLight = document.createElement('div');
+  torchLight.className = 'torch-light';
+  torchLight.style.position = 'absolute';
+  torchLight.style.width = '220px';
+  torchLight.style.height = '220px';
+  torchLight.style.borderRadius = '50%';
+  torchLight.style.pointerEvents = 'none';
+  // warmer, reddish torch light
+  torchLight.style.background = 'radial-gradient(circle, rgba(255,160,80,0.95) 0%, rgba(255,120,60,0.6) 30%, rgba(0,0,0,0.0) 70%)';
+  torchLight.style.mixBlendMode = 'screen';
+  torchLight.style.zIndex = 90;
+  container.appendChild(torchLight);
+
+  const lampLights = [];
+
+  // Stages: Entrance, Main Chamber, Deep Chamber, Gallery
+  const stages = [
+    { name: 'Entrance', x: 0, width: 600, dark: 0.2, requiredLamp: true },
+    { name: 'Main Chamber', x: 600, width: 600, dark: 0.4, requiredLamp: true },
+    { name: 'Deep Chamber', x: 1200, width: 600, dark: 0.6, requiredLamp: true },
+    { name: 'Gallery', x: 1800, width: 800, dark: 0.75, requiredLamp: true }
   ];
-  
-  passages.forEach(passage => {
-    const div = document.createElement('div');
-    div.className = 'cave-passage';
-    div.style.left = passage.x;
-    div.style.top = passage.y;
-    div.style.width = passage.w;
-    div.style.height = passage.h;
-    div.innerHTML = `<div style="color: var(--ochre-yellow); font-size: 0.8rem; padding: 5px;">${passage.name}</div>`;
-    div.dataset.lit = 'false';
-    
-    div.addEventListener('click', function() {
-      if (miniGameState.placingLight) {
-        const icon = document.createElement('div');
-        icon.className = 'light-source-icon';
-        icon.textContent = miniGameState.placingLight;
-        icon.style.left = '50%';
-        icon.style.top = '50%';
-        icon.style.transform = 'translate(-50%, -50%)';
-        this.appendChild(icon);
-        this.classList.add('lit');
-        this.dataset.lit = 'true';
-        miniGameState.placingLight = null;
-        miniGameState.lightsPlaced++;
-        showNotification(`✓ Light placed in ${passage.name}`, 1500);
-      }
+
+  // Platforms and holes for each stage (relative positions)
+  const platforms = [];
+  const holes = [];
+  const lamps = [];
+
+  function addPlatform(x, y, w, h) {
+    const el = document.createElement('div');
+    el.className = 'cave-platform';
+    el.style.position = 'absolute';
+    el.style.left = x + 'px';
+    el.style.bottom = y + 'px';
+    el.style.width = w + 'px';
+    el.style.height = h + 'px';
+    // elevated platforms should appear above the ground visually
+    el.style.background = 'linear-gradient(180deg,#2b231e,#1b1511)';
+    el.style.borderRadius = '4px';
+    // choose z-index so elevated platforms draw above the ground segments
+    el.style.zIndex = (y > 0) ? 28 : 22;
+    world.appendChild(el);
+    platforms.push({ x, y, w, h, el });
+  }
+
+  function addHole(x, w, h = 40) {
+    const el = document.createElement('div');
+    el.className = 'cave-hole';
+    el.style.position = 'absolute';
+    el.style.left = x + 'px';
+    el.style.bottom = '0px';
+    el.style.width = w + 'px';
+    el.style.height = h + 'px';
+    el.style.background = '#000';
+    el.style.zIndex = 18;
+    world.appendChild(el);
+    holes.push({ x, w, el });
+  }
+
+  // Build enhanced terrain per stage: create holes first, then ground segments so holes are true gaps
+  const GROUND_HEIGHT = 120; // make the bottom ground tall so it reaches the bottom of the screen
+  stages.forEach(s => {
+    const groundY = 0;
+    // define hole positions for this stage
+    const gapX1 = s.x + 180;
+    const gapX2 = s.x + Math.max(280, Math.floor(s.width * 0.6));
+    const holeRanges = [ { x: gapX1, w: 100 }, { x: gapX2, w: 80 } ];
+
+    // Add elevated platforms (above the tall ground)
+    const elevs = [60, 120, 200, 320, 420];
+    elevs.forEach((off, i) => {
+      const ph = 12 + (i % 2) * 8;
+      const pw = 60 + (i % 3) * 50;
+      // elevated platforms sit on top of the ground height
+      addPlatform(s.x + off, groundY + GROUND_HEIGHT + 10 + (i % 3) * 30, pw, ph);
     });
-    
-    caveMap.appendChild(div);
-  });
-  
-  caveMap.style.position = 'absolute';
-  caveMap.style.top = '50%';
-  caveMap.style.left = '50%';
-  caveMap.style.transform = 'translate(-50%, -50%)';
-  container.appendChild(caveMap);
-  
-  miniGameState.lightsPlaced = 0;
-  miniGameState.placingLight = null;
-  
-  document.getElementById('place-torch-btn').addEventListener('click', () => {
-    miniGameState.placingLight = '🔥';
-    showNotification('Click a chamber to place torch', 1500);
-  });
-  
-  document.getElementById('place-lamp-btn').addEventListener('click', () => {
-    miniGameState.placingLight = '🪔';
-    showNotification('Click a chamber to place lamp', 1500);
-  });
-  
-  document.getElementById('calculate-btn').addEventListener('click', () => {
-    if (miniGameState.lightsPlaced >= 3) {
-      const fuelDisplay = document.getElementById('fuel-display');
-      fuelDisplay.innerHTML = `
-        <div style="background: rgba(76, 175, 80, 0.3); padding: 15px; border-radius: 10px; border: 2px solid #4CAF50;">
-          <strong>✓ Lighting Plan Complete!</strong><br>
-          ${miniGameState.lightsPlaced} light sources placed<br>
-          Estimated fuel: 300g wood + 60ml fat<br>
-          Duration: 2-4 hours work session
-        </div>
-      `;
-      setTimeout(() => endMiniGame(true), 2000);
-    } else {
-      showNotification('⚠️ Need at least 3 light sources for deep cave work!', 2000);
+
+  // Create hole visuals (these represent gaps - ground segments will avoid these ranges)
+  holeRanges.forEach(h => addHole(h.x, h.w, GROUND_HEIGHT));
+
+    // Create ground segments that skip hole ranges so holes are actual gaps you can fall through
+    let cursor = s.x;
+    const stageRight = s.x + s.width;
+    const sortedHoles = holeRanges.slice().sort((a,b) => a.x - b.x);
+    for (const hr of sortedHoles) {
+      if (hr.x > cursor) {
+        const segW = hr.x - cursor;
+        // ground segment style (brown)
+        const plat = { x: cursor, y: groundY, width: segW, height: GROUND_HEIGHT, color: 'linear-gradient(180deg,#3b2a12,#7a5a24)' };
+        // create platform and apply color
+        const el = document.createElement('div');
+        el.className = 'cave-platform';
+        el.style.position = 'absolute';
+        el.style.left = plat.x + 'px';
+        el.style.bottom = plat.y + 'px';
+        el.style.width = plat.width + 'px';
+        el.style.height = plat.height + 'px';
+        el.style.background = plat.color;
+        el.style.borderRadius = '4px';
+        el.style.zIndex = 22; // draw above elevated platforms if desired
+        world.appendChild(el);
+        platforms.push({ x: plat.x, y: plat.y, w: plat.width, h: plat.height, el });
+      }
+      cursor = hr.x + hr.w;
+    }
+    if (cursor < stageRight) {
+      const segW = stageRight - cursor;
+      const plat = { x: cursor, y: groundY, width: segW, height: GROUND_HEIGHT, color: 'linear-gradient(180deg,#3b2a12,#7a5a24)' };
+      const el = document.createElement('div');
+      el.className = 'cave-platform';
+      el.style.position = 'absolute';
+      el.style.left = plat.x + 'px';
+      el.style.bottom = plat.y + 'px';
+      el.style.width = plat.width + 'px';
+      el.style.height = plat.height + 'px';
+      el.style.background = plat.color;
+      el.style.borderRadius = '4px';
+      el.style.zIndex = 22;
+      world.appendChild(el);
+      platforms.push({ x: plat.x, y: plat.y, w: plat.width, h: plat.height, el });
     }
   });
+  // Goal areas: place the lamp marker on a reachable elevated platform if possible.
+  const goals = [];
+  stages.forEach((s, idx) => {
+    // Find rightmost elevated platform in this stage
+    const stagePlatforms = platforms.filter(p => p.x >= s.x && p.x < s.x + s.width && p.y > 0);
+    let goalPlatform = null;
+    if (stagePlatforms.length) {
+      // pick the platform with the largest (x + w) so it's toward the right
+      goalPlatform = stagePlatforms.reduce((a, b) => ((a.x + a.w) > (b.x + b.w) ? a : b));
+    } else {
+      // no elevated platform found: create a small one near the right edge of the stage
+      const px = Math.max(s.x + 120, s.x + s.width - 180);
+      const py = 0 + GROUND_HEIGHT + 10;
+      const pw = 80;
+      const ph = 12;
+      addPlatform(px, py, pw, ph);
+      goalPlatform = platforms[platforms.length - 1];
+    }
+
+    const el = document.createElement('div');
+    el.className = 'stage-goal';
+    el.style.position = 'absolute';
+    // center the goal on the chosen platform
+    el.style.left = (goalPlatform.x + Math.max(0, (goalPlatform.w / 2 - 40))) + 'px';
+    el.style.bottom = (goalPlatform.y + goalPlatform.h) + 'px';
+    el.style.width = '80px';
+    el.style.height = '80px';
+    el.style.background = 'linear-gradient(180deg,#3b2a12,#7a5a24)';
+    el.style.border = '3px solid rgba(255,215,0,0.5)';
+    el.style.borderRadius = '8px';
+    el.style.zIndex = 29; // above elevated platforms
+    el.dataset.stage = idx;
+    el.innerHTML = '<div style="color: var(--ochre-yellow); font-size: 0.9rem; padding: 6px; text-align:center;">Place lamp here</div>';
+    world.appendChild(el);
+    goals.push({ el, stageIndex: idx });
+  });
+
+  // Character
+  const character = document.createElement('div');
+  character.className = 'character-sprite cave-explorer';
+  character.style.position = 'absolute';
+  character.style.left = '40px';
+  character.style.bottom = '120px';
+  character.style.zIndex = 30;
+  // Make the character visible (simple sprite)
+  character.style.width = '28px';
+  character.style.height = '36px';
+  character.style.borderRadius = '6px';
+  character.style.background = 'linear-gradient(180deg,#f5d7b0,#c97b3a)';
+  character.style.border = '2px solid rgba(60,30,10,0.9)';
+  character.style.display = 'flex';
+  character.style.alignItems = 'center';
+  character.style.justifyContent = 'center';
+  character.style.fontSize = '18px';
+  character.textContent = '🕯️';
+  world.appendChild(character);
+
+  // Camera wrapper -- keep visible area clipped to container width
+  container.style.overflowX = 'auto';
+  container.scrollLeft = 0;
+
+  // Physics
+  let charX = 60;
+  let charY = 120;
+  let velX = 0;
+  let velY = 0;
+  const GRAV = 0.6;
+  const JUMP = -14;
+  const SPEED = 4;
+  let grounded = false;
+  let canJump = true;
+  const CHAR_W = 28;
+  const CHAR_H = 36;
+
+  // Stage tracking
+  let stageIndex = 0;
+  let lampPlacedForStage = Array(stages.length).fill(false);
+
+  // Input
+  const keys = { left: false, right: false, jump: false };
+
+  function handleKeyDown(e) {
+    if (e.key === 'ArrowLeft' || e.key === 'a') keys.left = true;
+    if (e.key === 'ArrowRight' || e.key === 'd') keys.right = true;
+    if ((e.key === ' ' || e.key === 'ArrowUp' || e.key === 'w') && canJump && grounded) { keys.jump = true; }
+  }
+  function handleKeyUp(e) {
+    if (e.key === 'ArrowLeft' || e.key === 'a') keys.left = false;
+    if (e.key === 'ArrowRight' || e.key === 'd') keys.right = false;
+    if (e.key === ' ' || e.key === 'ArrowUp' || e.key === 'w') { keys.jump = false; canJump = true; }
+  }
+  document.addEventListener('keydown', handleKeyDown);
+  document.addEventListener('keyup', handleKeyUp);
+  miniGameState.caveKeyHandlers = { handleKeyDown, handleKeyUp };
+
+  // Place lamp at character position
+  document.getElementById('place-lamp-btn').addEventListener('click', () => {
+    // Require placing the lamp at the stage marker (goal area). Find current stage goal
+    const curGoal = goals.find(g => parseInt(g.el.dataset.stage, 10) === stageIndex);
+    if (!curGoal) { showNotification('No placement marker found for this stage.', 1200); return; }
+    const cRect = character.getBoundingClientRect();
+    const gRect = curGoal.el.getBoundingClientRect();
+    if (!overlaps(cRect, gRect)) {
+      showNotification('🔍 Place the lamp at the marked location ("Place lamp here") to secure the chamber.', 1700);
+      return;
+    }
+    // Place lamp exactly at the marker center and create a lamp light similar to the torch
+    const gx = parseFloat(curGoal.el.style.left) || (stages[stageIndex].x + stages[stageIndex].width - 100);
+    const gy = parseFloat(curGoal.el.style.bottom) || 40;
+    const lx = Math.floor(gx + (parseFloat(curGoal.el.style.width) || 80) / 2);
+    const ly = Math.floor(gy + 10);
+    const lampEl = document.createElement('div');
+    lampEl.className = 'placed-lamp';
+    lampEl.style.position = 'absolute';
+    lampEl.style.left = lx + 'px';
+    lampEl.style.bottom = ly + 'px';
+    lampEl.style.width = '20px';
+    lampEl.style.height = '28px';
+    lampEl.style.zIndex = 28;
+    lampEl.textContent = '🪔';
+    world.appendChild(lampEl);
+    // Lamp light - warm, steady (no flicker)
+    const light = document.createElement('div');
+    light.style.position = 'absolute';
+    light.style.left = (lx - 140) + 'px';
+    light.style.bottom = (ly - 140) + 'px';
+    light.style.width = '280px';
+    light.style.height = '280px';
+    light.style.borderRadius = '50%';
+    light.style.pointerEvents = 'none';
+    light.style.background = 'radial-gradient(circle, rgba(255,140,80,0.95) 0%, rgba(255,120,70,0.8) 30%, rgba(0,0,0,0) 70%)';
+    light.style.zIndex = 27;
+    world.appendChild(light);
+    lamps.push({ lx, ly, lampEl, light, stage: stageIndex });
+
+    // Mark this exact stage as lit
+    lampPlacedForStage[stageIndex] = true;
+    showNotification(`✓ Lamp secured at ${stages[stageIndex].name}`, 1400);
+    document.getElementById('lamp-status').textContent = `Lamps placed: ${lamps.length}`;
+    // Visual change to the marker
+    try { curGoal.el.style.border = '3px solid rgba(144, 56, 0, 0.9)'; } catch (e) {}
+  });
+
+  // Simple overlap helper
+  function overlaps(a, b) {
+    return !(a.right < b.left || a.left > b.right || a.bottom < b.top || a.top > b.bottom);
+  }
+
+  // Game loop
+  function gameLoop() {
+    if (!miniGameState.active) return;
+    // Determine current stage from charX so darkness follows player's location
+    for (let i = 0; i < stages.length; i++) {
+      const s = stages[i];
+      if (charX >= s.x && charX < s.x + s.width) {
+        stageIndex = i;
+        break;
+      }
+    }
+    // store previous position for collision checks
+    const prevCharX = charX;
+    const prevCharY = charY;
+    // movement
+    if (keys.left) { velX = -SPEED; character.style.transform = 'scaleX(-1)'; }
+    else if (keys.right) { velX = SPEED; character.style.transform = 'scaleX(1)'; }
+    else velX = 0;
+    if (keys.jump && grounded && canJump) { velY = JUMP; grounded = false; canJump = false; }
+
+  velY += GRAV;
+    if (velY > 18) velY = 18;
+
+    charX += velX;
+    charY -= velY;
+
+    // Bounds
+    if (charX < 0) charX = 0;
+    if (charX > world.clientWidth - 32) charX = world.clientWidth - 32;
+    if (charY < 0) charY = 0;
+
+    // Platform collision: ceiling collision (when moving up) and landing (when moving down)
+    grounded = false;
+    // ceiling collision
+    if (velY < 0) {
+      const charTop = charY + CHAR_H;
+      const prevTop = prevCharY + CHAR_H;
+      for (const p of platforms) {
+        const platTop = p.y + p.h;
+        const overlapH = (charX + CHAR_W - 6) > p.x && charX + 6 < p.x + p.w;
+        if (overlapH && prevTop <= platTop - 2 && charTop >= platTop - 2) {
+          // hit underside of platform
+          velY = 0;
+          // place character just below the platform bottom
+          charY = platTop - CHAR_H - 4;
+          break;
+        }
+      }
+    }
+    // landing collision
+    if (velY > 0) {
+      for (const p of platforms) {
+        const platTop = p.y + p.h;
+        const wasAbove = prevCharY >= platTop + 6;
+        const isOver = (charX + CHAR_W - 6) > p.x && charX + 6 < p.x + p.w;
+        if (wasAbove && charY <= platTop + 6 && isOver) {
+          charY = platTop;
+          velY = 0;
+          grounded = true;
+          canJump = true;
+          break;
+        }
+      }
+    }
+
+    // Hole collision: use DOM rect overlap between character and hole elements to detect falling into pit
+    try {
+      // Respect short spawn/transition grace to avoid instant death on stage load
+      if (!(miniGameState.transitionGraceUntil && Date.now() < miniGameState.transitionGraceUntil)) {
+        const charRect = character.getBoundingClientRect();
+        for (const h of holes) {
+          const holeRect = h.el.getBoundingClientRect();
+          if (overlaps(charRect, holeRect)) {
+            showNotification('💀 You fell into a pit!', 1200);
+            setTimeout(() => endMiniGame(false), 700);
+            return;
+          }
+        }
+      }
+    } catch (e) {}
+
+    // Update character DOM
+    character.style.left = charX + 'px';
+    character.style.bottom = charY + 'px';
+
+    // Update torch light position and flicker (smaller in deeper stages)
+    const containerRect = container.getBoundingClientRect();
+    const worldRect = world.getBoundingClientRect();
+    const visX = charX - container.scrollLeft;
+    const visY = (containerRect.height - (charY + 0));
+    // update scroll so camera follows
+    const desired = Math.max(0, charX - containerRect.width * 0.4);
+    container.scrollLeft += (desired - container.scrollLeft) * 0.18;
+
+    // Flicker radius depends on current stage darkness
+    const curStage = stages[stageIndex];
+    const baseRadius = 140 - curStage.dark * 80; // reduces with darkness
+    const flicker = 8 * Math.sin(Date.now() / 120) + (Math.random() * 6 - 3);
+    const radius = Math.max(60, baseRadius + flicker);
+    torchLight.style.width = radius * 2 + 'px';
+    torchLight.style.height = radius * 2 + 'px';
+  torchLight.style.left = (charX - container.scrollLeft - radius + 12) + 'px';
+    torchLight.style.bottom = (charY - radius + 12) + 'px';
+
+    // Goal check: if reached and lamp placed for this stage, advance
+    for (const g of goals) {
+      try {
+        const gRect = g.el.getBoundingClientRect();
+        const cRect = character.getBoundingClientRect();
+        if (overlaps(cRect, gRect)) {
+          if (lampPlacedForStage[g.stageIndex]) {
+            // Advance
+            if (g.stageIndex < stages.length - 1) {
+              showNotification(`✅ Stage complete: ${stages[g.stageIndex].name}`, 1200);
+              // move player slightly to start of next stage
+              stageIndex = g.stageIndex + 1;
+              charX = stages[stageIndex].x + 40;
+              charY = 120;
+              container.scrollLeft = stages[stageIndex].x;
+            } else {
+              showNotification('🏁 You illuminated the cave!', 1400);
+              setTimeout(() => endMiniGame(true), 1000);
+              return;
+            }
+          } else {
+            showNotification('🔒 You must place a lamp in this stage to progress.', 1400);
+          }
+        }
+      } catch (e) {}
+    }
+
+    requestAnimationFrame(gameLoop);
+  }
+
+  // Start at stage 0
+  // Start at stage 0: spawn on the FIRST elevated platform created (offset=60, the leftmost small one)
+  const stage0 = stages[0];
+  // The elevated platforms are created with offsets [60, 120, 200, 320, 420] at y = GROUND_HEIGHT + 10 + (i%3)*30
+  // We want the VERY FIRST one created (offset 60, i=0) which is at stage0.x + 60, y = GROUND_HEIGHT + 10
+  const expectedX = stage0.x + 60;
+  const expectedY = 0 + GROUND_HEIGHT + 10; // i=0 so (0%3)*30 = 0
+  
+  // Find ALL elevated platforms in stage 0, sort by creation order (x position)
+  const stage0Elevated = platforms
+    .filter(p => p.y > 0 && p.x >= stage0.x && p.x < stage0.x + stage0.width)
+    .sort((a, b) => a.x - b.x);
+  
+  // Pick the absolute FIRST one (leftmost)
+  let spawnPlat = stage0Elevated.length > 0 ? stage0Elevated[0] : null;
+
+  // Verify it matches our expected coordinates (should be x=60, y=130 for stage0.x=0)
+  if (spawnPlat && Math.abs(spawnPlat.x - expectedX) > 15) {
+    // Wrong platform picked, force create the correct one
+    spawnPlat = null;
+  }
+
+  // If still none, create a spawn platform at the exact expected position
+  if (!spawnPlat) {
+    const spawnPx = expectedX;
+    const spawnPy = expectedY;
+    const spawnPw = 60;
+    const spawnPh = 12;
+    addPlatform(spawnPx, spawnPy, spawnPw, spawnPh);
+    spawnPlat = platforms[platforms.length - 1];
+  }
+
+  // Place character in the center of the spawn platform
+  charX = spawnPlat.x + Math.floor(spawnPlat.w / 2) - Math.floor(CHAR_W / 2);
+  charY = spawnPlat.y + spawnPlat.h + 2;
+  
+  // Update DOM immediately so the player sees correct spawn (before the loop runs)
+  character.style.left = charX + 'px';
+  character.style.bottom = charY + 'px';
+  
+  // Add a temporary debug marker at the spawn platform to visually confirm location
+  try {
+    let dbg = document.getElementById('spawn-debug-marker');
+    if (!dbg) {
+      dbg = document.createElement('div');
+      dbg.id = 'spawn-debug-marker';
+      dbg.style.position = 'absolute';
+      dbg.style.width = Math.max(8, Math.min(80, spawnPlat.w)) + 'px';
+      dbg.style.height = '8px';
+      dbg.style.background = 'rgba(255,50,50,0.95)';
+      dbg.style.border = '2px solid rgba(255,200,200,0.9)';
+      dbg.style.borderRadius = '3px';
+      dbg.style.zIndex = 60;
+      world.appendChild(dbg);
+    }
+    dbg.style.left = spawnPlat.x + 'px';
+    dbg.style.bottom = (spawnPlat.y + spawnPlat.h + 2) + 'px';
+  } catch (e) {}
+
+  // Ensure camera centers on spawn platform so it's visible to the player
+  try {
+    const desiredScroll = Math.max(0, spawnPlat.x - 24);
+    container.scrollLeft = desiredScroll;
+  } catch (e) {}
+
+  // Re-apply character DOM shortly after to override any later initializers
+  setTimeout(() => {
+    try {
+      character.style.left = charX + 'px';
+      character.style.bottom = charY + 'px';
+      const desiredScroll = Math.max(0, spawnPlat.x - 24);
+      container.scrollLeft = desiredScroll;
+    } catch (e) {}
+  }, 60);
+
+  // Give a comfortable grace period while the player settles
+  miniGameState.transitionGraceUntil = Date.now() + 1400;
+  container.scrollLeft = 0;
+  gameLoop();
+
+  // Ensure cleanup on endMiniGame: remove listeners and elements
+  const cleanup = () => {
+    try { document.removeEventListener('keydown', handleKeyDown); } catch (e) {}
+    try { document.removeEventListener('keyup', handleKeyUp); } catch (e) {}
+    try { torchLight.remove(); } catch (e) {}
+    lamps.forEach(l => { try { l.lampEl.remove(); l.light.remove(); } catch (e) {} });
+  };
+  // Store cleanup reference so endMiniGame can call it after it runs
+  miniGameState.caveCleanup = cleanup;
 }
 
 function setupTemplateGame(container, controls, instructions, gameData) {
