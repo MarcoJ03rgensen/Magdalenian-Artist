@@ -2344,16 +2344,24 @@ function setupEnhancedNavigationGame(container, controls, instructions, gameData
   // Remove parallax layers - they're blocking the view
   // Sky, mountains, and ground will be handled by stage backgrounds instead
   
-  // Stamina bar (simplified UI)
+  // Progress bar - fixed position at top of screen (follows camera)
   const staminaContainer = document.createElement('div');
   staminaContainer.className = 'stat-bar-container';
+  staminaContainer.style.cssText = `
+    position: fixed;
+    top: 80px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 100;
+    pointer-events: none;
+  `;
   staminaContainer.innerHTML = `
     <div class="stat-bar">
       <div class="stat-bar-label">Progress</div>
-      <div style="background: rgba(0,0,0,0.5); border-radius: 4px; padding: 8px; color: white; font-weight: bold; text-align: center;" id="collected-count">0 / 20 deposits (Stage 1/5)</div>
+      <div style="background: rgba(0,0,0,0.7); border-radius: 4px; padding: 8px; color: white; font-weight: bold; text-align: center; min-width: 250px;" id="collected-count">0 / 0 deposits (Stage 1/5)</div>
     </div>
   `;
-  container.appendChild(staminaContainer);
+  document.body.appendChild(staminaContainer);
   
   controls.innerHTML = `
     <div class="progress-bar" style="width: 300px;">
@@ -2554,41 +2562,43 @@ function setupEnhancedNavigationGame(container, controls, instructions, gameData
   }
   
   function createRiver(riverData) {
-    // Before adding, try to avoid overlapping existing platforms
-    function overlapsPlatform(x, w) {
+    // Before adding, check if river overlaps platforms (with safety margin)
+    function overlapsPlatform(x, w, safetyMargin = 30) {
       for (const p of platforms) {
-        if (x < p.x + p.width && x + w > p.x) return true;
+        // River needs at least safetyMargin px of clearance from platform edges
+        if (x - safetyMargin < p.x + p.width && x + w + safetyMargin > p.x) return true;
       }
       return false;
     }
 
     let rx = riverData.x;
     let rw = riverData.width;
-    // Try to shift or shrink river until it doesn't overlap a platform
+    // Try to shift or shrink river until it doesn't overlap a platform (with 30px safety margin)
     let attempts = 0;
     const maxAttempts = 8;
     while (attempts < maxAttempts && overlapsPlatform(rx, rw)) {
       // First try shifting right a bit
-      rx += 30 + Math.floor(Math.random() * 40);
+      rx += 40 + Math.floor(Math.random() * 50);
       attempts++;
     }
     attempts = 0;
     // If still overlapping, try shifting left
     while (attempts < maxAttempts && overlapsPlatform(rx, rw)) {
-      rx -= 30 + Math.floor(Math.random() * 40);
+      rx -= 40 + Math.floor(Math.random() * 50);
       attempts++;
     }
     // If still overlapping, try reducing width to fit between nearest platform gaps
     if (overlapsPlatform(rx, rw)) {
-      // find a gap large enough between platforms near the desired area
+      // find a gap large enough between platforms near the desired area (with safety margin)
       const sorted = platforms.slice().sort((a,b) => a.x - b.x);
       let found = false;
+      const minGap = 30; // Minimum gap between platform edge and river edge
       for (let i = 0; i < sorted.length - 1; i++) {
-        const gapStart = sorted[i].x + sorted[i].width + 10;
-        const gapEnd = sorted[i+1].x - 10;
-        if (gapEnd - gapStart > 60) {
-          rx = gapStart + 6;
-          rw = Math.min(rw, gapEnd - gapStart - 6);
+        const gapStart = sorted[i].x + sorted[i].width + minGap;
+        const gapEnd = sorted[i+1].x - minGap;
+        if (gapEnd - gapStart > 80) { // Need at least 80px for a narrow river
+          rx = gapStart + 10;
+          rw = Math.min(rw, gapEnd - gapStart - 20);
           found = true;
           break;
         }
@@ -2809,7 +2819,7 @@ function setupEnhancedNavigationGame(container, controls, instructions, gameData
     // Give a short transition grace so the player doesn't immediately collide with hazards on stage load
     miniGameState.transitionGraceUntil = Date.now() + 800; // ms
 
-    // Place deposits on platforms - spread them out across different platforms and away from spawn
+    // Place deposits on platforms - spread them out across different platforms and away from spawn AND rivers
     const usedPositions = [];
     for (let i = 0; i < stage.deposits; i++) {
       // Pick a platform index: try to distribute one-per-platform first
@@ -2821,14 +2831,26 @@ function setupEnhancedNavigationGame(container, controls, instructions, gameData
       }
       const plat = stage.platforms[platIndex];
 
-      // Generate position with spacing to avoid overlap and keep away from spawn
+      // Generate position with spacing to avoid overlap, keep away from spawn, AND avoid rivers
       let x, attempts = 0;
+      let isSafeFromRivers = false;
       do {
         const minX = plat.x + 10;
         const maxX = plat.x + Math.max(plat.width - 10, 40);
         x = minX + Math.random() * (maxX - minX);
+        
+        // Check if this deposit would be too close to any river (horizontally)
+        isSafeFromRivers = true;
+        for (const river of rivers) {
+          // Deposit needs to be at least 60px away from river edges horizontally
+          if (x >= river.x - 60 && x <= river.x + river.width + 60) {
+            isSafeFromRivers = false;
+            break;
+          }
+        }
+        
         attempts++;
-      } while ((usedPositions.some(pos => Math.abs(pos.x - x) < 100 && pos.platIndex === platIndex) || Math.abs(x - charX) < 120) && attempts < 40);
+      } while ((usedPositions.some(pos => Math.abs(pos.x - x) < 100 && pos.platIndex === platIndex) || Math.abs(x - charX) < 120 || !isSafeFromRivers) && attempts < 60);
 
       // Position deposit so it sits on top of platform (bottom coordinate)
       const y = plat.y + plat.height;
@@ -2868,7 +2890,7 @@ function setupEnhancedNavigationGame(container, controls, instructions, gameData
     setTimeout(() => { try { dep.el.remove(); } catch(e) {} }, 300);
     
     document.getElementById('collected-count').textContent = 
-      `${miniGameState.depositsCollected} / ${miniGameState.totalDepositsNeeded} deposits (Stage ${miniGameState.stageIndex + 1}/5)`;
+      `${miniGameState.stageDeposits} / ${stage.deposits} deposits (Stage ${miniGameState.stageIndex + 1}/5)`;
     showNotification(`✓ ${qual} ochre (+${mult}x)`, 1000);
 
     // Stage progression: do NOT auto-advance here. Player must reach the goal area to finish the stage.
@@ -3108,16 +3130,22 @@ function setupEnhancedNavigationGame(container, controls, instructions, gameData
     
     // Goal area check: if player reaches the goal and has all deposits, advance
     try {
-      if (goalArea) {
+      if (goalArea && !miniGameState.goalTriggered) {
         const charRect = character.getBoundingClientRect();
         const goalRect = goalArea.getBoundingClientRect();
         if (rectsOverlap(charRect, goalRect)) {
           const stage = stages[miniGameState.stageIndex];
           const remaining = (stage.deposits || 0) - (miniGameState.stageDeposits || 0);
           if (remaining <= 0) {
-            if (miniGameState.stageIndex + 1 < stages.length) {
+            // Capture the next stage index and set flag to prevent multiple triggers
+            const nextStageIndex = miniGameState.stageIndex + 1;
+            miniGameState.goalTriggered = true; // prevent repeat triggers
+            if (nextStageIndex < stages.length) {
               showNotification('✅ Goal reached! Proceeding to next stage...', 1200);
-              setTimeout(() => enterStage(miniGameState.stageIndex + 1), 700);
+              setTimeout(() => {
+                miniGameState.goalTriggered = false; // reset for next stage
+                enterStage(nextStageIndex);
+              }, 700);
             } else {
               showNotification('🏁 You completed all stages!', 1400);
               setTimeout(() => endMiniGame(true), 800);
