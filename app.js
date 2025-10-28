@@ -2375,6 +2375,7 @@ function setupEnhancedNavigationGame(container, controls, instructions, gameData
   const deposits = [];
   const rivers = [];
   const platforms = [];
+  let goalArea = null;
   
   const stages = [
     { 
@@ -2479,6 +2480,11 @@ function setupEnhancedNavigationGame(container, controls, instructions, gameData
     rivers.length = 0;
   }
 
+  function clearGoalArea() {
+    try { if (goalArea && goalArea.parentNode) goalArea.parentNode.removeChild(goalArea); } catch(e) {}
+    goalArea = null;
+  }
+
   function createDeposit(x, y, palette) {
     const el = document.createElement('div');
     const qualityRoll = Math.random();
@@ -2526,13 +2532,18 @@ function setupEnhancedNavigationGame(container, controls, instructions, gameData
     if (platData.decoration) {
       const decorEl = document.createElement('div');
       const isTree = platData.decoration.includes('🌲') || platData.decoration.includes('🌳');
+      // Place decoration somewhere across the platform (not off its edges)
+      const decorX = platData.x + 10 + Math.random() * Math.max(0, platData.width - 20);
+      // Slight negative offset so tree base sits visually on the platform
+      const bottomOffset = isTree ? (platData.height - 6) : platData.height;
       decorEl.style.cssText = `
         position: absolute;
-        left: ${platData.x + platData.width/2 - 15}px;
-        bottom: ${platData.y + platData.height}px;
-        font-size: ${isTree ? '2.5rem' : '1.5rem'};
+        left: ${decorX}px;
+        bottom: ${platData.y + bottomOffset}px;
+        font-size: ${isTree ? '3rem' : '1.4rem'};
         z-index: 6;
         line-height: 1;
+        pointer-events: none;
       `;
       decorEl.innerHTML = platData.decoration;
       container.appendChild(decorEl);
@@ -2543,12 +2554,58 @@ function setupEnhancedNavigationGame(container, controls, instructions, gameData
   }
   
   function createRiver(riverData) {
+    // Before adding, try to avoid overlapping existing platforms
+    function overlapsPlatform(x, w) {
+      for (const p of platforms) {
+        if (x < p.x + p.width && x + w > p.x) return true;
+      }
+      return false;
+    }
+
+    let rx = riverData.x;
+    let rw = riverData.width;
+    // Try to shift or shrink river until it doesn't overlap a platform
+    let attempts = 0;
+    const maxAttempts = 8;
+    while (attempts < maxAttempts && overlapsPlatform(rx, rw)) {
+      // First try shifting right a bit
+      rx += 30 + Math.floor(Math.random() * 40);
+      attempts++;
+    }
+    attempts = 0;
+    // If still overlapping, try shifting left
+    while (attempts < maxAttempts && overlapsPlatform(rx, rw)) {
+      rx -= 30 + Math.floor(Math.random() * 40);
+      attempts++;
+    }
+    // If still overlapping, try reducing width to fit between nearest platform gaps
+    if (overlapsPlatform(rx, rw)) {
+      // find a gap large enough between platforms near the desired area
+      const sorted = platforms.slice().sort((a,b) => a.x - b.x);
+      let found = false;
+      for (let i = 0; i < sorted.length - 1; i++) {
+        const gapStart = sorted[i].x + sorted[i].width + 10;
+        const gapEnd = sorted[i+1].x - 10;
+        if (gapEnd - gapStart > 60) {
+          rx = gapStart + 6;
+          rw = Math.min(rw, gapEnd - gapStart - 6);
+          found = true;
+          break;
+        }
+      }
+      if (!found) {
+        // As a last resort, don't create the river to avoid covering platforms
+        console.warn('Skipping river: cannot place without overlapping platforms', riverData);
+        return;
+      }
+    }
+
     const el = document.createElement('div');
     el.style.cssText = `
       position: absolute;
-      left: ${riverData.x}px;
+      left: ${rx}px;
       bottom: ${riverData.y}px;
-      width: ${riverData.width}px;
+      width: ${rw}px;
       height: ${riverData.height}px;
       background: linear-gradient(180deg, #4682B4 0%, #1E90FF 50%, #4169E1 100%);
       z-index: 4;
@@ -2556,10 +2613,138 @@ function setupEnhancedNavigationGame(container, controls, instructions, gameData
     `;
     el.innerHTML = '<div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:2rem;opacity:0.6;">🌊</div>';
     container.appendChild(el);
-    rivers.push({ ...riverData, el });
+    rivers.push({ ...riverData, x: rx, width: rw, el });
+
+    // If the river is wide, add a couple of stepping-stone platforms to make it crossable
+    try {
+      const minStoneGap = 120; // river widths above this may need stones
+      if (rw > minStoneGap) {
+        const stones = 1 + Math.floor(rw / 240); // 1-2 stones for wide rivers
+        for (let i = 0; i < stones; i++) {
+          const stoneW = 28 + Math.floor(Math.random() * 48);
+          // Spread stones evenly across the river width
+          const t = (i + 1) / (stones + 1);
+          const stoneX = Math.floor(rx + t * rw - stoneW / 2 + (Math.random() * 12 - 6));
+          // Place stone slightly above river surface so it's standable
+          const stoneY = riverData.y + riverData.height + 6;
+          const plat = { x: stoneX, y: stoneY, width: stoneW, height: 10, color: '#6b6b6b', decoration: null };
+          // Create as a platform and register it on platforms so collisions work
+          createPlatform(plat);
+        }
+      }
+    } catch (e) { console.warn('Failed to add stepping stones:', e); }
+  }
+
+  function createGoalArea(stage) {
+    clearGoalArea();
+    try {
+      const goalW = 120;
+      const goalH = 140;
+      let left = (stage.maxX || (stage.nextX + 800)) - goalW;
+
+      // Try to place the goal on an existing platform near the right edge so player won't fall into water
+      let placedOnPlatform = false;
+      const goalCenter = left + goalW / 2;
+
+      // Search current platforms for one that covers the goal center
+      for (const p of platforms) {
+        const pLeft = p.x;
+        const pRight = p.x + p.width;
+        if (goalCenter >= pLeft && goalCenter <= pRight) {
+          // Place the goal sitting on top of this platform
+          const platformTop = p.y + p.height;
+          // Center goal on the platform if possible
+          left = Math.max(pLeft, Math.min(left, pRight - goalW));
+          const el = document.createElement('div');
+          el.className = 'stage-goal';
+          el.style.cssText = `
+            position: absolute;
+            left: ${left}px;
+            bottom: ${platformTop}px;
+            width: ${goalW}px;
+            height: ${goalH}px;
+            background: linear-gradient(180deg, rgba(255,215,0,0.2), rgba(255,215,0,0.05));
+            border: 3px solid rgba(255,215,0,0.6);
+            border-radius: 8px;
+            z-index: 30;
+            display:flex;align-items:center;justify-content:center;font-size:1.6rem;pointer-events:none;
+          `;
+          el.innerHTML = '<div style="text-align:center; font-weight:bold; color:#FFD700;">🏁 Goal</div>';
+          container.appendChild(el);
+          goalArea = el;
+          placedOnPlatform = true;
+          break;
+        }
+      }
+
+      if (!placedOnPlatform) {
+        // Find nearest platform to the right edge and place goal on it
+        let nearest = null;
+        let bestDist = Infinity;
+        for (const p of platforms) {
+          const pxCenter = p.x + p.width / 2;
+          const dist = Math.abs(pxCenter - goalCenter);
+          if (dist < bestDist) { bestDist = dist; nearest = p; }
+        }
+        if (nearest && bestDist < 240) {
+          const platformTop = nearest.y + nearest.height;
+          left = Math.max(nearest.x, Math.min(left, nearest.x + nearest.width - goalW));
+          const el = document.createElement('div');
+          el.className = 'stage-goal';
+          el.style.cssText = `
+            position: absolute;
+            left: ${left}px;
+            bottom: ${platformTop}px;
+            width: ${goalW}px;
+            height: ${goalH}px;
+            background: linear-gradient(180deg, rgba(255,215,0,0.2), rgba(255,215,0,0.05));
+            border: 3px solid rgba(255,215,0,0.6);
+            border-radius: 8px;
+            z-index: 30;
+            display:flex;align-items:center;justify-content:center;font-size:1.6rem;pointer-events:none;
+          `;
+          el.innerHTML = '<div style="text-align:center; font-weight:bold; color:#FFD700;">🏁 Goal</div>';
+          container.appendChild(el);
+          goalArea = el;
+          placedOnPlatform = true;
+        }
+      }
+
+      if (!placedOnPlatform) {
+        // No nearby platform found: create a small support platform so the goal is safe
+        const supportX = Math.max(10, left - 10);
+        const support = { x: supportX, y: 50, width: goalW + 20, height: 12, color: 'linear-gradient(180deg,#8B7355 0%,#6B4F3A 100%)' };
+        createPlatform(support);
+        const platformTop = support.y + support.height;
+        const el = document.createElement('div');
+        el.className = 'stage-goal';
+        el.style.cssText = `
+          position: absolute;
+          left: ${supportX + 10}px;
+          bottom: ${platformTop}px;
+          width: ${goalW}px;
+          height: ${goalH}px;
+          background: linear-gradient(180deg, rgba(255,215,0,0.2), rgba(255,215,0,0.05));
+          border: 3px solid rgba(255,215,0,0.6);
+          border-radius: 8px;
+          z-index: 30;
+          display:flex;align-items:center;justify-content:center;font-size:1.6rem;pointer-events:none;
+        `;
+        el.innerHTML = '<div style="text-align:center; font-weight:bold; color:#FFD700;">🏁 Goal</div>';
+        container.appendChild(el);
+        goalArea = el;
+      }
+    } catch (e) {
+      console.warn('Could not create goal area', e);
+    }
   }
 
   function enterStage(index) {
+    // Validate stage index - avoid crashes if called with invalid index
+    if (!Array.isArray(stages) || typeof index !== 'number' || index < 0 || index >= stages.length) {
+      console.warn('enterStage called with invalid index:', index);
+      return;
+    }
     miniGameState.stageIndex = index;
     miniGameState.stageDeposits = 0;
     const stage = stages[index];
@@ -2580,46 +2765,88 @@ function setupEnhancedNavigationGame(container, controls, instructions, gameData
     
     // Create platforms
     stage.platforms.forEach(platData => createPlatform(platData));
-    
+
     // Create rivers (hazards)
     stage.rivers.forEach(riverData => createRiver(riverData));
-    
-    // Place deposits on platforms - spread them out across different platforms
+
+    // Initialize dynamic terrain pointers so we can extend this stage when player moves right
+    stage.nextX = (stage.platforms && stage.platforms.length)
+      ? (Math.max(...stage.platforms.map(p => p.x + p.width)) + 120)
+      : 800;
+    stage.maxX = stage.maxX || (stage.nextX + 2400); // allow generous extension
+
+    // Create (or move) goal area at the far right of this stage BEFORE spawning the player
+    createGoalArea(stage);
+
+  // Reset character position - spawn on first platform AFTER platforms and goal/support platforms are created
+    const firstPlat = stage.platforms[0];
+    if (firstPlat) {
+      charX = firstPlat.x + Math.min(60, Math.floor(firstPlat.width / 3)); // keep spawn well inside platform
+      // Place spawn slightly above platform so gravity brings player down naturally
+      charY = firstPlat.y + firstPlat.height + 30;
+    } else {
+      // Fallback spawn
+      charX = 60;
+      charY = 120;
+    }
+    velocityX = 0;
+    velocityY = 0;
+    isGrounded = false;
+    // Update character DOM immediately so deposits aren't placed overlapping the player
+    try {
+      character.style.left = charX + 'px';
+      character.style.bottom = charY + 'px';
+    } catch (e) {}
+
+    // Center camera on spawn immediately so the character appears in view
+    try {
+      const contRect = container.getBoundingClientRect();
+      const containerWidth = contRect.width || 800;
+      cameraX = Math.max(0, charX - containerWidth * 0.45);
+      container.scrollLeft = Math.floor(cameraX);
+    } catch (e) {}
+
+    // Give a short transition grace so the player doesn't immediately collide with hazards on stage load
+    miniGameState.transitionGraceUntil = Date.now() + 800; // ms
+
+    // Place deposits on platforms - spread them out across different platforms and away from spawn
     const usedPositions = [];
     for (let i = 0; i < stage.deposits; i++) {
-      // Pick a random platform (favor different platforms)
+      // Pick a platform index: try to distribute one-per-platform first
       let platIndex;
-      if (i < stage.platforms.length && stage.platforms.length >= stage.deposits) {
-        // First deposits: one per platform
+      if (i < stage.platforms.length) {
         platIndex = i;
       } else {
-        // Extra deposits: random placement
         platIndex = Math.floor(Math.random() * stage.platforms.length);
       }
       const plat = stage.platforms[platIndex];
-      
-      // Generate position with spacing to avoid overlap
+
+      // Generate position with spacing to avoid overlap and keep away from spawn
       let x, attempts = 0;
       do {
-        x = plat.x + 60 + Math.random() * Math.max(20, plat.width - 120);
+        const minX = plat.x + 10;
+        const maxX = plat.x + Math.max(plat.width - 10, 40);
+        x = minX + Math.random() * (maxX - minX);
         attempts++;
-      } while (usedPositions.some(pos => Math.abs(pos.x - x) < 80 && pos.platIndex === platIndex) && attempts < 20);
-      
-      const y = plat.y + plat.height + 10;
+      } while ((usedPositions.some(pos => Math.abs(pos.x - x) < 100 && pos.platIndex === platIndex) || Math.abs(x - charX) < 120) && attempts < 40);
+
+      // Position deposit so it sits on top of platform (bottom coordinate)
+      const y = plat.y + plat.height;
       usedPositions.push({ x, platIndex });
       createDeposit(x, y, stage.palette);
     }
     
-    // Reset character position - spawn on first platform
-    const firstPlat = stage.platforms[0];
-    charX = firstPlat.x + 50; // Start 50px from left edge of first platform
-    charY = firstPlat.y + firstPlat.height + 5; // Spawn just above platform surface
-    velocityX = 0;
-    velocityY = 0;
-    isGrounded = false;
-    
+    // Initialize dynamic terrain pointers so we can extend this stage when player moves right
+    stage.nextX = (stage.platforms && stage.platforms.length)
+      ? (Math.max(...stage.platforms.map(p => p.x + p.width)) + 120)
+      : 800;
+    stage.maxX = stage.maxX || (stage.nextX + 2400); // allow generous extension
+
     // Reset game start time to prevent instant river collision
     gameStartTime = Date.now();
+
+  // Create (or move) goal area at the far right of this stage
+  createGoalArea(stage);
 
     showNotification(`🏞️ ${stage.name} — Collect ${stage.deposits} deposits!`, 1800);
   }
@@ -2644,19 +2871,9 @@ function setupEnhancedNavigationGame(container, controls, instructions, gameData
       `${miniGameState.depositsCollected} / ${miniGameState.totalDepositsNeeded} deposits (Stage ${miniGameState.stageIndex + 1}/5)`;
     showNotification(`✓ ${qual} ochre (+${mult}x)`, 1000);
 
-    // Stage progression
-    const stage = stages[miniGameState.stageIndex];
-    if (miniGameState.stageDeposits >= stage.deposits) {
-      // Finished this stage
-      if (miniGameState.stageIndex + 1 < stages.length) {
-        showNotification(`✅ Stage ${miniGameState.stageIndex + 1} complete! Next terrain...`, 1400);
-        setTimeout(() => enterStage(miniGameState.stageIndex + 1), 1200);
-      } else {
-        // All stages complete -> success
-        showNotification(`🎉 All 5 stages conquered!`, 1200);
-        setTimeout(() => endMiniGame(true), 800);
-      }
-    }
+    // Stage progression: do NOT auto-advance here. Player must reach the goal area to finish the stage.
+    // We intentionally do not notify here when the required deposits are collected to avoid implying auto-advance.
+    // The goal area handles advancement when the player reaches it.
   }
 
   function checkPickups() {
@@ -2676,6 +2893,8 @@ function setupEnhancedNavigationGame(container, controls, instructions, gameData
   function checkRiverCollision() {
     // Don't check river collision in first 500ms to prevent instant death at spawn
     if (Date.now() - gameStartTime < 500) return false;
+    // Also respect explicit stage-transition grace set during enterStage()
+    if (miniGameState.transitionGraceUntil && Date.now() < miniGameState.transitionGraceUntil) return false;
     
     const charRect = character.getBoundingClientRect();
     for (const river of rivers) {
@@ -2694,18 +2913,54 @@ function setupEnhancedNavigationGame(container, controls, instructions, gameData
     return !(a.right < b.left || a.left > b.right || a.bottom < b.top || a.top > b.bottom);
   }
 
+  // Dynamically extend stage terrain (platforms, occasional rivers, and deposits)
+  function spawnExtraTerrain(stage) {
+    // Don't exceed maxX
+    if (!stage || stage.nextX >= stage.maxX) return;
+
+    // Create a few new platforms ahead of nextX
+    const pieces = 2 + Math.floor(Math.random() * 3);
+    for (let i = 0; i < pieces && stage.nextX < stage.maxX; i++) {
+      const w = 80 + Math.floor(Math.random() * 220);
+      // Vary height but keep mostly ground-level
+      const y = 40 + Math.floor(Math.random() * 120);
+      const plat = { x: stage.nextX, y: y, width: w, height: 12, decoration: Math.random() > 0.6 ? (Math.random()>0.5? '🌳':'🌿') : null };
+      stage.platforms.push(plat);
+      createPlatform(plat);
+
+      // Occasionally insert a short river gap between pieces
+      if (Math.random() > 0.7 && stage.nextX > 200) {
+        const gapW = 80 + Math.floor(Math.random() * 160);
+        const river = { x: stage.nextX + Math.floor(Math.random() * Math.max(10, w - 20)), y: 0, width: gapW, height: 60 };
+        stage.rivers.push(river);
+        createRiver(river);
+      }
+
+      // Place a deposit with a good chance on this new platform
+      if (Math.random() > 0.3) {
+        const depX = plat.x + 20 + Math.random() * Math.max(10, plat.width - 40);
+        const depY = plat.y + plat.height;
+        createDeposit(depX, depY, stage.palette);
+        miniGameState.totalDepositsNeeded = (miniGameState.totalDepositsNeeded || 0) + 1;
+      }
+
+      stage.nextX += w + 80 + Math.floor(Math.random() * 120);
+    }
+  }
+
   // Physics state - must be declared BEFORE enterStage is called
   let charX = 80;
   let charY = 300;
   let velocityX = 0;
   let velocityY = 0;
   const GRAVITY = 0.6;
-  const JUMP_STRENGTH = -12;
-  const MOVE_SPEED = 4;
+  const JUMP_STRENGTH = -16; // increased so rivers are more jumpable
+  const MOVE_SPEED = 5; // slightly faster movement for better traversal
   const MAX_FALL_SPEED = 15;
   let isGrounded = false;
   let canJump = true;
   let gameStartTime = 0; // Track when game starts to prevent instant river collision
+  let cameraX = 0; // horizontal camera offset
   
   // Input state  
   const keys = { left: false, right: false, jump: false };
@@ -2770,7 +3025,15 @@ function setupEnhancedNavigationGame(container, controls, instructions, gameData
     
     // Bounds
     if (charX < 0) charX = 0;
-    if (charX > containerWidth - 32) charX = containerWidth - 32;
+    // Allow charX to move beyond the visible container so camera can follow.
+    // Clamp to stage bounds if available to prevent running past the goal.
+    try {
+      const stage = stages[miniGameState.stageIndex];
+      if (stage && stage.maxX) {
+        const maxCharX = Math.max(stage.maxX - 32, (stage.nextX || 0) - 32);
+        if (charX > maxCharX) charX = maxCharX;
+      }
+    } catch (e) {}
     if (charY < 0) charY = 0; // Don't fall below bottom
     
     // Platform collision detection (charY is distance from bottom)
@@ -2803,12 +3066,68 @@ function setupEnhancedNavigationGame(container, controls, instructions, gameData
     // Update visuals (CSS bottom property)
     character.style.left = charX + 'px';
     character.style.bottom = charY + 'px';
-    
-    // Check collisions (add 500ms grace period at start)
-    checkPickups();
+
+    // Camera follow: move cameraX to keep character toward right side as they progress
+    try {
+      const contRect = container.getBoundingClientRect();
+      const containerWidth = contRect.width || 800;
+      // keep camera a bit ahead of center so player sees upcoming terrain
+      const desired = Math.max(0, charX - containerWidth * 0.45);
+      // Smooth follow
+      cameraX += (desired - cameraX) * 0.18;
+      container.scrollLeft = Math.floor(cameraX);
+
+      // If player approaches the right side of currently generated terrain, spawn more
+      const stage = stages[miniGameState.stageIndex];
+      if (stage && charX + container.scrollLeft > (stage.nextX - containerWidth * 0.6)) {
+        spawnExtraTerrain(stage);
+      }
+    } catch (e) {}
+
+    // Extra fall-death check using DOM rects (if character falls below visible container)
+    try {
+      const charRect = character.getBoundingClientRect();
+      const contRect = container.getBoundingClientRect();
+      // Skip this check during the short transition grace period
+      if (!(miniGameState.transitionGraceUntil && Date.now() < miniGameState.transitionGraceUntil)) {
+        if (charRect.top > contRect.bottom + 40) {
+          showNotification('💀 You fell!', 1200);
+          setTimeout(() => endMiniGame(false), 600);
+          return;
+        }
+      }
+    } catch (e) {}
+
+    // Check collisions with a short grace period after stage spawn
+    if (Date.now() - gameStartTime > 300) {
+      try { checkPickups(); } catch (e) {}
+    }
     if (Date.now() - gameStartTime > 500) {
       if (checkRiverCollision()) return; // Stop if fell in river
     }
+    
+    // Goal area check: if player reaches the goal and has all deposits, advance
+    try {
+      if (goalArea) {
+        const charRect = character.getBoundingClientRect();
+        const goalRect = goalArea.getBoundingClientRect();
+        if (rectsOverlap(charRect, goalRect)) {
+          const stage = stages[miniGameState.stageIndex];
+          const remaining = (stage.deposits || 0) - (miniGameState.stageDeposits || 0);
+          if (remaining <= 0) {
+            if (miniGameState.stageIndex + 1 < stages.length) {
+              showNotification('✅ Goal reached! Proceeding to next stage...', 1200);
+              setTimeout(() => enterStage(miniGameState.stageIndex + 1), 700);
+            } else {
+              showNotification('🏁 You completed all stages!', 1400);
+              setTimeout(() => endMiniGame(true), 800);
+            }
+          } else {
+            showNotification(`🔒 You need ${remaining} more deposit(s) to unlock the next stage.`, 1400);
+          }
+        }
+      }
+    } catch (e) {}
     
     requestAnimationFrame(gameLoop);
   }
