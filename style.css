@@ -1111,23 +1111,25 @@ body {
 
 /* Experience display (nav) */
 .xp-display {
+  /* Keep rectangular shape but adopt the shared icon visuals */
   min-width: 86px;
-  padding: 0 8px;
+  padding: 0 12px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 6px;
   font-weight: 700;
-  background: linear-gradient(180deg, rgba(218,165,32,0.12), rgba(218,165,32,0.06));
-  border: 2px solid rgba(218,165,32,0.2);
-  color: var(--ochre-yellow);
+  /* Use same base background and border as .icon-btn so it visually matches */
+  background: rgba(94, 82, 64, 0.6);
+  border: 2px solid var(--stone-gray);
+  color: var(--limestone);
   font-size: 0.95rem;
-  border-radius: 12px;
+  border-radius: 12px; /* rectangular with rounded corners */
 }
 
 .xp-display #xp-count {
   font-weight: 800;
-  color: var(--ochre-yellow);
+  color: var(--limestone);
 }
 
 .icon-btn:hover {

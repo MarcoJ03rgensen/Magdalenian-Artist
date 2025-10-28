@@ -510,6 +510,7 @@ window.addEventListener('DOMContentLoaded', () => {
     createFloatingParticles();
     updateUI();
     loadGameState(); // Load saved progress
+    initSoundSystem();
     initKeyboardNavigation(); // Add keyboard shortcuts
   } catch (error) {
     console.error('Initialization error:', error);
@@ -644,7 +645,8 @@ const sounds = {
 
 // Global audio resources
 const AudioAssets = {
-  click: 'SoundsForTMCAE/General/rockclick.wav'
+  click: 'SoundsForTMCAE/General/rockclick.wav',
+  ambient: 'SoundsForTMCAE/General/audiotrack.mp3'
 };
 
 // Preload click audio (single node to clone for overlapping plays)
@@ -658,16 +660,217 @@ try {
   console.warn('Could not preload click audio:', e);
 }
 
-function playSound(name) {
+// Ambient soundtrack (plays outside mini-games)
+let _ambientAudio = null;
+try {
+  _ambientAudio = new Audio(AudioAssets.ambient);
+  _ambientAudio.preload = 'auto';
+  _ambientAudio.loop = true;
+  _ambientAudio.volume = 0.45;
+} catch (e) {
+  console.warn('Could not preload ambient audio:', e);
+}
+
+// Sound settings persisted in localStorage
+let soundSettings = {
+  master: true,
+  soundtrack: false, // default soundtrack disabled per user request
+  click: true,
+  masterVolume: 1.0,
+  soundtrackVolume: 0.45
+};
+
+function loadSoundSettings() {
   try {
-    if (name === 'click' && _clickAudio) {
-      // clone to allow overlapping clicks
-      const a = _clickAudio.cloneNode();
-      a.volume = 0.7;
-      a.play().catch(() => {});
+    const raw = localStorage.getItem('tmcae_sound_settings');
+    if (raw) {
+      const s = JSON.parse(raw);
+      soundSettings = Object.assign(soundSettings, s);
+      // Ensure new fields exist with sane defaults when upgrading older saves
+      if (typeof soundSettings.masterVolume !== 'number') soundSettings.masterVolume = 1.0;
+      if (typeof soundSettings.soundtrackVolume !== 'number') soundSettings.soundtrackVolume = 0.45;
+      if (typeof soundSettings.soundtrack !== 'boolean') soundSettings.soundtrack = false;
+    }
+  } catch (e) { console.warn('Could not load sound settings', e); }
+}
+
+function saveSoundSettings() {
+  try { localStorage.setItem('tmcae_sound_settings', JSON.stringify(soundSettings)); } catch (e) { console.warn('Could not save sound settings', e); }
+}
+
+function applySoundSettings() {
+  try {
+    // Ambient track muted if master or soundtrack disabled
+    if (_ambientAudio) {
+      _ambientAudio.muted = !soundSettings.master || !soundSettings.soundtrack;
+      // Set volume according to master * soundtrack volume settings
+      try {
+        const mv = (typeof soundSettings.masterVolume === 'number') ? soundSettings.masterVolume : 1.0;
+        const sv = (typeof soundSettings.soundtrackVolume === 'number') ? soundSettings.soundtrackVolume : 0.45;
+        _ambientAudio.volume = Math.max(0, Math.min(1, mv * sv));
+      } catch (e) { /* ignore volume set errors */ }
+      if (!_ambientAudio.muted && !_ambientAudio.paused && _ambientAudio.currentTime === 0) {
+        // ensure it can play
+        _ambientAudio.play().catch(() => {});
+      }
+    }
+  } catch (e) { /* swallow */ }
+}
+
+function updateAmbientPlayback() {
+  // Start ambient if no mini-game active and settings allow it
+  try {
+    if (!soundSettings.master || !soundSettings.soundtrack) {
+      if (_ambientAudio && !_ambientAudio.paused) _ambientAudio.pause();
       return;
     }
-    // Fallback: no-op
+
+    if (miniGameState && miniGameState.active) {
+      // pause during mini-games
+      if (_ambientAudio && !_ambientAudio.paused) _ambientAudio.pause();
+      return;
+    }
+
+    // Otherwise, play if available
+    if (_ambientAudio) {
+      if (_ambientAudio.paused) {
+        _ambientAudio.currentTime = 0;
+        _ambientAudio.play().catch(() => {});
+      }
+      _ambientAudio.muted = false;
+    }
+  } catch (e) { console.warn('Ambient playback error', e); }
+}
+
+function pauseAmbient() {
+  try { if (_ambientAudio && !_ambientAudio.paused) _ambientAudio.pause(); } catch (e) {}
+}
+
+function resumeAmbient() {
+  try { if (_ambientAudio && _ambientAudio.paused && soundSettings.master && soundSettings.soundtrack) _ambientAudio.play().catch(() => {}); } catch (e) {}
+}
+
+function createSoundSettingsUI() {
+  try {
+    // Small gear button
+    if (document.getElementById('sound-settings-btn')) return;
+    const btn = document.createElement('button');
+    btn.id = 'sound-settings-btn';
+    btn.title = 'Sound Settings';
+    // Use the same icon button styling as the other nav icons so it matches visually
+    btn.className = 'icon-btn sound-settings';
+    // keep only the positioning inline so we don't overwrite the shared icon styles
+    btn.style.cssText = 'position: fixed; right: 12px; bottom: 12px; z-index:120;';
+    btn.innerHTML = '⚙️';
+    document.body.appendChild(btn);
+
+    const panel = document.createElement('div');
+    panel.id = 'sound-settings-panel';
+    // place panel above the gear button in bottom-right
+    panel.style.cssText = 'position: fixed; right: 12px; bottom: 60px; z-index:121; background: rgba(0,0,0,0.9); color: white; padding: 10px; border-radius:8px; min-width:220px; display:none; box-shadow:0 8px 30px rgba(0,0,0,0.6);';
+    panel.innerHTML = `
+      <div style="font-weight:bold; margin-bottom:8px;">Sound Settings</div>
+      <label style="display:block;margin-bottom:6px;"><input type="checkbox" id="ss-master"> Master</label>
+      <label style="display:block;margin-bottom:6px;"><input type="checkbox" id="ss-soundtrack"> Soundtrack</label>
+      <label style="display:block;margin-bottom:6px;"><input type="checkbox" id="ss-click"> Clicks</label>
+      <div style="margin-top:8px;">
+        <label style="display:block; font-size:0.9rem; margin-bottom:6px;">Master Volume<br><input type="range" id="ss-master-volume" min="0" max="1" step="0.01" value="1" style="width:100%;"></label>
+        <label style="display:block; font-size:0.9rem; margin-bottom:6px;">Soundtrack Volume<br><input type="range" id="ss-soundtrack-volume" min="0" max="1" step="0.01" value="0.45" style="width:100%;"></label>
+      </div>
+      <div style="margin-top:8px; font-size:0.85rem; color: #ccc;">Settings persist in your browser.</div>
+    `;
+    document.body.appendChild(panel);
+
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+      // sync checkboxes and sliders
+      try {
+        document.getElementById('ss-master').checked = !!soundSettings.master;
+        document.getElementById('ss-soundtrack').checked = !!soundSettings.soundtrack;
+        document.getElementById('ss-click').checked = !!soundSettings.click;
+        const mvEl = document.getElementById('ss-master-volume');
+        const svEl = document.getElementById('ss-soundtrack-volume');
+        if (mvEl) mvEl.value = (typeof soundSettings.masterVolume === 'number') ? soundSettings.masterVolume : 1.0;
+        if (svEl) svEl.value = (typeof soundSettings.soundtrackVolume === 'number') ? soundSettings.soundtrackVolume : 0.45;
+      } catch (e) { /* ignore sync errors */ }
+    });
+
+    document.addEventListener('click', (e) => {
+      if (!panel.contains(e.target) && e.target !== btn) panel.style.display = 'none';
+    });
+
+    document.getElementById('ss-master').addEventListener('change', (e) => {
+      soundSettings.master = e.target.checked;
+      saveSoundSettings();
+      applySoundSettings();
+      updateAmbientPlayback();
+    });
+    document.getElementById('ss-soundtrack').addEventListener('change', (e) => {
+      soundSettings.soundtrack = e.target.checked;
+      saveSoundSettings();
+      applySoundSettings();
+      updateAmbientPlayback();
+    });
+    document.getElementById('ss-click').addEventListener('change', (e) => {
+      soundSettings.click = e.target.checked;
+      saveSoundSettings();
+    });
+
+    // Volume sliders
+    const mvEl = document.getElementById('ss-master-volume');
+    const svEl = document.getElementById('ss-soundtrack-volume');
+    if (mvEl) {
+      mvEl.addEventListener('input', (e) => {
+        soundSettings.masterVolume = parseFloat(e.target.value);
+        saveSoundSettings();
+        applySoundSettings();
+        updateAmbientPlayback();
+      });
+    }
+    if (svEl) {
+      svEl.addEventListener('input', (e) => {
+        soundSettings.soundtrackVolume = parseFloat(e.target.value);
+        saveSoundSettings();
+        applySoundSettings();
+        updateAmbientPlayback();
+      });
+    }
+  } catch (e) { console.warn('Could not create sound settings UI', e); }
+}
+
+function initSoundSystem() {
+  loadSoundSettings();
+  applySoundSettings();
+  createSoundSettingsUI();
+  // Start ambient if appropriate
+  setTimeout(updateAmbientPlayback, 120);
+}
+
+function playSound(name) {
+  try {
+    // Respect master toggle
+    if (typeof soundSettings !== 'undefined' && !soundSettings.master) return;
+
+    if (name === 'click') {
+      if (typeof soundSettings !== 'undefined' && !soundSettings.click) return;
+      if (_clickAudio) {
+        // clone to allow overlapping clicks
+        const a = _clickAudio.cloneNode();
+        // Respect master volume for clicks
+        const mv = (typeof soundSettings.masterVolume === 'number') ? soundSettings.masterVolume : 1.0;
+        a.volume = 0.7 * mv;
+        a.play().catch(() => {});
+      }
+      return;
+    }
+
+    // Other named sounds (future): play if allowed by master
+    if (name === 'ambient') {
+      // Ambient playback managed separately; keep this a no-op
+      return;
+    }
+    // Fallback: no-op for unregistered sounds
   } catch (e) {
     // ignore audio errors
   }
@@ -686,7 +889,10 @@ document.addEventListener('click', (e) => {
     const hasBtnClass = el.className && /\b(btn|btn-primary|btn-secondary|gather-btn|craft-card|place-lamp-btn|minigame-fire)\b/.test(el.className);
     const roleButton = el.getAttribute && el.getAttribute('role') === 'button';
 
-    if (isButtonTag || hasBtnClass || roleButton) {
+    // Also play click sound for any click inside modal dialogs (including the mini-game modal)
+    const inModal = e.target.closest && (e.target.closest('#minigame-modal') || e.target.closest('.modal'));
+
+    if (isButtonTag || hasBtnClass || roleButton || inModal) {
       // play click sound
       sounds.click();
     }
@@ -1546,6 +1752,37 @@ function getCanvasPosition(e) {
 // UI UPDATES
 // ========================================
 
+// Utility: fit a numeric label into its container by scaling font-size down until it fits
+function fitNumberToContainer(el, opts = {}) {
+  if (!el) return;
+  try {
+    const minPx = typeof opts.minPx === 'number' ? opts.minPx : 10; // smallest font-size in px
+    const maxPx = typeof opts.maxPx === 'number' ? opts.maxPx : 16; // starting font-size px
+    // Reset to max first
+    el.style.fontSize = maxPx + 'px';
+    el.style.lineHeight = '1';
+    // If it already fits, we're done
+    // Use a small loop to reduce font size until scrollWidth <= clientWidth or min reached
+    let fs = maxPx;
+    // Allow a small padding factor so it doesn't touch edges
+    const pad = 4;
+    while (fs > minPx && el.scrollWidth > el.clientWidth - pad) {
+      fs -= 1;
+      el.style.fontSize = fs + 'px';
+    }
+    // If still overflowing, allow text to shrink via transform scale as a last resort
+    if (el.scrollWidth > el.clientWidth - pad) {
+      const ratio = (el.clientWidth - pad) / el.scrollWidth;
+      if (ratio > 0 && ratio < 1) {
+        el.style.transformOrigin = 'center';
+        el.style.transform = `scale(${ratio})`;
+      }
+    } else {
+      el.style.transform = '';
+    }
+  } catch (e) { /* ignore fit errors */ }
+}
+
 function updateUI() {
   updateInventory();
   updateTools();
@@ -1557,7 +1794,12 @@ function updateUI() {
   }
   // Update XP display in nav
   const xpEl = document.getElementById('xp-count');
-  if (xpEl) xpEl.textContent = gameState.xp || 0;
+  if (xpEl) {
+    xpEl.textContent = String(gameState.xp || 0);
+    // ensure it visually fits inside the XP circle badge
+    // small timeout to allow styles/layout to apply if called during DOM updates
+    setTimeout(() => fitNumberToContainer(xpEl, { minPx: 10, maxPx: 14 }), 8);
+  }
 }
 
 function updateInventory() {
@@ -2087,6 +2329,12 @@ function startMiniGame(materialKey) {
   }
   
   modal.classList.add('active');
+  // Remember whether ambient was playing before the mini-game started
+  try {
+    miniGameState._ambientWasPlaying = !!(_ambientAudio && !_ambientAudio.paused);
+  } catch (e) { miniGameState._ambientWasPlaying = false; }
+  // Pause ambient when a mini-game is active
+  try { updateAmbientPlayback(); } catch (e) {}
   
   // Start timer only if game has a duration
   if (gameData.duration > 0) {
@@ -2136,6 +2384,16 @@ function endMiniGame(success) {
     console.warn('Error clearing mini-game intervals', e);
   }
   miniGameState.active = false;
+  // Resume ambient only if it was playing before the mini-game started
+  try {
+    if (miniGameState && miniGameState._ambientWasPlaying) {
+      // try to resume if settings still allow it
+      resumeAmbient();
+    } else {
+      // otherwise ensure ambient stays paused
+      pauseAmbient();
+    }
+  } catch (e) { /* ignore ambient resume errors */ }
   // Remove any UI elements appended to document.body by mini-games (like the fixed progress bar)
   try {
     if (miniGameState.staminaContainer) {
