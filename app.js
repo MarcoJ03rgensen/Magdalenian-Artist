@@ -634,16 +634,66 @@ function resetGameState() {
 // ========================================
 
 const sounds = {
-  gather: () => console.log('🔊 Sound: Material gathered'),
-  craft: () => console.log('🔊 Sound: Item crafted'),
-  paint: () => console.log('🔊 Sound: Brush stroke'),
-  success: () => console.log('🔊 Sound: Success chime'),
-  click: () => console.log('🔊 Sound: UI click'),
-  ambient: () => console.log('🔊 Sound: Cave ambience')
+  gather: () => playSound('gather'),
+  craft: () => playSound('craft'),
+  paint: () => playSound('paint'),
+  success: () => playSound('success'),
+  click: () => playSound('click'),
+  ambient: () => playSound('ambient')
 };
 
-// To add real sounds later, replace console.log with:
-// new Audio('sounds/gather.mp3').play();
+// Global audio resources
+const AudioAssets = {
+  click: 'SoundsForTMCAE/General/rockclick.wav'
+};
+
+// Preload click audio (single node to clone for overlapping plays)
+let _clickAudio = null;
+try {
+  _clickAudio = new Audio(AudioAssets.click);
+  _clickAudio.preload = 'auto';
+  // small volume default
+  _clickAudio.volume = 0.7;
+} catch (e) {
+  console.warn('Could not preload click audio:', e);
+}
+
+function playSound(name) {
+  try {
+    if (name === 'click' && _clickAudio) {
+      // clone to allow overlapping clicks
+      const a = _clickAudio.cloneNode();
+      a.volume = 0.7;
+      a.play().catch(() => {});
+      return;
+    }
+    // Fallback: no-op
+  } catch (e) {
+    // ignore audio errors
+  }
+}
+
+// Delegate clicks to play UI click sound for interactive elements
+document.addEventListener('click', (e) => {
+  try {
+    // don't trigger when interacting with the painting canvas or drawing tools
+    if (e.target && (e.target.id === 'painting-canvas' || e.target.closest && e.target.closest('#painting-canvas'))) return;
+
+    const el = e.target;
+    // Determine if the clicked element is a UI button/control
+    const tag = (el.tagName || '').toUpperCase();
+    const isButtonTag = tag === 'BUTTON' || tag === 'INPUT' && (el.type === 'button' || el.type === 'submit');
+    const hasBtnClass = el.className && /\b(btn|btn-primary|btn-secondary|gather-btn|craft-card|place-lamp-btn|minigame-fire)\b/.test(el.className);
+    const roleButton = el.getAttribute && el.getAttribute('role') === 'button';
+
+    if (isButtonTag || hasBtnClass || roleButton) {
+      // play click sound
+      sounds.click();
+    }
+  } catch (err) {
+    // swallow
+  }
+}, true);
 
 // ========================================
 // TITLE SCREEN
