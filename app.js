@@ -5315,7 +5315,8 @@ function setupCaveLightingGame(container, controls, instructions, gameData) {
   world.style.left = '0px';
   world.style.bottom = '0px';
   world.style.height = '520px';
-  world.style.width = '2600px'; // 4 stages ~ each 600px
+  // Reserve width for 3 chambers (approx 3 * 700px)
+  world.style.width = '2200px'; // 3 stages
   world.style.background = 'linear-gradient(180deg,#040302,#0b0908)';
   container.appendChild(world);
 
@@ -5335,12 +5336,11 @@ function setupCaveLightingGame(container, controls, instructions, gameData) {
 
   const lampLights = [];
 
-  // Stages: Entrance, Main Chamber, Deep Chamber, Gallery
+  // Use 3 cave stages (Entrance, Main Chamber, Deep Chamber)
   const stages = [
-    { name: 'Entrance', x: 0, width: 600, dark: 0.2, requiredLamp: true },
-    { name: 'Main Chamber', x: 600, width: 600, dark: 0.4, requiredLamp: true },
-    { name: 'Deep Chamber', x: 1200, width: 600, dark: 0.6, requiredLamp: true },
-    { name: 'Gallery', x: 1800, width: 800, dark: 0.75, requiredLamp: true }
+    { name: 'Entrance', x: 0, width: 700, dark: 0.2, requiredLamp: true },
+    { name: 'Main Chamber', x: 700, width: 700, dark: 0.45, requiredLamp: true },
+    { name: 'Deep Chamber', x: 1400, width: 800, dark: 0.7, requiredLamp: true }
   ];
 
   // Platforms and holes for each stage (relative positions)
@@ -5389,7 +5389,8 @@ function setupCaveLightingGame(container, controls, instructions, gameData) {
     const holeRanges = [ { x: gapX1, w: 100 }, { x: gapX2, w: 80 } ];
 
     // Add elevated platforms (above the tall ground)
-    const elevs = [60, 120, 200, 320, 420];
+  // first elevated platform offset adjusted to 10 so spawn aligns correctly on narrow viewports
+  const elevs = [10, 120, 200, 320, 420];
     elevs.forEach((off, i) => {
       const ph = 12 + (i % 2) * 8;
       const pw = 60 + (i % 3) * 50;
@@ -5484,68 +5485,44 @@ function setupCaveLightingGame(container, controls, instructions, gameData) {
     const leftovers = container.querySelectorAll('.character-sprite, #journey-character');
     leftovers.forEach(n => { try { n.remove(); } catch (e) {} });
   } catch (e) {}
-
-  // Character (image-based sprite with CSS animation/mirroring). Falls back to emoji if image fails to load.
+  // Bring in the cave explorer sprite (prefer PNG 'cha1.png' used elsewhere).
+  // If the PNG isn't available we gracefully fall back to the SVG sprite-sheet or an emoji.
   const character = document.createElement('div');
-  character.className = 'character-sprite cave-explorer';
+  character.className = 'character-sprite platformer-char';
   character.style.position = 'absolute';
   character.style.left = '40px';
   character.style.bottom = '120px';
-  // Ensure character renders above lighting/backdrops
   character.style.zIndex = 95;
-  // size to resemble previous small sprite but slightly larger to fit the PNG
   character.style.width = '36px';
-  character.style.height = '44px';
-  character.style.borderRadius = '6px';
-  character.style.overflow = 'visible';
+  character.style.height = '46px';
+  character.style.borderRadius = '4px';
+  character.style.display = 'flex';
+  character.style.alignItems = 'center';
+  character.style.justifyContent = 'center';
+  character.style.pointerEvents = 'none';
 
-  // inner image element for sprite artwork
+  // Prefer a user-selected PNG if set, otherwise default to the project's cha1.png
   const charImg = document.createElement('img');
   charImg.className = 'character-img';
-  // prefer user-selected PNG if available, otherwise load from current folder explicitly
-  try {
-    const chosen = (miniGameState && miniGameState.selectedCharacter && typeof miniGameState.selectedCharacter === 'string' && miniGameState.selectedCharacter.toLowerCase().endsWith('.png')) ? miniGameState.selectedCharacter : './cha1.png';
-    charImg.src = chosen;
-  } catch (e) {
-    charImg.src = './cha1.png';
-  }
   charImg.alt = 'Explorer';
-  charImg.style.width = '100%';
-  charImg.style.height = '100%';
+  try {
+    charImg.src = (miniGameState && miniGameState.selectedCharacter && typeof miniGameState.selectedCharacter === 'string' && miniGameState.selectedCharacter.toLowerCase().endsWith('.png')) ? miniGameState.selectedCharacter : './cha1.png';
+  } catch (e) { charImg.src = './cha1.png'; }
+  // size to match CSS sprite rules
+  charImg.style.width = '36px';
+  charImg.style.height = '46px';
   charImg.style.objectFit = 'contain';
-  charImg.style.display = 'block';
-  charImg.style.pointerEvents = 'none';
-  charImg.style.zIndex = 96; // place image above wrapper backgrounds and lighting
 
-  // graceful fallback to emoji if image load fails; ensure we only use fallback when necessary
-  charImg.addEventListener('error', () => {
-    try {
-      if (charImg.parentElement) charImg.remove();
-    } catch (e) {}
-    try {
-      const emoji = document.createElement('div');
-      emoji.style.fontSize = '18px';
-      emoji.textContent = '🚶';
-      emoji.style.display = 'flex';
-      emoji.style.alignItems = 'center';
-      emoji.style.justifyContent = 'center';
-      emoji.style.width = '100%';
-      emoji.style.height = '100%';
-      character.appendChild(emoji);
-    } catch (e) {}
-  });
-
-  // If image loads successfully, ensure any leftover emoji fallback is removed
-  charImg.addEventListener('load', () => {
-    try {
-      // remove any existing emoji child (defensive)
-      Array.from(character.children).forEach(c => {
-        if (c !== charImg && c.tagName && c.tagName.toLowerCase() === 'div' && c.textContent && c.textContent.trim().length <= 2) {
-          try { c.remove(); } catch (e) {}
-        }
-      });
-    } catch (e) {}
-  });
+  // If the PNG fails to load, try the SVG sprite-sheet or finally fall back to an emoji
+  charImg.onerror = function() {
+    try { charImg.remove(); } catch (e) {}
+    // try sprite-sheet div (CSS already points to './cha1_sprites.svg')
+    const sheet = document.createElement('div');
+    sheet.className = 'sprite-sheet';
+    sheet.style.width = '36px';
+    sheet.style.height = '44px';
+    try { character.appendChild(sheet); } catch (e) { character.textContent = '🚶'; character.style.fontSize = '24px'; }
+  };
 
   character.appendChild(charImg);
   world.appendChild(character);
@@ -5559,25 +5536,57 @@ function setupCaveLightingGame(container, controls, instructions, gameData) {
   let charY = 120;
   let velX = 0;
   let velY = 0;
-  const GRAV = 0.6;
-  const JUMP = -14;
+  // Tweak gravity/jump so jumps feel less floaty and falling isn't too fast.
+  // These were tuned against the Ochre platformer but adjusted slightly for cave scale.
+  const GRAV = 0.5; // slightly lower gravity for a gentler fall feel
+  const JUMP = -13; // slightly stronger impulse so airtime feels natural
   const SPEED = 4;
   let grounded = false;
   let canJump = true;
-  const CHAR_W = 36;
-  const CHAR_H = 44;
+  // Use sprite natural size (36x46) so the cha1 image fits without scaling blur
+  const CHAR_W = 36; // character sprite width
+  const CHAR_H = 46; // character sprite height
 
   // Stage tracking
   let stageIndex = 0;
   let lampPlacedForStage = Array(stages.length).fill(false);
 
+  // Helper: deterministic advance to a stage by spawning on that stage's left-most elevated platform
+  function advanceToStage(nextIndex) {
+    if (typeof nextIndex !== 'number' || nextIndex < 0 || nextIndex >= stages.length) return;
+    stageIndex = nextIndex;
+    // Find left-most elevated platform for the target stage
+    const s = stages[nextIndex];
+    const elevated = platforms.filter(p => p.y > 0 && p.x >= s.x && p.x < s.x + s.width).sort((a,b) => a.x - b.x);
+    let spawnPlat = elevated.length ? elevated[0] : null;
+    if (!spawnPlat) {
+      // fallback: create a small platform near left edge of stage
+      const px = s.x + 10;
+      const py = 0 + GROUND_HEIGHT + 10;
+      addPlatform(px, py, 60, 12);
+      spawnPlat = platforms[platforms.length - 1];
+    }
+    // Place character centered on platform
+    charX = spawnPlat.x + Math.floor(spawnPlat.w / 2) - Math.floor(CHAR_W / 2);
+    charY = spawnPlat.y + spawnPlat.h + 2;
+    try {
+      character.style.left = charX + 'px';
+      character.style.bottom = charY + 'px';
+      container.scrollLeft = Math.max(0, spawnPlat.x - 24);
+    } catch (e) {}
+    // Give transition grace so player isn't killed immediately after teleport
+    miniGameState.transitionGraceUntil = Date.now() + 1100;
+  }
+
   // Input
   const keys = { left: false, right: false, jump: false };
 
   function handleKeyDown(e) {
-    if (e.key === 'ArrowLeft' || e.key === 'a') keys.left = true;
-    if (e.key === 'ArrowRight' || e.key === 'd') keys.right = true;
-    if ((e.key === ' ' || e.key === 'ArrowUp' || e.key === 'w') && canJump && grounded) { keys.jump = true; }
+    if (!miniGameState.active) return;
+    if (e.key === 'ArrowLeft' || e.key === 'a') { keys.left = true; e.preventDefault(); }
+    if (e.key === 'ArrowRight' || e.key === 'd') { keys.right = true; e.preventDefault(); }
+    // pressing jump sets the flag — actual jump occurs in the game loop when grounded
+    if (e.key === ' ' || e.key === 'ArrowUp' || e.key === 'w') { keys.jump = true; e.preventDefault(); }
   }
   function handleKeyUp(e) {
     if (e.key === 'ArrowLeft' || e.key === 'a') keys.left = false;
@@ -5671,7 +5680,8 @@ function setupCaveLightingGame(container, controls, instructions, gameData) {
     if (keys.jump && grounded && canJump) { velY = JUMP; grounded = false; canJump = false; }
 
   velY += GRAV;
-    if (velY > 18) velY = 18;
+  // clamp fall speed a bit lower to make descent feel less punishing in narrow cave spaces
+  if (velY > 13) velY = 13;
 
     charX += velX;
     charY -= velY;
@@ -5680,10 +5690,15 @@ function setupCaveLightingGame(container, controls, instructions, gameData) {
     if (charX < 0) charX = 0;
   if (charX > world.clientWidth - CHAR_W) charX = world.clientWidth - CHAR_W;
     if (charY < 0) charY = 0;
+    // Update character DOM immediately so we can use DOM bounding rects for robust collision
+    try {
+      character.style.left = charX + 'px';
+      character.style.bottom = charY + 'px';
+    } catch (e) {}
 
-    // Platform collision: ceiling collision (when moving up) and landing (when moving down)
+    // Platform collision: use DOM bounding rects for more robust detection
     grounded = false;
-    // ceiling collision
+    // ceiling collision (when moving up)
     if (velY < 0) {
       const charTop = charY + CHAR_H;
       const prevTop = prevCharY + CHAR_H;
@@ -5695,24 +5710,37 @@ function setupCaveLightingGame(container, controls, instructions, gameData) {
           velY = 0;
           // place character just below the platform bottom
           charY = platTop - CHAR_H - 4;
+          try { character.style.bottom = charY + 'px'; } catch (e) {}
           break;
         }
       }
     }
-    // landing collision
+
+    // landing collision (when falling): detect using element bounding rects
     if (velY > 0) {
-      for (const p of platforms) {
-        const platTop = p.y + p.h;
-        const wasAbove = prevCharY >= platTop + 6;
-        const isOver = (charX + CHAR_W - 6) > p.x && charX + 6 < p.x + p.w;
-        if (wasAbove && charY <= platTop + 6 && isOver) {
-          charY = platTop;
-          velY = 0;
-          grounded = true;
-          canJump = true;
-          break;
+      try {
+        const charRect = character.getBoundingClientRect();
+        for (const p of platforms) {
+          try {
+            const platRect = p.el.getBoundingClientRect();
+            // require horizontal overlap (with small horizontal tolerance)
+            const horizOverlap = !(charRect.right < platRect.left + 6 || charRect.left > platRect.right - 6);
+            // ensure the character was above the platform in world coords before falling
+            const platTop = p.y + p.h;
+            const wasAbove = prevCharY >= platTop - 4;
+            // check if character bottom has reached or passed the platform top (tolerance +8 px)
+            if (horizOverlap && wasAbove && charRect.bottom <= platRect.top + 8) {
+              // snap to platform top in world coordinates
+              charY = platTop;
+              velY = 0;
+              grounded = true;
+              canJump = true;
+              try { character.style.bottom = charY + 'px'; } catch (e) {}
+              break;
+            }
+          } catch (e) {}
         }
-      }
+      } catch (e) {}
     }
 
     // Hole collision: use DOM rect overlap between character and hole elements to detect falling into pit
@@ -5754,7 +5782,7 @@ function setupCaveLightingGame(container, controls, instructions, gameData) {
   torchLight.style.left = (charX - container.scrollLeft - radius + 12) + 'px';
     torchLight.style.bottom = (charY - radius + 12) + 'px';
 
-    // Goal check: if reached and lamp placed for this stage, advance
+    // Goal check: if reached and lamp placed for this stage, advance using deterministic spawn
     for (const g of goals) {
       try {
         const gRect = g.el.getBoundingClientRect();
@@ -5764,11 +5792,11 @@ function setupCaveLightingGame(container, controls, instructions, gameData) {
             // Advance
             if (g.stageIndex < stages.length - 1) {
               showNotification(`✅ Stage complete: ${stages[g.stageIndex].name}`, 1200);
-              // move player slightly to start of next stage
-              stageIndex = g.stageIndex + 1;
-              charX = stages[stageIndex].x + 40;
-              charY = 120;
-              container.scrollLeft = stages[stageIndex].x;
+              // Advance to the next stage using deterministic spawn that centers on a safe elevated platform
+              const nextIndex = g.stageIndex + 1;
+              setTimeout(() => {
+                advanceToStage(nextIndex);
+              }, 700);
             } else {
               showNotification('🏁 You illuminated the cave!', 1400);
               setTimeout(() => endMiniGame(true), 1000);
@@ -5787,9 +5815,9 @@ function setupCaveLightingGame(container, controls, instructions, gameData) {
   // Start at stage 0
   // Start at stage 0: spawn on the FIRST elevated platform created (offset=60, the leftmost small one)
   const stage0 = stages[0];
-  // The elevated platforms are created with offsets [60, 120, 200, 320, 420] at y = GROUND_HEIGHT + 10 + (i%3)*30
-  // We want the VERY FIRST one created (offset 60, i=0) which is at stage0.x + 60, y = GROUND_HEIGHT + 10
-  const expectedX = stage0.x + 60;
+  // The elevated platforms are created with offsets [10, 120, 200, 320, 420] at y = GROUND_HEIGHT + 10 + (i%3)*30
+  // We want the VERY FIRST one created (offset 10, i=0) which is at stage0.x + 10, y = GROUND_HEIGHT + 10
+  const expectedX = stage0.x + 10;
   const expectedY = 0 + GROUND_HEIGHT + 10; // i=0 so (0%3)*30 = 0
   
   // Find ALL elevated platforms in stage 0, sort by creation order (x position)
