@@ -2703,6 +2703,47 @@ function setupEnhancedNavigationGame(container, controls, instructions, gameData
   character.style.zIndex = '25';
   container.appendChild(character);
 
+  // Add an image child so the decorative wrapper background is hidden (CSS :has() rule)
+  // Use the same image selection logic as other scenes so user's selection is respected.
+  try {
+    const img = document.createElement('img');
+    img.className = 'character-img';
+    const chosen = (miniGameState && miniGameState.selectedCharacter && typeof miniGameState.selectedCharacter === 'string' && miniGameState.selectedCharacter.toLowerCase().endsWith('.png')) ? miniGameState.selectedCharacter : './cha1.png';
+    img.src = chosen;
+    img.alt = 'Explorer';
+    img.style.width = '36px';
+    img.style.height = '44px';
+    img.style.objectFit = 'contain';
+    img.style.display = 'block';
+    img.style.pointerEvents = 'none';
+    img.style.zIndex = '26';
+    img.addEventListener('error', () => {
+      try { if (img.parentElement) img.remove(); } catch (e) {}
+      try {
+        const emoji = document.createElement('div');
+        emoji.style.fontSize = '18px';
+        emoji.textContent = '🚶';
+        emoji.style.display = 'flex';
+        emoji.style.alignItems = 'center';
+        emoji.style.justifyContent = 'center';
+        emoji.style.width = '100%';
+        emoji.style.height = '100%';
+        character.appendChild(emoji);
+      } catch (e) {}
+    });
+    img.addEventListener('load', () => {
+      try {
+        // remove any tiny emoji child left over
+        Array.from(character.children).forEach(c => {
+          if (c !== img && c.tagName && c.tagName.toLowerCase() === 'div' && c.textContent && c.textContent.trim().length <= 2) {
+            try { c.remove(); } catch (e) {}
+          }
+        });
+      } catch (e) {}
+    });
+    character.appendChild(img);
+  } catch (e) {}
+
   // 5-STAGE PLATFORMER WITH VARIED TERRAIN
   
   // Multi-stage deposit system with platforms and hazards
@@ -3418,15 +3459,21 @@ function setupEnhancedNavigationGame(container, controls, instructions, gameData
     velocityY += GRAVITY;
     if (velocityY > MAX_FALL_SPEED) velocityY = MAX_FALL_SPEED;
     
-    // Horizontal movement
+    // Horizontal movement - use CSS classes for mirroring/animation instead of inline transforms
     if (keys.left) {
       velocityX = -MOVE_SPEED;
-      character.style.transform = 'scaleX(-1)';
+      character.classList.add('facing-left');
+      character.classList.add('running');
+      // ensure we don't leave inline transforms from older code
+      character.style.transform = '';
     } else if (keys.right) {
       velocityX = MOVE_SPEED;
-      character.style.transform = 'scaleX(1)';
+      character.classList.remove('facing-left');
+      character.classList.add('running');
+      character.style.transform = '';
     } else {
       velocityX = 0;
+      character.classList.remove('running');
     }
     
     // Jump
@@ -4318,6 +4365,18 @@ function setupMultiDayExpedition(container, controls, instructions, gameData) {
             clearInterval(resourceDrainInterval);
             
             setTimeout(() => {
+              // Remove the expedition character and any leftover sprites so UI testing area is clean
+              try {
+                const jc = document.getElementById('journey-character');
+                if (jc) jc.remove();
+                // Also remove any stray .character-sprite elements inside the modal/container
+                const stray = container.querySelectorAll('.character-sprite');
+                stray.forEach(n => { if (n && n.parentElement) try { n.remove(); } catch (e) {} });
+                // Remove the (possible) spawn debug marker if it exists
+                const dbg = document.getElementById('spawn-debug-marker');
+                if (dbg) try { dbg.remove(); } catch (e) {}
+              } catch (e) {}
+
               document.getElementById('continue-journey-btn').style.display = 'none';
               document.getElementById('rest-btn').style.display = 'none';
               document.getElementById('forage-btn').style.display = 'none';
@@ -5420,24 +5479,75 @@ function setupCaveLightingGame(container, controls, instructions, gameData) {
     goals.push({ el, stageIndex: idx });
   });
 
-  // Character
+  // Remove any previous character elements that might remain from other scenes
+  try {
+    const leftovers = container.querySelectorAll('.character-sprite, #journey-character');
+    leftovers.forEach(n => { try { n.remove(); } catch (e) {} });
+  } catch (e) {}
+
+  // Character (image-based sprite with CSS animation/mirroring). Falls back to emoji if image fails to load.
   const character = document.createElement('div');
   character.className = 'character-sprite cave-explorer';
   character.style.position = 'absolute';
   character.style.left = '40px';
   character.style.bottom = '120px';
-  character.style.zIndex = 30;
-  // Make the character visible (simple sprite)
-  character.style.width = '28px';
-  character.style.height = '36px';
+  // Ensure character renders above lighting/backdrops
+  character.style.zIndex = 95;
+  // size to resemble previous small sprite but slightly larger to fit the PNG
+  character.style.width = '36px';
+  character.style.height = '44px';
   character.style.borderRadius = '6px';
-  character.style.background = 'linear-gradient(180deg,#f5d7b0,#c97b3a)';
-  character.style.border = '2px solid rgba(60,30,10,0.9)';
-  character.style.display = 'flex';
-  character.style.alignItems = 'center';
-  character.style.justifyContent = 'center';
-  character.style.fontSize = '18px';
-  character.textContent = '🕯️';
+  character.style.overflow = 'visible';
+
+  // inner image element for sprite artwork
+  const charImg = document.createElement('img');
+  charImg.className = 'character-img';
+  // prefer user-selected PNG if available, otherwise load from current folder explicitly
+  try {
+    const chosen = (miniGameState && miniGameState.selectedCharacter && typeof miniGameState.selectedCharacter === 'string' && miniGameState.selectedCharacter.toLowerCase().endsWith('.png')) ? miniGameState.selectedCharacter : './cha1.png';
+    charImg.src = chosen;
+  } catch (e) {
+    charImg.src = './cha1.png';
+  }
+  charImg.alt = 'Explorer';
+  charImg.style.width = '100%';
+  charImg.style.height = '100%';
+  charImg.style.objectFit = 'contain';
+  charImg.style.display = 'block';
+  charImg.style.pointerEvents = 'none';
+  charImg.style.zIndex = 96; // place image above wrapper backgrounds and lighting
+
+  // graceful fallback to emoji if image load fails; ensure we only use fallback when necessary
+  charImg.addEventListener('error', () => {
+    try {
+      if (charImg.parentElement) charImg.remove();
+    } catch (e) {}
+    try {
+      const emoji = document.createElement('div');
+      emoji.style.fontSize = '18px';
+      emoji.textContent = '🚶';
+      emoji.style.display = 'flex';
+      emoji.style.alignItems = 'center';
+      emoji.style.justifyContent = 'center';
+      emoji.style.width = '100%';
+      emoji.style.height = '100%';
+      character.appendChild(emoji);
+    } catch (e) {}
+  });
+
+  // If image loads successfully, ensure any leftover emoji fallback is removed
+  charImg.addEventListener('load', () => {
+    try {
+      // remove any existing emoji child (defensive)
+      Array.from(character.children).forEach(c => {
+        if (c !== charImg && c.tagName && c.tagName.toLowerCase() === 'div' && c.textContent && c.textContent.trim().length <= 2) {
+          try { c.remove(); } catch (e) {}
+        }
+      });
+    } catch (e) {}
+  });
+
+  character.appendChild(charImg);
   world.appendChild(character);
 
   // Camera wrapper -- keep visible area clipped to container width
@@ -5454,8 +5564,8 @@ function setupCaveLightingGame(container, controls, instructions, gameData) {
   const SPEED = 4;
   let grounded = false;
   let canJump = true;
-  const CHAR_W = 28;
-  const CHAR_H = 36;
+  const CHAR_W = 36;
+  const CHAR_H = 44;
 
   // Stage tracking
   let stageIndex = 0;
@@ -5568,7 +5678,7 @@ function setupCaveLightingGame(container, controls, instructions, gameData) {
 
     // Bounds
     if (charX < 0) charX = 0;
-    if (charX > world.clientWidth - 32) charX = world.clientWidth - 32;
+  if (charX > world.clientWidth - CHAR_W) charX = world.clientWidth - CHAR_W;
     if (charY < 0) charY = 0;
 
     // Platform collision: ceiling collision (when moving up) and landing (when moving down)
@@ -5714,24 +5824,7 @@ function setupCaveLightingGame(container, controls, instructions, gameData) {
   character.style.left = charX + 'px';
   character.style.bottom = charY + 'px';
   
-  // Add a temporary debug marker at the spawn platform to visually confirm location
-  try {
-    let dbg = document.getElementById('spawn-debug-marker');
-    if (!dbg) {
-      dbg = document.createElement('div');
-      dbg.id = 'spawn-debug-marker';
-      dbg.style.position = 'absolute';
-      dbg.style.width = Math.max(8, Math.min(80, spawnPlat.w)) + 'px';
-      dbg.style.height = '8px';
-      dbg.style.background = 'rgba(255,50,50,0.95)';
-      dbg.style.border = '2px solid rgba(255,200,200,0.9)';
-      dbg.style.borderRadius = '3px';
-      dbg.style.zIndex = 60;
-      world.appendChild(dbg);
-    }
-    dbg.style.left = spawnPlat.x + 'px';
-    dbg.style.bottom = (spawnPlat.y + spawnPlat.h + 2) + 'px';
-  } catch (e) {}
+  // (debug marker intentionally omitted in production build)
 
   // Ensure camera centers on spawn platform so it's visible to the player
   try {
@@ -5760,6 +5853,8 @@ function setupCaveLightingGame(container, controls, instructions, gameData) {
     try { document.removeEventListener('keyup', handleKeyUp); } catch (e) {}
     try { torchLight.remove(); } catch (e) {}
     lamps.forEach(l => { try { l.lampEl.remove(); l.light.remove(); } catch (e) {} });
+    // Defensive cleanup: remove any leftover debug marker
+    try { const dbg = document.getElementById('spawn-debug-marker'); if (dbg) dbg.remove(); } catch (e) {}
   };
   // Store cleanup reference so endMiniGame can call it after it runs
   miniGameState.caveCleanup = cleanup;

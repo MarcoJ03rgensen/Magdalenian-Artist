@@ -1982,6 +1982,36 @@ body {
   100% { transform: translateY(0); }
 }
 
+/* Sprite-sheet support (SVG sheet) */
+.character-sprite .sprite-sheet {
+  width: 36px;
+  height: 44px;
+  display: block;
+  background-image: url('./cha1_sprites.svg');
+  background-repeat: no-repeat;
+  /* total sheet width: 288px (8 frames of 36px) */
+  background-size: 288px 44px;
+  image-rendering: pixelated;
+  transform-origin: center bottom;
+  z-index: 96; /* above fallback image */
+}
+.character-sprite .sprite-sheet { animation: spriteIdle 1200ms steps(1) infinite; }
+.character-sprite.running .sprite-sheet { animation: spriteRun 600ms steps(6) infinite; }
+.character-sprite.jumping .sprite-sheet { animation: spriteJump 240ms steps(1) both; }
+
+@keyframes spriteRun {
+  from { background-position: 0 0; }
+  to { background-position: -252px 0; } /* show frames 0..6 (6 steps), end at last run frame */
+}
+@keyframes spriteIdle {
+  from { background-position: 0 0; }
+  to { background-position: 0 0; }
+}
+@keyframes spriteJump {
+  from { background-position: 0 0; }
+  to { background-position: -252px 0; }
+}
+
 /* Night mode trees */
 .night-mode .tree-foliage,
 .night-mode .tree-foliage::before,
@@ -5261,13 +5291,52 @@ kbd {
 
 /* Riverbank landscape visuals - redesigned */
 .landscape-explorer {
-  width: 32px;
-  height: 48px;
+  /* Match the sprite/image size so children fully cover the wrapper */
+  width: 36px;
+  height: 44px;
+  /* Keep a neutral default so scenes that intentionally use the wrapper without an image
+     still get a visual marker. This will be removed automatically when an image or
+     sprite-sheet child is present (see :has rule below). */
   background: linear-gradient(180deg, rgba(139,69,19,0.9) 0%, rgba(101,67,33,0.95) 100%);
   border-radius: 6px;
   box-shadow: 0 4px 12px rgba(0,0,0,0.5);
   transition: transform 0.15s ease;
   position: absolute;
+}
+
+/* If the wrapper contains an actual image or sprite, hide the decorative background so
+   the sprite is visible without the old rounded rectangle showing behind it. Uses
+   the modern :has() selector to detect children. */
+.landscape-explorer:has(.character-img),
+.landscape-explorer:has(.sprite-sheet) {
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+/* Also hide decorative pseudo-elements (small head/shadow) when a real image/sprite is present
+   to avoid showing the old rounded/colored artifact behind the sprite. */
+.landscape-explorer:has(.character-img)::before,
+.landscape-explorer:has(.sprite-sheet)::before,
+.landscape-explorer:has(.character-img)::after,
+.landscape-explorer:has(.sprite-sheet)::after {
+  display: none !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+/* Generic: hide decorative pseudo-elements on any character wrapper when a real
+   image or sprite-sheet child is present. Covers cave, platformer, expedition, etc. */
+.character-sprite:has(.character-img)::before,
+.character-sprite:has(.sprite-sheet)::before,
+.character-sprite:has(.character-img)::after,
+.character-sprite:has(.sprite-sheet)::after,
+.expedition-character:has(.character-img)::before,
+.expedition-character:has(.sprite-sheet)::before,
+.expedition-character:has(.character-img)::after,
+.expedition-character:has(.sprite-sheet)::after {
+  display: none !important;
+  background: transparent !important;
+  box-shadow: none !important;
 }
 
 .landscape-explorer.walking {
