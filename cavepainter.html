@@ -692,81 +692,39 @@
             link.click();
         });
 
-        // OBJ Export with colors and lighting baked
+        // OBJ Export: bake the rendered view (colors + lighting) into a PNG texture
+        // and export OBJ + MTL + texture. OBJ itself doesn't store dynamic lighting,
+        // so we bake the lit appearance into a texture and reference it in the MTL.
         document.getElementById('export-obj').addEventListener('click', () => {
             if (!paintingSurfaceMesh) return;
-            
+
+            // Ensure the current frame (with lighting) is rendered
+            renderer.render(scene, camera);
+
+            // Grab the rendered canvas as a PNG data URL (this contains lighting)
+            const textureDataURL = renderer.domElement.toDataURL('image/png');
+
             const geometry = paintingSurfaceMesh.geometry;
             const vertices = geometry.attributes.position;
             const uvs = geometry.attributes.uv;
             const normals = geometry.attributes.normal;
             const indices = geometry.index;
-            
+
             let objContent = '# Lascaux Cave Painting 3D Model\n';
-            objContent += '# Exported with colors and texture\n\n';
+            objContent += '# Exported with baked texture (colors + lighting)\n\n';
             objContent += 'mtllib lascaux.mtl\n';
             objContent += 'usemtl painting\n\n';
-            
-            // Sample colors from paint texture for vertex colors
-            const paintImageData = paintCtx.getImageData(0, 0, paintCanvas.width, paintCanvas.height);
-            const caveTexture = createCaveTexture();
-            const caveTempCanvas = document.createElement('canvas');
-            caveTempCanvas.width = 2048;
-            caveTempCanvas.height = 2048;
-            const caveTempCtx = caveTempCanvas.getContext('2d');
-            caveTempCtx.drawImage(caveTexture.image, 0, 0);
-            const caveImageData = caveTempCtx.getImageData(0, 0, caveTempCanvas.width, caveTempCanvas.height);
-            
-            // Write vertices with colors
+
+            // Write standard vertices (no non-standard per-vertex colors)
             for (let i = 0; i < vertices.count; i++) {
                 const x = vertices.getX(i);
                 const y = vertices.getY(i);
                 const z = vertices.getZ(i);
-                
-                // Get UV coordinate for this vertex
-                const u = uvs ? uvs.getX(i) : 0.5;
-                const v = uvs ? uvs.getY(i) : 0.5;
-                
-                // Sample paint color
-                const px = Math.floor(u * paintCanvas.width);
-                const py = Math.floor((1 - v) * paintCanvas.height);
-                const paintIdx = (py * paintCanvas.width + px) * 4;
-                const paintR = paintImageData.data[paintIdx] / 255;
-                const paintG = paintImageData.data[paintIdx + 1] / 255;
-                const paintB = paintImageData.data[paintIdx + 2] / 255;
-                const paintA = paintImageData.data[paintIdx + 3] / 255;
-                
-                // Sample cave texture color
-                const cx = Math.floor(u * caveTempCanvas.width);
-                const cy = Math.floor((1 - v) * caveTempCanvas.height);
-                const caveIdx = (cy * caveTempCanvas.width + cx) * 4;
-                const caveR = caveImageData.data[caveIdx] / 255;
-                const caveG = caveImageData.data[caveIdx + 1] / 255;
-                const caveB = caveImageData.data[caveIdx + 2] / 255;
-                
-                // Blend paint over cave texture
-                const finalR = paintA * paintR + (1 - paintA) * caveR;
-                const finalG = paintA * paintG + (1 - paintA) * caveG;
-                const finalB = paintA * paintB + (1 - paintA) * caveB;
-                
-                // Apply simple lighting approximation (torch from left-front)
-                const lightDir = new THREE.Vector3(-1, 1, 1).normalize();
-                const normal = new THREE.Vector3(
-                    normals.getX(i),
-                    normals.getY(i),
-                    normals.getZ(i)
-                );
-                const lightIntensity = Math.max(0.3, normal.dot(lightDir) * 0.7 + 0.3);
-                
-                const litR = finalR * lightIntensity;
-                const litG = finalG * lightIntensity;
-                const litB = finalB * lightIntensity;
-                
-                objContent += `v ${x.toFixed(6)} ${y.toFixed(6)} ${z.toFixed(6)} ${litR.toFixed(6)} ${litG.toFixed(6)} ${litB.toFixed(6)}\n`;
+                objContent += `v ${x.toFixed(6)} ${y.toFixed(6)} ${z.toFixed(6)}\n`;
             }
-            
+
             objContent += '\n';
-            
+
             // Write texture coordinates
             if (uvs) {
                 for (let i = 0; i < uvs.count; i++) {
@@ -775,9 +733,9 @@
                     objContent += `vt ${u.toFixed(6)} ${v.toFixed(6)}\n`;
                 }
             }
-            
+
             objContent += '\n';
-            
+
             // Write normals
             for (let i = 0; i < normals.count; i++) {
                 const nx = normals.getX(i);
@@ -785,10 +743,10 @@
                 const nz = normals.getZ(i);
                 objContent += `vn ${nx.toFixed(6)} ${ny.toFixed(6)} ${nz.toFixed(6)}\n`;
             }
-            
+
             objContent += '\n';
-            
-            // Write faces
+
+            // Write faces (v/vt/vn)
             if (indices) {
                 for (let i = 0; i < indices.count; i += 3) {
                     const a = indices.getX(i) + 1;
@@ -797,8 +755,8 @@
                     objContent += `f ${a}/${a}/${a} ${b}/${b}/${b} ${c}/${c}/${c}\n`;
                 }
             }
-            
-            // Create material file
+
+            // Create MTL that references the baked texture
             let mtlContent = '# Lascaux Cave Painting Material\n\n';
             mtlContent += 'newmtl painting\n';
             mtlContent += 'Ka 1.0 1.0 1.0\n';
@@ -806,25 +764,46 @@
             mtlContent += 'Ks 0.0 0.0 0.0\n';
             mtlContent += 'Ns 10.0\n';
             mtlContent += 'd 1.0\n';
-            mtlContent += 'illum 1\n';
-            
-            // Download OBJ
-            const objBlob = new Blob([objContent], { type: 'text/plain' });
-            const objURL = URL.createObjectURL(objBlob);
-            const objLink = document.createElement('a');
-            objLink.download = 'lascaux-cave-painting.obj';
-            objLink.href = objURL;
-            objLink.click();
-            
-            // Download MTL
+            mtlContent += 'illum 2\n';
+            mtlContent += 'map_Kd lascaux_texture.png\n';
+
+            // Helper: convert dataURL -> Blob
+            function dataURLToBlob(dataurl) {
+                const arr = dataurl.split(',');
+                const mime = arr[0].match(/:(.*?);/)[1];
+                const bstr = atob(arr[1]);
+                let n = bstr.length;
+                const u8arr = new Uint8Array(n);
+                while (n--) {
+                    u8arr[n] = bstr.charCodeAt(n);
+                }
+                return new Blob([u8arr], { type: mime });
+            }
+
+            // Download baked texture, OBJ, and MTL
+            const textureBlob = dataURLToBlob(textureDataURL);
+            const textureURL = URL.createObjectURL(textureBlob);
+            const texLink = document.createElement('a');
+            texLink.href = textureURL;
+            texLink.download = 'lascaux_texture.png';
+            texLink.click();
+
+            // Small timeout to avoid same-tick download collisions in some browsers
             setTimeout(() => {
+                const objBlob = new Blob([objContent], { type: 'text/plain' });
+                const objURL = URL.createObjectURL(objBlob);
+                const objLink = document.createElement('a');
+                objLink.download = 'lascaux-cave-painting.obj';
+                objLink.href = objURL;
+                objLink.click();
+
                 const mtlBlob = new Blob([mtlContent], { type: 'text/plain' });
                 const mtlURL = URL.createObjectURL(mtlBlob);
                 const mtlLink = document.createElement('a');
                 mtlLink.download = 'lascaux.mtl';
                 mtlLink.href = mtlURL;
                 mtlLink.click();
-            }, 100);
+            }, 150);
         });
 
         // Camera controls
