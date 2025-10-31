@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+w<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -239,7 +239,7 @@
         <div class="action-buttons">
             <button class="btn-action" id="clear-btn">Clear Canvas</button>
             <button class="btn-action" id="export-png">Export PNG</button>
-            <button class="btn-action" id="export-obj">Export OBJ</button>
+            <button class="btn-action" id="export-gltf">Export glTF (GLB)</button>
         </div>
     </div>
 
@@ -255,6 +255,7 @@
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/exporters/GLTFExporter.js"></script>
     <script>
         // Scene setup
         const container = document.getElementById('canvas-container');
@@ -679,132 +680,266 @@
             paintTexture.needsUpdate = true;
         });
 
-        // PNG Export with lighting
+        // PNG Export with lighting (high-resolution option)
         document.getElementById('export-png').addEventListener('click', () => {
-            // Render the scene to capture it with lighting
-            renderer.render(scene, camera);
-            
-            // Get the canvas as PNG
-            const dataURL = renderer.domElement.toDataURL('image/png');
-            const link = document.createElement('a');
-            link.download = 'lascaux-cave-painting.png';
-            link.href = dataURL;
-            link.click();
+            // You can adjust `scale` to increase export resolution (2=2x, 3=3x, etc.)
+            const scale = 3; // recommended: 2-4 depending on memory
+
+            // Save current renderer and camera state
+            const prevSize = renderer.getSize(new THREE.Vector2());
+            const prevPixelRatio = renderer.getPixelRatio();
+            const prevAspect = camera.aspect;
+
+            const exportWidth = Math.max(1, Math.floor(prevSize.x * scale));
+            const exportHeight = Math.max(1, Math.floor(prevSize.y * scale));
+
+            try {
+                // Resize renderer for high-res render. Use pixelRatio=1 to avoid double-scaling.
+                renderer.setPixelRatio(1);
+                renderer.setSize(exportWidth, exportHeight, false);
+                camera.aspect = exportWidth / exportHeight;
+                camera.updateProjectionMatrix();
+
+                // Render high-res frame
+                renderer.render(scene, camera);
+
+                // Extract PNG data
+                const dataURL = renderer.domElement.toDataURL('image/png');
+
+                // Trigger download (user-initiated click)
+                const link = document.createElement('a');
+                link.download = `lascaux-cave-painting@${scale}x.png`;
+                link.href = dataURL;
+                link.click();
+            } catch (e) {
+                console.error('High-res export failed, falling back to current resolution', e);
+                // Fallback: render at current size and download
+                renderer.render(scene, camera);
+                const dataURL = renderer.domElement.toDataURL('image/png');
+                const link = document.createElement('a');
+                link.download = 'lascaux-cave-painting.png';
+                link.href = dataURL;
+                link.click();
+            } finally {
+                // Restore renderer and camera state
+                renderer.setSize(prevSize.x, prevSize.y, false);
+                renderer.setPixelRatio(prevPixelRatio);
+                camera.aspect = prevAspect;
+                camera.updateProjectionMatrix();
+                renderer.render(scene, camera);
+            }
         });
 
-        // OBJ Export: bake the rendered view (colors + lighting) into a PNG texture
-        // and export OBJ + MTL + texture. OBJ itself doesn't store dynamic lighting,
-        // so we bake the lit appearance into a texture and reference it in the MTL.
-        document.getElementById('export-obj').addEventListener('click', () => {
-            if (!paintingSurfaceMesh) return;
+        // OBJ export removed — use glTF/GLB export instead
 
-            // Ensure the current frame (with lighting) is rendered
-            renderer.render(scene, camera);
+            // glTF (GLB) Export: composite cave + paint into an albedo texture and export the painting surface as a GLB
+            document.getElementById('export-gltf').addEventListener('click', () => {
+                if (!paintingSurfaceMesh) return;
 
-            // Grab the rendered canvas as a PNG data URL (this contains lighting)
-            const textureDataURL = renderer.domElement.toDataURL('image/png');
+                // Find a cave texture in the scene (first mesh with a map that isn't the painting surface)
+                let caveMap = null;
+                scene.traverse((child) => {
+                    if (child.isMesh && child.name !== 'paintingSurface' && child.material && child.material.map) {
+                        caveMap = child.material.map;
+                    }
+                });
 
-            const geometry = paintingSurfaceMesh.geometry;
-            const vertices = geometry.attributes.position;
-            const uvs = geometry.attributes.uv;
-            const normals = geometry.attributes.normal;
-            const indices = geometry.index;
+                // Composite cave + paint into one canvas (albedo/baseColor)
+                const compCanvas = document.createElement('canvas');
+                compCanvas.width = paintCanvas.width;
+                compCanvas.height = paintCanvas.height;
+                const compCtx = compCanvas.getContext('2d');
 
-            let objContent = '# Lascaux Cave Painting 3D Model\n';
-            objContent += '# Exported with baked texture (colors + lighting)\n\n';
-            objContent += 'mtllib lascaux.mtl\n';
-            objContent += 'usemtl painting\n\n';
-
-            // Write standard vertices (no non-standard per-vertex colors)
-            for (let i = 0; i < vertices.count; i++) {
-                const x = vertices.getX(i);
-                const y = vertices.getY(i);
-                const z = vertices.getZ(i);
-                objContent += `v ${x.toFixed(6)} ${y.toFixed(6)} ${z.toFixed(6)}\n`;
-            }
-
-            objContent += '\n';
-
-            // Write texture coordinates
-            if (uvs) {
-                for (let i = 0; i < uvs.count; i++) {
-                    const u = uvs.getX(i);
-                    const v = uvs.getY(i);
-                    objContent += `vt ${u.toFixed(6)} ${v.toFixed(6)}\n`;
+                if (caveMap && caveMap.image) {
+                    try {
+                        compCtx.drawImage(caveMap.image, 0, 0, compCanvas.width, compCanvas.height);
+                    } catch (e) {
+                        compCtx.fillStyle = '#c9baa8';
+                        compCtx.fillRect(0, 0, compCanvas.width, compCanvas.height);
+                    }
+                } else {
+                    compCtx.fillStyle = '#c9baa8';
+                    compCtx.fillRect(0, 0, compCanvas.width, compCanvas.height);
                 }
-            }
 
-            objContent += '\n';
+                compCtx.drawImage(paintCanvas, 0, 0, compCanvas.width, compCanvas.height);
 
-            // Write normals
-            for (let i = 0; i < normals.count; i++) {
-                const nx = normals.getX(i);
-                const ny = normals.getY(i);
-                const nz = normals.getZ(i);
-                objContent += `vn ${nx.toFixed(6)} ${ny.toFixed(6)} ${nz.toFixed(6)}\n`;
-            }
+                // Create a THREE texture from composite canvas
+                const compositeTexture = new THREE.CanvasTexture(compCanvas);
 
-            objContent += '\n';
+                // Prepare export mesh (clone geometry and assign composite material)
+                const exportGeometry = paintingSurfaceMesh.geometry.clone();
+                const exportMaterial = new THREE.MeshStandardMaterial({
+                    map: compositeTexture,
+                    roughness: 0.95,
+                    metalness: 0,
+                    side: THREE.DoubleSide
+                });
+                const exportMesh = new THREE.Mesh(exportGeometry, exportMaterial);
 
-            // Write faces (v/vt/vn)
-            if (indices) {
-                for (let i = 0; i < indices.count; i += 3) {
-                    const a = indices.getX(i) + 1;
-                    const b = indices.getX(i + 1) + 1;
-                    const c = indices.getX(i + 2) + 1;
-                    objContent += `f ${a}/${a}/${a} ${b}/${b}/${b} ${c}/${c}/${c}\n`;
+                // Optionally bake lighting into a texture that matches the surface UVs,
+                // then export as binary GLB. We'll render the surface with an ortho camera
+                // aligned to the painting surface into a WebGLRenderTarget sized like the paint canvas.
+
+                async function bakeSurfaceLightingToDataURL(surfaceMesh, width, height) {
+                    // Create render target
+                    const target = new THREE.WebGLRenderTarget(width, height, {
+                        format: THREE.RGBAFormat,
+                        type: THREE.UnsignedByteType,
+                        depthBuffer: true
+                    });
+
+                    // Compute surface center and approximate normal
+                    const bbox = new THREE.Box3().setFromObject(surfaceMesh);
+                    const center = new THREE.Vector3();
+                    bbox.getCenter(center);
+                    const normal = new THREE.Vector3();
+                    surfaceMesh.getWorldDirection(normal).normalize();
+
+                    // Create a temporary orthographic camera positioned in front of the surface
+                    const orthoCam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.01, 100);
+
+                    // Position camera slightly in front of surface center along normal
+                    const camPos = new THREE.Vector3().copy(center).addScaledVector(normal, 1.0);
+                    orthoCam.position.copy(camPos);
+
+                    // Align camera to look at the surface center and align up vector to the surface's local Y
+                    const localY = new THREE.Vector3(0, 1, 0);
+                    const worldYPoint = localY.clone();
+                    surfaceMesh.localToWorld(worldYPoint);
+                    const surfaceOrigin = surfaceMesh.getWorldPosition(new THREE.Vector3());
+                    const worldY = worldYPoint.sub(surfaceOrigin);
+                    if (worldY.lengthSq() === 0) worldY.set(0, 1, 0);
+                    orthoCam.up.copy(worldY).normalize();
+
+                    orthoCam.lookAt(center);
+                    orthoCam.updateMatrixWorld();
+
+                    // Build view matrix (camera space) for projecting world points
+                    const viewMatrix = new THREE.Matrix4();
+                    viewMatrix.getInverse(orthoCam.matrixWorld);
+
+                    // Transform all surface vertex positions into camera space to compute extents
+                    const posAttr = surfaceMesh.geometry.attributes.position;
+                    let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+                    const tmpLocal = new THREE.Vector3();
+                    const tmpWorld = new THREE.Vector3();
+                    const tmpCam = new THREE.Vector3();
+
+                    for (let i = 0; i < posAttr.count; i++) {
+                        tmpLocal.fromArray(posAttr.array, i * 3);
+                        tmpWorld.copy(tmpLocal);
+                        surfaceMesh.localToWorld(tmpWorld);
+                        tmpCam.copy(tmpWorld).applyMatrix4(viewMatrix);
+                        minX = Math.min(minX, tmpCam.x);
+                        maxX = Math.max(maxX, tmpCam.x);
+                        minY = Math.min(minY, tmpCam.y);
+                        maxY = Math.max(maxY, tmpCam.y);
+                    }
+
+                    // Slight padding
+                    const padX = (maxX - minX) * 0.02 || 0.01;
+                    const padY = (maxY - minY) * 0.02 || 0.01;
+                    minX -= padX; maxX += padX; minY -= padY; maxY += padY;
+
+                    // Set orthographic extents to tightly fit the surface in camera space
+                    orthoCam.left = minX;
+                    orthoCam.right = maxX;
+                    orthoCam.top = maxY;
+                    orthoCam.bottom = minY;
+                    orthoCam.near = 0.01;
+                    orthoCam.far = 100;
+                    orthoCam.updateProjectionMatrix();
+
+                    // Save original render target
+                    const origTarget = renderer.getRenderTarget();
+
+                    // Render scene into target using the ortho camera
+                    renderer.setRenderTarget(target);
+                    renderer.setClearColor(0x000000, 0);
+                    renderer.clear(true, true, true);
+                    renderer.render(scene, orthoCam);
+                    renderer.setRenderTarget(origTarget);
+
+                    // Read pixels from render target
+                    const readBuffer = new Uint8Array(width * height * 4);
+                    try {
+                        renderer.readRenderTargetPixels(target, 0, 0, width, height, readBuffer);
+                    } catch (e) {
+                        console.error('readRenderTargetPixels failed', e);
+                        target.dispose();
+                        return null;
+                    }
+
+                    // Flip Y while copying into ImageData because WebGL's origin is bottom-left
+                    const canvas = document.createElement('canvas');
+                    canvas.width = width;
+                    canvas.height = height;
+                    const ctx = canvas.getContext('2d');
+                    const imageData = ctx.createImageData(width, height);
+
+                    for (let y = 0; y < height; y++) {
+                        const srcRow = height - 1 - y;
+                        for (let x = 0; x < width; x++) {
+                            const srcIdx = (srcRow * width + x) * 4;
+                            const dstIdx = (y * width + x) * 4;
+                            imageData.data[dstIdx] = readBuffer[srcIdx];
+                            imageData.data[dstIdx + 1] = readBuffer[srcIdx + 1];
+                            imageData.data[dstIdx + 2] = readBuffer[srcIdx + 2];
+                            imageData.data[dstIdx + 3] = readBuffer[srcIdx + 3];
+                        }
+                    }
+
+                    ctx.putImageData(imageData, 0, 0);
+                    target.dispose();
+                    return canvas.toDataURL('image/png');
                 }
-            }
 
-            // Create MTL that references the baked texture
-            let mtlContent = '# Lascaux Cave Painting Material\n\n';
-            mtlContent += 'newmtl painting\n';
-            mtlContent += 'Ka 1.0 1.0 1.0\n';
-            mtlContent += 'Kd 1.0 1.0 1.0\n';
-            mtlContent += 'Ks 0.0 0.0 0.0\n';
-            mtlContent += 'Ns 10.0\n';
-            mtlContent += 'd 1.0\n';
-            mtlContent += 'illum 2\n';
-            mtlContent += 'map_Kd lascaux_texture.png\n';
+                // Bake at paint canvas resolution (or use a smaller/larger size)
+                const bakeWidth = paintCanvas.width;
+                const bakeHeight = paintCanvas.height;
 
-            // Helper: convert dataURL -> Blob
-            function dataURLToBlob(dataurl) {
-                const arr = dataurl.split(',');
-                const mime = arr[0].match(/:(.*?);/)[1];
-                const bstr = atob(arr[1]);
-                let n = bstr.length;
-                const u8arr = new Uint8Array(n);
-                while (n--) {
-                    u8arr[n] = bstr.charCodeAt(n);
-                }
-                return new Blob([u8arr], { type: mime });
-            }
+                (async () => {
+                    const bakedDataURL = await bakeSurfaceLightingToDataURL(paintingSurfaceMesh, bakeWidth, bakeHeight);
+                    let finalTexture;
+                    if (bakedDataURL) {
+                        // Use baked lit texture
+                        const img = new Image();
+                        img.src = bakedDataURL;
+                        await new Promise((res) => { img.onload = res; });
+                        finalTexture = new THREE.CanvasTexture(img);
+                    } else {
+                        // Fallback to compositeTexture (unlit composite)
+                        finalTexture = compositeTexture;
+                    }
 
-            // Download baked texture, OBJ, and MTL
-            const textureBlob = dataURLToBlob(textureDataURL);
-            const textureURL = URL.createObjectURL(textureBlob);
-            const texLink = document.createElement('a');
-            texLink.href = textureURL;
-            texLink.download = 'lascaux_texture.png';
-            texLink.click();
+                    // Apply finalTexture to export material
+                    exportMaterial.map = finalTexture;
+                    exportMaterial.needsUpdate = true;
 
-            // Small timeout to avoid same-tick download collisions in some browsers
-            setTimeout(() => {
-                const objBlob = new Blob([objContent], { type: 'text/plain' });
-                const objURL = URL.createObjectURL(objBlob);
-                const objLink = document.createElement('a');
-                objLink.download = 'lascaux-cave-painting.obj';
-                objLink.href = objURL;
-                objLink.click();
-
-                const mtlBlob = new Blob([mtlContent], { type: 'text/plain' });
-                const mtlURL = URL.createObjectURL(mtlBlob);
-                const mtlLink = document.createElement('a');
-                mtlLink.download = 'lascaux.mtl';
-                mtlLink.href = mtlURL;
-                mtlLink.click();
-            }, 150);
-        });
+                    // Export as binary GLB
+                    const exporter = new THREE.GLTFExporter();
+                    exporter.parse(exportMesh, (result) => {
+                        if (result instanceof ArrayBuffer) {
+                            const blob = new Blob([result], { type: 'model/gltf-binary' });
+                            const url = URL.createObjectURL(blob);
+                            const link = document.createElement('a');
+                            link.href = url;
+                            link.download = 'lascaux.glb';
+                            link.click();
+                        } else {
+                            // Fallback: save JSON glTF
+                            const output = JSON.stringify(result, null, 2);
+                            const blob = new Blob([output], { type: 'application/json' });
+                            const url = URL.createObjectURL(blob);
+                            const link = document.createElement('a');
+                            link.href = url;
+                            link.download = 'lascaux.gltf';
+                            link.click();
+                        }
+                    }, { binary: true });
+                })();
+            });
 
         // Camera controls
         let cameraRotation = { x: 0, y: 0 };
