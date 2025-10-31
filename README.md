@@ -1,8 +1,8 @@
-# 🎨 The Magdalenian Cave Art Experience
+# 🎨 The Magdalenian Cave Art Experience (1)
 
 > An educational cave art painting game set 17,000 years ago - Journey to the caves of Lascaux
 
-[![Live Demo](https://img.shields.io/badge/demo-live-success)](https://your-demo-url.com)
+[![Live Demo](https://img.shields.io/badge/demo-live-success)](https://marcoj03rgensen.github.io/The-Magdalenian-Cave-Art-Experience/)
 [![License: CC BY-NC-ND 4.0](https://img.shields.io/badge/License-CC%20BY--NC--ND%204.0-lightgrey.svg)](https://creativecommons.org/licenses/by-nc-nd/4.0/)
 
 ## 🌟 Overview
