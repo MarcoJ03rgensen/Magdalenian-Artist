@@ -617,6 +617,15 @@ function loadGameState() {
       // Show notification about loaded progress
       const timeSince = Math.floor((Date.now() - data.timestamp) / 1000 / 60);
       showNotification(`✓ Progress loaded (${timeSince} minutes ago)`, 3000);
+      
+        // If a developer unlock flag exists, apply it so the dev unlock persists across reloads
+        try {
+          const devFlag = localStorage.getItem('tmcae_dev_unlock');
+          if (devFlag === 'true') {
+            // applyDevUnlock will update UI and save state
+            applyDevUnlock();
+          }
+        } catch (e) { /* ignore */ }
     }
   } catch (error) {
     console.warn('Could not load saved game:', error);
@@ -627,6 +636,75 @@ function resetGameState() {
   if (confirm('Reset all progress? This cannot be undone.')) {
     localStorage.removeItem('magdalenianGame');
     location.reload();
+  }
+}
+
+// Developer unlock helpers
+function applyDevUnlock() {
+  try {
+    // Grant all badges
+    Object.keys(gameState.badges).forEach(k => gameState.badges[k] = true);
+
+    // Grant all tools
+    Object.keys(toolRecipes).forEach(k => gameState.tools[k] = true);
+
+    // Grant all paints
+    Object.keys(paintRecipes).forEach(k => gameState.paints[k] = Object.assign({ key: k }, paintRecipes[k]));
+
+    // Fill inventory with large counts
+    Object.keys(materials).forEach(k => gameState.inventory[k] = Math.max(gameState.inventory[k] || 0, 99));
+
+    // Unlock light and give lots of XP
+    gameState.hasLight = true;
+    gameState.xp = Math.max(gameState.xp || 0, 9999);
+
+    // Persist a flag so it survives reloads
+    try { localStorage.setItem('tmcae_dev_unlock', 'true'); } catch (e) { /* ignore */ }
+
+    // Update UI and save
+    updateUI();
+    updateBadges();
+    renderCraftingUI();
+    renderPaintingToolbar();
+    saveGameState();
+
+    // Show confirmation
+    showNotification('🛠️ Developer code accepted — all badges, tools and paints unlocked. Cave access granted.', 4000);
+
+    // Reveal reset button if present
+    const resetBtn = document.getElementById('dev-reset-btn');
+    if (resetBtn) resetBtn.style.display = 'block';
+  } catch (e) {
+    console.error('applyDevUnlock error', e);
+    showNotification('⚠️ Could not apply developer unlock.', 3000);
+  }
+}
+
+function removeDevUnlock() {
+  try {
+    // Clear the developer unlock flag and reset progress to an empty state (but keep localStorage safe)
+    try { localStorage.removeItem('tmcae_dev_unlock'); } catch (e) { /* ignore */ }
+
+    // Reset badges/tools/paints/inventory to empty objects (keeps structure)
+    Object.keys(gameState.badges).forEach(k => gameState.badges[k] = false);
+    Object.keys(gameState.tools).forEach(k => gameState.tools[k] = false);
+    gameState.paints = {};
+    gameState.inventory = {};
+    gameState.hasLight = false;
+    gameState.xp = 0;
+
+    saveGameState();
+    updateUI();
+    updateBadges();
+    renderCraftingUI();
+    renderPaintingToolbar();
+
+    showNotification('🔁 Developer unlock removed. Progress reset (you can load a previous save if available).', 3500);
+    const resetBtn = document.getElementById('dev-reset-btn');
+    if (resetBtn) resetBtn.style.display = 'none';
+  } catch (e) {
+    console.error('removeDevUnlock error', e);
+    showNotification('⚠️ Could not remove developer unlock.', 3000);
   }
 }
 
@@ -778,6 +856,14 @@ function createSoundSettingsUI() {
         <label style="display:block; font-size:0.9rem; margin-bottom:6px;">Soundtrack Volume<br><input type="range" id="ss-soundtrack-volume" min="0" max="1" step="0.01" value="0.45" style="width:100%;"></label>
       </div>
       <div style="margin-top:8px; font-size:0.85rem; color: #ccc;">Settings persist in your browser.</div>
+
+      <div style="margin-top:10px; border-top:1px solid rgba(255,255,255,0.06); padding-top:8px;">
+        <div style="font-weight:bold; margin-bottom:6px;">Developer</div>
+        <input id="dev-code-input" placeholder="Enter developer code" style="width:100%; padding:6px; margin-bottom:6px; box-sizing:border-box;">
+        <button id="dev-apply-btn" style="width:100%; padding:6px; margin-bottom:6px;">Apply Code</button>
+        <button id="dev-reset-btn" style="width:100%; padding:6px; margin-bottom:6px; display:none; background:#6a6a6a;">Reset Dev Unlock</button>
+        <div id="dev-help" style="font-size:0.8rem; color:#ccc; margin-top:6px;">Enter the developer code to unlock all badges, tools, paints, and the cave.</div>
+      </div>
     `;
     document.body.appendChild(panel);
 
@@ -836,6 +922,37 @@ function createSoundSettingsUI() {
         updateAmbientPlayback();
       });
     }
+    // Developer code controls
+    try {
+      const devInput = document.getElementById('dev-code-input');
+      const devBtn = document.getElementById('dev-apply-btn');
+      const devReset = document.getElementById('dev-reset-btn');
+
+      if (devBtn && devInput) {
+        devBtn.addEventListener('click', () => {
+          const code = (devInput.value || '').trim();
+          if (code === 'Febamse') {
+            applyDevUnlock();
+          } else {
+            showNotification('❌ Invalid developer code.', 2000);
+          }
+        });
+      }
+
+      if (devReset) {
+        devReset.addEventListener('click', () => {
+          if (confirm('Remove developer unlock and reset progress?')) {
+            removeDevUnlock();
+          }
+        });
+
+        // Show reset button if previously unlocked
+        try {
+          const unlocked = localStorage.getItem('tmcae_dev_unlock');
+          if (unlocked === 'true') devReset.style.display = 'block';
+        } catch (e) { /* ignore */ }
+      }
+    } catch (e) { /* ignore developer UI hookup errors */ }
   } catch (e) { console.warn('Could not create sound settings UI', e); }
 }
 
