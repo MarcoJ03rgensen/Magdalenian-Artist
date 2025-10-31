@@ -1,0 +1,929 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lascaux Cave Painting</title>
+    <style>
+        :root {
+            --color-background: #1a1612;
+            --color-surface: #2a2420;
+            --color-text: #e8dcc8;
+            --color-ochre-yellow: #d4a574;
+            --color-ochre-red: #8b4513;
+            --color-charcoal: #3a3a3a;
+            --color-white: #f5ebe0;
+            --font-family-base: "FKGroteskNeue", "Geist", "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: var(--font-family-base);
+            background: var(--color-background);
+            color: var(--color-text);
+            overflow: hidden;
+            width: 100vw;
+            height: 100vh;
+        }
+
+        #canvas-container {
+            width: 100%;
+            height: 100%;
+            position: relative;
+            cursor: crosshair;
+        }
+
+        #info-panel {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(42, 36, 32, 0.9);
+            padding: 20px;
+            border-radius: 12px;
+            border: 2px solid rgba(212, 165, 116, 0.3);
+            backdrop-filter: blur(10px);
+            z-index: 100;
+            max-width: 300px;
+        }
+
+        h1 {
+            font-size: 20px;
+            margin-bottom: 15px;
+            color: var(--color-ochre-yellow);
+        }
+
+        .tool-section {
+            margin-bottom: 20px;
+        }
+
+        .tool-section h3 {
+            font-size: 14px;
+            margin-bottom: 10px;
+            color: var(--color-text);
+            font-weight: 600;
+        }
+
+        .brush-buttons {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 10px;
+        }
+
+        .btn {
+            padding: 10px 14px;
+            border: 2px solid rgba(212, 165, 116, 0.3);
+            background: rgba(58, 58, 58, 0.6);
+            color: var(--color-text);
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 13px;
+            transition: all 0.2s;
+            flex: 1;
+        }
+
+        .btn:hover {
+            background: rgba(212, 165, 116, 0.2);
+            border-color: var(--color-ochre-yellow);
+        }
+
+        .btn.active {
+            background: var(--color-ochre-yellow);
+            color: #1a1612;
+            border-color: var(--color-ochre-yellow);
+        }
+
+        .color-palette {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 8px;
+            margin-bottom: 10px;
+        }
+
+        .color-btn {
+            width: 100%;
+            height: 40px;
+            border: 3px solid transparent;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .color-btn:hover {
+            transform: scale(1.1);
+        }
+
+        .color-btn.active {
+            border-color: var(--color-white);
+            box-shadow: 0 0 10px rgba(245, 235, 224, 0.5);
+        }
+
+        .slider-group {
+            margin-bottom: 15px;
+        }
+
+        .slider-group label {
+            display: block;
+            font-size: 12px;
+            margin-bottom: 5px;
+            color: var(--color-text);
+        }
+
+        input[type="range"] {
+            width: 100%;
+            height: 6px;
+            border-radius: 3px;
+            background: rgba(212, 165, 116, 0.2);
+            outline: none;
+            -webkit-appearance: none;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: var(--color-ochre-yellow);
+            cursor: pointer;
+        }
+
+        input[type="range"]::-moz-range-thumb {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: var(--color-ochre-yellow);
+            cursor: pointer;
+            border: none;
+        }
+
+        .action-buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .btn-action {
+            padding: 10px;
+            border: 2px solid rgba(212, 165, 116, 0.3);
+            background: rgba(139, 69, 19, 0.3);
+            color: var(--color-text);
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 13px;
+            transition: all 0.2s;
+        }
+
+        .btn-action:hover {
+            background: rgba(139, 69, 19, 0.5);
+            border-color: var(--color-ochre-red);
+        }
+
+        #instructions {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(42, 36, 32, 0.9);
+            padding: 15px;
+            border-radius: 8px;
+            font-size: 12px;
+            max-width: 300px;
+            z-index: 100;
+        }
+    </style>
+</head>
+<body>
+    <div id="canvas-container"></div>
+    
+    <div id="info-panel">
+        <h1>🎨 Lascaux Cave Art</h1>
+        
+        <div class="tool-section">
+            <h3>Painting Tools</h3>
+            <div class="brush-buttons">
+                <button class="btn active" data-brush="brush">Brush</button>
+                <button class="btn" data-brush="finger">Finger</button>
+                <button class="btn" data-brush="spray">Spray</button>
+            </div>
+        </div>
+
+        <div class="tool-section">
+            <h3>Prehistoric Pigments</h3>
+            <div class="color-palette">
+                <button class="color-btn active" data-color="#d4a574" style="background: #d4a574;" title="Yellow Ochre"></button>
+                <button class="color-btn" data-color="#8b4513" style="background: #8b4513;" title="Red Ochre"></button>
+                <button class="color-btn" data-color="#3a3a3a" style="background: #3a3a3a;" title="Charcoal"></button>
+                <button class="color-btn" data-color="#f5ebe0" style="background: #f5ebe0;" title="Kaolin White"></button>
+                <button class="color-btn" data-color="#a0826d" style="background: #a0826d;" title="Brown Ochre"></button>
+                <button class="color-btn" data-color="#6b4423" style="background: #6b4423;" title="Dark Brown"></button>
+                <button class="color-btn" data-color="#4a4a4a" style="background: #4a4a4a;" title="Gray"></button>
+                <button class="color-btn" data-color="#2a1810" style="background: #2a1810;" title="Burnt Umber"></button>
+            </div>
+        </div>
+
+        <div class="tool-section">
+            <div class="slider-group">
+                <label for="brush-size">Brush Size: <span id="size-value">15</span>px</label>
+                <input type="range" id="brush-size" min="5" max="80" value="15">
+            </div>
+            <div class="slider-group">
+                <label for="opacity">Opacity: <span id="opacity-value">80</span>%</label>
+                <input type="range" id="opacity" min="10" max="100" value="80">
+            </div>
+        </div>
+
+        <div class="action-buttons">
+            <button class="btn-action" id="clear-btn">Clear Canvas</button>
+            <button class="btn-action" id="export-png">Export PNG</button>
+            <button class="btn-action" id="export-obj">Export OBJ</button>
+        </div>
+    </div>
+
+    <div id="instructions">
+        <strong>Cave Painting Controls:</strong><br>
+        • Drag mouse/finger to paint<br>
+        • WASD/Arrows to move around<br>
+        • Right-click drag to rotate view<br>
+        • Scroll to zoom in/out<br>
+        • Q/E to move up/down<br>
+        • Walk around to see canvas from sides!
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+    <script>
+        // Scene setup
+        const container = document.getElementById('canvas-container');
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x0a0a08);
+        scene.fog = new THREE.Fog(0x0a0a08, 5, 20);
+
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 100);
+        camera.position.set(0, 0, 2.5);
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        container.appendChild(renderer.domElement);
+
+        // Painting state
+        let currentBrush = 'brush';
+        let currentColor = '#d4a574';
+        let brushSize = 15;
+        let opacity = 0.8;
+        let isDrawing = false;
+        let lastPoint = null;
+
+        // Create limestone cave texture
+        function createCaveTexture() {
+            const canvas = document.createElement('canvas');
+            canvas.width = 2048;
+            canvas.height = 2048;
+            const ctx = canvas.getContext('2d');
+
+            // Base limestone color - lighter, more authentic to Lascaux
+            ctx.fillStyle = '#c9baa8';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Add variations and texture with lighter limestone tones
+            for (let i = 0; i < 5000; i++) {
+                const x = Math.random() * canvas.width;
+                const y = Math.random() * canvas.height;
+                const size = Math.random() * 20 + 5;
+                const colors = ['#d4c5b3', '#bfb09e', '#cfc0ae', '#b8a897', '#ddd0be'];
+                ctx.fillStyle = colors[Math.floor(Math.random() * colors.length)];
+                ctx.globalAlpha = 0.3 + Math.random() * 0.4;
+                ctx.beginPath();
+                ctx.arc(x, y, size, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
+            // Add subtle cracks and details
+            ctx.strokeStyle = '#a89885';
+            ctx.lineWidth = 2;
+            ctx.globalAlpha = 0.3;
+            for (let i = 0; i < 50; i++) {
+                ctx.beginPath();
+                const startX = Math.random() * canvas.width;
+                const startY = Math.random() * canvas.height;
+                ctx.moveTo(startX, startY);
+                for (let j = 0; j < 5; j++) {
+                    ctx.lineTo(startX + (Math.random() - 0.5) * 100, startY + Math.random() * 100);
+                }
+                ctx.stroke();
+            }
+
+            return new THREE.CanvasTexture(canvas);
+        }
+
+        // Create painting canvas
+        const paintCanvas = document.createElement('canvas');
+        paintCanvas.width = 2048;
+        paintCanvas.height = 2048;
+        const paintCtx = paintCanvas.getContext('2d');
+        paintCtx.fillStyle = 'rgba(0, 0, 0, 0)';
+        paintCtx.fillRect(0, 0, paintCanvas.width, paintCanvas.height);
+        const paintTexture = new THREE.CanvasTexture(paintCanvas);
+
+        // Create 3D cave wall with rough limestone texture
+        function create3DCaveWall() {
+            const caveTexture = createCaveTexture();
+            
+            // Create a rough 3D cave wall surface using displaced geometry
+            const wallWidth = 4;
+            const wallHeight = 3;
+            const segments = 40;
+            
+            const geometry = new THREE.PlaneGeometry(wallWidth, wallHeight, segments, segments);
+            const vertices = geometry.attributes.position;
+            
+            // Add roughness and variation to create 3D limestone texture
+            for (let i = 0; i < vertices.count; i++) {
+                const x = vertices.getX(i);
+                const y = vertices.getY(i);
+                const z = vertices.getZ(i);
+                
+                // Create varied depth using noise-like function
+                let displacement = Math.sin(x * 3) * 0.05 + Math.cos(y * 4) * 0.04;
+                displacement += Math.sin(x * 7 + y * 5) * 0.03;
+                displacement += (Math.random() - 0.5) * 0.08;
+                
+                // Create smoother patches (for painting)
+                const smoothPatchSize = 0.8;
+                const patchX = 0;
+                const patchY = 0;
+                const distanceFromPatch = Math.sqrt(Math.pow(x - patchX, 2) + Math.pow(y - patchY, 2));
+                
+                if (distanceFromPatch < smoothPatchSize) {
+                    const smoothFactor = 1 - (distanceFromPatch / smoothPatchSize);
+                    displacement *= (1 - smoothFactor * 0.7);
+                }
+                
+                vertices.setZ(i, z + displacement);
+            }
+            
+            geometry.computeVertexNormals();
+            
+            const caveMaterial = new THREE.MeshStandardMaterial({
+                map: caveTexture,
+                roughness: 0.95,
+                metalness: 0.05,
+                bumpMap: caveTexture,
+                bumpScale: 0.02
+            });
+            
+            const caveWall = new THREE.Mesh(geometry, caveMaterial);
+            caveWall.position.set(0, 0, -1);
+            scene.add(caveWall);
+            
+            // Create painting surface overlay on the 3D wall
+            const paintGeometry = new THREE.PlaneGeometry(wallWidth, wallHeight, segments, segments);
+            const paintVertices = paintGeometry.attributes.position;
+            
+            // Match the cave wall displacement EXACTLY so paint follows the 3D surface
+            for (let i = 0; i < paintVertices.count; i++) {
+                paintVertices.setZ(i, vertices.getZ(i) + 0.005); // Slightly in front to avoid z-fighting
+            }
+            
+            paintGeometry.computeVertexNormals();
+            
+            const paintingSurface = new THREE.Mesh(
+                paintGeometry,
+                new THREE.MeshStandardMaterial({
+                    map: paintTexture,
+                    transparent: true,
+                    opacity: 1,
+                    side: THREE.DoubleSide,
+                    roughness: 0.95,
+                    metalness: 0,
+                    depthWrite: true,
+                    depthTest: true
+                })
+            );
+            paintingSurface.position.copy(caveWall.position);
+            paintingSurface.position.z += 0.002;
+            paintingSurface.name = 'paintingSurface';
+            scene.add(paintingSurface);
+            
+            // Add surrounding cave environment
+            const envTexture = createCaveTexture();
+            const envMaterial = new THREE.MeshStandardMaterial({
+                map: envTexture,
+                roughness: 0.9,
+                metalness: 0.1
+            });
+            
+            // Floor
+            const floor = new THREE.Mesh(
+                new THREE.PlaneGeometry(10, 10),
+                envMaterial.clone()
+            );
+            floor.rotation.x = -Math.PI / 2;
+            floor.position.y = -1.5;
+            scene.add(floor);
+            
+            // Ceiling with stalactites effect
+            const ceiling = new THREE.Mesh(
+                new THREE.PlaneGeometry(10, 10),
+                envMaterial.clone()
+            );
+            ceiling.rotation.x = Math.PI / 2;
+            ceiling.position.y = 1.5;
+            scene.add(ceiling);
+            
+            // Back wall to close the cave (no more holes)
+            const backWall = new THREE.Mesh(
+                new THREE.PlaneGeometry(10, 4),
+                envMaterial.clone()
+            );
+            backWall.position.set(0, 0, -3);
+            scene.add(backWall);
+            
+            // Side walls
+            const leftWall = new THREE.Mesh(
+                new THREE.PlaneGeometry(6, 4),
+                envMaterial.clone()
+            );
+            leftWall.position.set(-3, 0, 1);
+            leftWall.rotation.y = Math.PI / 2;
+            scene.add(leftWall);
+            
+            const rightWall = new THREE.Mesh(
+                new THREE.PlaneGeometry(6, 4),
+                envMaterial.clone()
+            );
+            rightWall.position.set(3, 0, 1);
+            rightWall.rotation.y = -Math.PI / 2;
+            scene.add(rightWall);
+            
+            // Add rock formations
+            const rockGeometry = new THREE.DodecahedronGeometry(0.2, 0);
+            for (let i = 0; i < 15; i++) {
+                const rock = new THREE.Mesh(rockGeometry, envMaterial.clone());
+                rock.position.set(
+                    (Math.random() - 0.5) * 8,
+                    -1.5 + Math.random() * 0.2,
+                    (Math.random() - 0.5) * 4
+                );
+                rock.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI);
+                rock.scale.set(1 + Math.random() * 0.5, 0.5 + Math.random() * 0.3, 1 + Math.random() * 0.5);
+                scene.add(rock);
+            }
+        }
+
+        create3DCaveWall();
+
+        // Lighting - flickering torch effect
+        const torchLight = new THREE.PointLight(0xff8844, 1.5, 10);
+        torchLight.position.set(-1, 1, 1);
+        torchLight.castShadow = true;
+        scene.add(torchLight);
+
+        const ambientLight = new THREE.AmbientLight(0x332211, 0.3);
+        scene.add(ambientLight);
+
+        // Animate torch flicker
+        function animateTorch() {
+            const flicker = Math.sin(Date.now() * 0.005) * 0.1 + Math.random() * 0.1;
+            torchLight.intensity = 1.5 + flicker;
+            torchLight.position.x = -1 + Math.sin(Date.now() * 0.002) * 0.2;
+        }
+
+        // Raycaster for painting
+        const raycaster = new THREE.Raycaster();
+        const mouse = new THREE.Vector2();
+        
+        // Store the painting surface mesh for easier access
+        let paintingSurfaceMesh = null;
+        setTimeout(() => {
+            paintingSurfaceMesh = scene.getObjectByName('paintingSurface');
+        }, 100);
+
+        // Drawing functions
+        function drawBrush(x, y) {
+            paintCtx.globalCompositeOperation = 'source-over';
+            paintCtx.fillStyle = currentColor;
+            paintCtx.globalAlpha = opacity;
+            paintCtx.beginPath();
+            paintCtx.arc(x, y, brushSize / 2, 0, Math.PI * 2);
+            paintCtx.fill();
+        }
+
+        function drawFinger(x, y) {
+            paintCtx.globalCompositeOperation = 'source-over';
+            paintCtx.fillStyle = currentColor;
+            paintCtx.globalAlpha = opacity * 0.6;
+            const size = brushSize * 1.2;
+            paintCtx.beginPath();
+            paintCtx.ellipse(x, y, size / 2, size / 1.5, Math.random() * Math.PI, 0, Math.PI * 2);
+            paintCtx.fill();
+        }
+
+        function drawSpray(x, y) {
+            paintCtx.globalCompositeOperation = 'source-over';
+            paintCtx.fillStyle = currentColor;
+            const sprayRadius = brushSize * 2;
+            const density = 30;
+            
+            for (let i = 0; i < density; i++) {
+                const angle = Math.random() * Math.PI * 2;
+                const distance = Math.random() * sprayRadius;
+                const px = x + Math.cos(angle) * distance;
+                const py = y + Math.sin(angle) * distance;
+                const size = Math.random() * 3 + 1;
+                paintCtx.globalAlpha = opacity * (0.1 + Math.random() * 0.3);
+                paintCtx.beginPath();
+                paintCtx.arc(px, py, size, 0, Math.PI * 2);
+                paintCtx.fill();
+            }
+        }
+
+        function paint(event) {
+            if (!paintingSurfaceMesh) return;
+            
+            const rect = renderer.domElement.getBoundingClientRect();
+            mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+            mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+
+            raycaster.setFromCamera(mouse, camera);
+            const intersects = raycaster.intersectObject(paintingSurfaceMesh);
+
+            if (intersects.length > 0) {
+                const intersect = intersects[0];
+                if (intersect.object.name === 'paintingSurface') {
+                    const uv = intersect.uv;
+                    const x = uv.x * paintCanvas.width;
+                    const y = (1 - uv.y) * paintCanvas.height;
+
+                    if (lastPoint && isDrawing) {
+                        const dx = x - lastPoint.x;
+                        const dy = y - lastPoint.y;
+                        const distance = Math.sqrt(dx * dx + dy * dy);
+                        const steps = Math.max(1, Math.floor(distance / 5));
+
+                        for (let i = 0; i <= steps; i++) {
+                            const ix = lastPoint.x + (dx / steps) * i;
+                            const iy = lastPoint.y + (dy / steps) * i;
+                            
+                            switch (currentBrush) {
+                                case 'brush':
+                                    drawBrush(ix, iy);
+                                    break;
+                                case 'finger':
+                                    drawFinger(ix, iy);
+                                    break;
+                                case 'spray':
+                                    drawSpray(ix, iy);
+                                    break;
+                            }
+                        }
+                    } else {
+                        switch (currentBrush) {
+                            case 'brush':
+                                drawBrush(x, y);
+                                break;
+                            case 'finger':
+                                drawFinger(x, y);
+                                break;
+                            case 'spray':
+                                drawSpray(x, y);
+                                break;
+                        }
+                    }
+
+                    lastPoint = { x, y };
+                    paintTexture.needsUpdate = true;
+                }
+            }
+        }
+
+        // Event listeners
+        renderer.domElement.addEventListener('mousedown', (e) => {
+            isDrawing = true;
+            lastPoint = null;
+            paint(e);
+        });
+
+        renderer.domElement.addEventListener('mousemove', (e) => {
+            if (isDrawing) {
+                paint(e);
+            }
+        });
+
+        renderer.domElement.addEventListener('mouseup', () => {
+            isDrawing = false;
+            lastPoint = null;
+        });
+
+        renderer.domElement.addEventListener('mouseleave', () => {
+            isDrawing = false;
+            lastPoint = null;
+        });
+
+        // Touch support
+        renderer.domElement.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            isDrawing = true;
+            lastPoint = null;
+            const touch = e.touches[0];
+            paint({ clientX: touch.clientX, clientY: touch.clientY });
+        });
+
+        renderer.domElement.addEventListener('touchmove', (e) => {
+            e.preventDefault();
+            if (isDrawing) {
+                const touch = e.touches[0];
+                paint({ clientX: touch.clientX, clientY: touch.clientY });
+            }
+        });
+
+        renderer.domElement.addEventListener('touchend', () => {
+            isDrawing = false;
+            lastPoint = null;
+        });
+
+        // UI Controls
+        document.querySelectorAll('[data-brush]').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('[data-brush]').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                currentBrush = btn.dataset.brush;
+            });
+        });
+
+        document.querySelectorAll('[data-color]').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('[data-color]').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                currentColor = btn.dataset.color;
+            });
+        });
+
+        document.getElementById('brush-size').addEventListener('input', (e) => {
+            brushSize = parseInt(e.target.value);
+            document.getElementById('size-value').textContent = brushSize;
+        });
+
+        document.getElementById('opacity').addEventListener('input', (e) => {
+            opacity = parseInt(e.target.value) / 100;
+            document.getElementById('opacity-value').textContent = e.target.value;
+        });
+
+        document.getElementById('clear-btn').addEventListener('click', () => {
+            paintCtx.clearRect(0, 0, paintCanvas.width, paintCanvas.height);
+            paintTexture.needsUpdate = true;
+        });
+
+        // PNG Export with lighting
+        document.getElementById('export-png').addEventListener('click', () => {
+            // Render the scene to capture it with lighting
+            renderer.render(scene, camera);
+            
+            // Get the canvas as PNG
+            const dataURL = renderer.domElement.toDataURL('image/png');
+            const link = document.createElement('a');
+            link.download = 'lascaux-cave-painting.png';
+            link.href = dataURL;
+            link.click();
+        });
+
+        // OBJ Export with colors and lighting baked
+        document.getElementById('export-obj').addEventListener('click', () => {
+            if (!paintingSurfaceMesh) return;
+            
+            const geometry = paintingSurfaceMesh.geometry;
+            const vertices = geometry.attributes.position;
+            const uvs = geometry.attributes.uv;
+            const normals = geometry.attributes.normal;
+            const indices = geometry.index;
+            
+            let objContent = '# Lascaux Cave Painting 3D Model\n';
+            objContent += '# Exported with colors and texture\n\n';
+            objContent += 'mtllib lascaux.mtl\n';
+            objContent += 'usemtl painting\n\n';
+            
+            // Sample colors from paint texture for vertex colors
+            const paintImageData = paintCtx.getImageData(0, 0, paintCanvas.width, paintCanvas.height);
+            const caveTexture = createCaveTexture();
+            const caveTempCanvas = document.createElement('canvas');
+            caveTempCanvas.width = 2048;
+            caveTempCanvas.height = 2048;
+            const caveTempCtx = caveTempCanvas.getContext('2d');
+            caveTempCtx.drawImage(caveTexture.image, 0, 0);
+            const caveImageData = caveTempCtx.getImageData(0, 0, caveTempCanvas.width, caveTempCanvas.height);
+            
+            // Write vertices with colors
+            for (let i = 0; i < vertices.count; i++) {
+                const x = vertices.getX(i);
+                const y = vertices.getY(i);
+                const z = vertices.getZ(i);
+                
+                // Get UV coordinate for this vertex
+                const u = uvs ? uvs.getX(i) : 0.5;
+                const v = uvs ? uvs.getY(i) : 0.5;
+                
+                // Sample paint color
+                const px = Math.floor(u * paintCanvas.width);
+                const py = Math.floor((1 - v) * paintCanvas.height);
+                const paintIdx = (py * paintCanvas.width + px) * 4;
+                const paintR = paintImageData.data[paintIdx] / 255;
+                const paintG = paintImageData.data[paintIdx + 1] / 255;
+                const paintB = paintImageData.data[paintIdx + 2] / 255;
+                const paintA = paintImageData.data[paintIdx + 3] / 255;
+                
+                // Sample cave texture color
+                const cx = Math.floor(u * caveTempCanvas.width);
+                const cy = Math.floor((1 - v) * caveTempCanvas.height);
+                const caveIdx = (cy * caveTempCanvas.width + cx) * 4;
+                const caveR = caveImageData.data[caveIdx] / 255;
+                const caveG = caveImageData.data[caveIdx + 1] / 255;
+                const caveB = caveImageData.data[caveIdx + 2] / 255;
+                
+                // Blend paint over cave texture
+                const finalR = paintA * paintR + (1 - paintA) * caveR;
+                const finalG = paintA * paintG + (1 - paintA) * caveG;
+                const finalB = paintA * paintB + (1 - paintA) * caveB;
+                
+                // Apply simple lighting approximation (torch from left-front)
+                const lightDir = new THREE.Vector3(-1, 1, 1).normalize();
+                const normal = new THREE.Vector3(
+                    normals.getX(i),
+                    normals.getY(i),
+                    normals.getZ(i)
+                );
+                const lightIntensity = Math.max(0.3, normal.dot(lightDir) * 0.7 + 0.3);
+                
+                const litR = finalR * lightIntensity;
+                const litG = finalG * lightIntensity;
+                const litB = finalB * lightIntensity;
+                
+                objContent += `v ${x.toFixed(6)} ${y.toFixed(6)} ${z.toFixed(6)} ${litR.toFixed(6)} ${litG.toFixed(6)} ${litB.toFixed(6)}\n`;
+            }
+            
+            objContent += '\n';
+            
+            // Write texture coordinates
+            if (uvs) {
+                for (let i = 0; i < uvs.count; i++) {
+                    const u = uvs.getX(i);
+                    const v = uvs.getY(i);
+                    objContent += `vt ${u.toFixed(6)} ${v.toFixed(6)}\n`;
+                }
+            }
+            
+            objContent += '\n';
+            
+            // Write normals
+            for (let i = 0; i < normals.count; i++) {
+                const nx = normals.getX(i);
+                const ny = normals.getY(i);
+                const nz = normals.getZ(i);
+                objContent += `vn ${nx.toFixed(6)} ${ny.toFixed(6)} ${nz.toFixed(6)}\n`;
+            }
+            
+            objContent += '\n';
+            
+            // Write faces
+            if (indices) {
+                for (let i = 0; i < indices.count; i += 3) {
+                    const a = indices.getX(i) + 1;
+                    const b = indices.getX(i + 1) + 1;
+                    const c = indices.getX(i + 2) + 1;
+                    objContent += `f ${a}/${a}/${a} ${b}/${b}/${b} ${c}/${c}/${c}\n`;
+                }
+            }
+            
+            // Create material file
+            let mtlContent = '# Lascaux Cave Painting Material\n\n';
+            mtlContent += 'newmtl painting\n';
+            mtlContent += 'Ka 1.0 1.0 1.0\n';
+            mtlContent += 'Kd 1.0 1.0 1.0\n';
+            mtlContent += 'Ks 0.0 0.0 0.0\n';
+            mtlContent += 'Ns 10.0\n';
+            mtlContent += 'd 1.0\n';
+            mtlContent += 'illum 1\n';
+            
+            // Download OBJ
+            const objBlob = new Blob([objContent], { type: 'text/plain' });
+            const objURL = URL.createObjectURL(objBlob);
+            const objLink = document.createElement('a');
+            objLink.download = 'lascaux-cave-painting.obj';
+            objLink.href = objURL;
+            objLink.click();
+            
+            // Download MTL
+            setTimeout(() => {
+                const mtlBlob = new Blob([mtlContent], { type: 'text/plain' });
+                const mtlURL = URL.createObjectURL(mtlBlob);
+                const mtlLink = document.createElement('a');
+                mtlLink.download = 'lascaux.mtl';
+                mtlLink.href = mtlURL;
+                mtlLink.click();
+            }, 100);
+        });
+
+        // Camera controls
+        let cameraRotation = { x: 0, y: 0 };
+        const keys = {};
+
+        window.addEventListener('keydown', (e) => {
+            keys[e.key.toLowerCase()] = true;
+        });
+
+        window.addEventListener('keyup', (e) => {
+            keys[e.key.toLowerCase()] = false;
+        });
+
+        // Mouse drag to look around
+        let isDragging = false;
+        let previousMousePosition = { x: 0, y: 0 };
+
+        renderer.domElement.addEventListener('mousedown', (e) => {
+            if (e.button === 2 || e.ctrlKey) {
+                isDragging = true;
+                previousMousePosition = { x: e.clientX, y: e.clientY };
+            }
+        });
+
+        window.addEventListener('mousemove', (e) => {
+            if (isDragging) {
+                const deltaX = e.clientX - previousMousePosition.x;
+                const deltaY = e.clientY - previousMousePosition.y;
+                cameraRotation.y += deltaX * 0.002;
+                cameraRotation.x += deltaY * 0.002;
+                cameraRotation.x = Math.max(-Math.PI / 3, Math.min(Math.PI / 3, cameraRotation.x));
+                previousMousePosition = { x: e.clientX, y: e.clientY };
+            }
+        });
+
+        window.addEventListener('mouseup', () => {
+            isDragging = false;
+        });
+
+        // Zoom with scroll
+        renderer.domElement.addEventListener('wheel', (e) => {
+            e.preventDefault();
+            camera.position.z += e.deltaY * 0.01;
+            camera.position.z = Math.max(1, Math.min(5, camera.position.z));
+        });
+
+        // Animation loop
+        function animate() {
+            requestAnimationFrame(animate);
+
+            // Update camera rotation
+            camera.rotation.y = cameraRotation.y;
+            camera.rotation.x = cameraRotation.x;
+
+            // WASD movement - full 3D freedom
+            const moveSpeed = 0.05;
+            const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
+            const right = new THREE.Vector3(1, 0, 0).applyQuaternion(camera.quaternion);
+            
+            if (keys['w'] || keys['arrowup']) {
+                camera.position.add(forward.multiplyScalar(moveSpeed));
+            }
+            if (keys['s'] || keys['arrowdown']) {
+                camera.position.add(forward.multiplyScalar(-moveSpeed));
+            }
+            if (keys['a'] || keys['arrowleft']) {
+                camera.position.add(right.multiplyScalar(-moveSpeed));
+            }
+            if (keys['d'] || keys['arrowright']) {
+                camera.position.add(right.multiplyScalar(moveSpeed));
+            }
+            if (keys['q']) {
+                camera.position.y -= moveSpeed;
+            }
+            if (keys['e']) {
+                camera.position.y += moveSpeed;
+            }
+
+            // Looser constraints - allow walking around the canvas
+            camera.position.x = Math.max(-4, Math.min(4, camera.position.x));
+            camera.position.y = Math.max(-1, Math.min(2, camera.position.y));
+            camera.position.z = Math.max(-2, Math.min(6, camera.position.z));
+
+            animateTorch();
+            renderer.render(scene, camera);
+        }
+
+        animate();
+
+        // Handle window resize
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        // Prevent context menu
+        renderer.domElement.addEventListener('contextmenu', (e) => e.preventDefault());
+    </script>
+</body>
+</html>
