@@ -86,13 +86,7 @@ const toolRecipes = {
     xpCost: 50,
     description: 'For stenciling and diffuse spray effects'
   },
-  mossPad: {
-    name: 'Moss Pad',
-    icon: '🌿',
-    requires: { wood: 7 },
-    xpCost: 50,
-    description: 'Textured application for body masses'
-  }
+
 };
 
 // Paint Recipes
@@ -332,8 +326,7 @@ const badgeInfo = {
 const applicators = {
   finger: { name: 'Finger', icon: '☝️', size: 12, opacity: 0.7, description: 'Broad strokes and dots' },
   brush: { name: 'Brush', icon: '🖌️', size: 3, opacity: 1, requires: 'brush', description: 'Fine lines and details' },
-  spray: { name: 'Spray', icon: '💨', size: 25, opacity: 0.3, requires: 'sprayBone', description: 'Diffuse stenciling' },
-  moss: { name: 'Moss Pad', icon: '🌿', size: 15, opacity: 0.6, requires: 'mossPad', description: 'Textured effects' }
+  spray: { name: 'Spray', icon: '💨', size: 25, opacity: 0.3, requires: 'sprayBone', description: 'Diffuse stenciling' }
 };
 
 // Codex Content
@@ -390,7 +383,6 @@ const codexData = {
       <li><strong>Hair brushes:</strong> Made from animal tail or mane hair tied to wooden handles. Used for fine lines, details, manes and tails. Allows fluid, expressive strokes.</li>
       <li><strong>Stenciling:</strong> Hand placed against wall, paint blown around it creating negative image. Also used with leaf shapes.</li>
       <li><strong>Spray/blow technique:</strong> Paint held in mouth or blown through hollow bird bones for diffuse, airbrushed effects. Creates soft gradients and shading.</li>
-      <li><strong>Moss pads:</strong> Absorbent moss wrapped in leather or bark, used for dabbing and texturing large body masses.</li>
       <li><strong>Engraving first:</strong> Scratch outline into rock with sharp flint or antler point, then paint within lines for precision.</li>
       <li><strong>Polychrome layering:</strong> Multiple colors applied in sequence. Black outlines first, then red/yellow infill, creating depth and three-dimensionality.</li>
       <li><strong>Using wall relief:</strong> Natural bulges and contours of cave wall integrated into animal bodies, suggesting volume and movement in flickering lamplight.</li>
@@ -996,8 +988,8 @@ function playSound(name) {
 // Delegate clicks to play UI click sound for interactive elements
 document.addEventListener('click', (e) => {
   try {
-    // don't trigger when interacting with the painting canvas or drawing tools
-    if (e.target && (e.target.id === 'painting-canvas' || e.target.closest && e.target.closest('#painting-canvas'))) return;
+    // don't trigger when interacting with the 3D cave painter iframe
+    if (e.target && (e.target.id === 'cave-painter-frame' || e.target.closest && e.target.closest('#cave-painter-frame'))) return;
 
     const el = e.target;
     // Determine if the clicked element is a UI button/control
@@ -1017,6 +1009,16 @@ document.addEventListener('click', (e) => {
     // swallow
   }
 }, true);
+
+// Listen for messages from cave painter iframe to handle click sounds
+window.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'caveClickSound') {
+    // Only play click sound if allowed by the cave painter
+    if (event.data.enabled) {
+      sounds.click();
+    }
+  }
+});
 
 // ========================================
 // TITLE SCREEN
@@ -1176,6 +1178,11 @@ function switchToScene(sceneName) {
     document.getElementById(sceneId).classList.add('active');
   }
   
+  // Sync state to cave painter when entering cave
+  if (sceneName === 'cave') {
+    setTimeout(() => syncGameStateToCavePainter(), 100);
+  }
+  
   // Update nav buttons with ARIA states
   document.querySelectorAll('.nav-btn').forEach(btn => {
     btn.classList.remove('active');
@@ -1247,7 +1254,7 @@ function initNavigation() {
     
     // All requirements met - enter cave!
     switchToScene('cave');
-    showNotification('🎨 Cave Painting - All challenges mastered! Select paint and tool, then draw on the wall', 2500);
+    showNotification('🎨 3D Cave - Paint on the ancient wall! Use WASD to move, mouse to look around.', 3000);
   });
 }
 
@@ -1598,271 +1605,50 @@ function craftItem(key, recipe, type, cardElement) {
 }
 
 // ========================================
-// CAVE SCENE - PAINTING
+// CAVE SCENE - 3D PAINTING (cavepainter.html)
 // ========================================
 
-let canvas, ctx;
-let isDrawing = false;
-let lastX = 0;
-let lastY = 0;
-
-// Canvas history for undo/redo
-let canvasHistory = [];
-let historyStep = -1;
-const MAX_HISTORY = 20;
-
 function initCaveScene() {
-  canvas = document.getElementById('painting-canvas');
-  ctx = canvas.getContext('2d');
+  // The cave scene is now handled by cavepainter.html loaded in an iframe
+  // We'll communicate with it via postMessage to sync game state
   
-  // Set up canvas
-  ctx.lineCap = 'round';
-  ctx.lineJoin = 'round';
-  
-  // Save initial blank state
-  saveCanvasState();
-  
-  // Drawing events
-  canvas.addEventListener('mousedown', startDrawing);
-  canvas.addEventListener('mousemove', draw);
-  canvas.addEventListener('mouseup', stopDrawing);
-  canvas.addEventListener('mouseout', stopDrawing);
-  
-  // Touch events
-  canvas.addEventListener('touchstart', handleTouchStart);
-  canvas.addEventListener('touchmove', handleTouchMove);
-  canvas.addEventListener('touchend', stopDrawing);
-  
-  // Toolbar
-  renderPaintingToolbar();
-  
-  // Buttons
-  document.getElementById('undo-canvas').addEventListener('click', undoCanvas);
-  document.getElementById('redo-canvas').addEventListener('click', redoCanvas);
-  
-  document.getElementById('clear-canvas').addEventListener('click', () => {
-    if (confirm('Clear your painting?')) {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      saveCanvasState();
-      document.getElementById('cave-instruction').style.display = 'block';
-      showNotification('Canvas cleared', 1500);
-    }
-  });
-  
-  document.getElementById('step-back').addEventListener('click', () => {
-    const instruction = document.getElementById('cave-instruction');
-    instruction.style.display = instruction.style.display === 'none' ? 'block' : 'none';
-  });
-  
-  updateUndoRedoButtons();
-}
-
-function saveCanvasState() {
-  // Remove any states after current step
-  canvasHistory = canvasHistory.slice(0, historyStep + 1);
-  
-  // Save current state
-  canvasHistory.push(canvas.toDataURL());
-  historyStep++;
-  
-  // Limit history size
-  if (canvasHistory.length > MAX_HISTORY) {
-    canvasHistory.shift();
-    historyStep--;
-  }
-  
-  updateUndoRedoButtons();
-}
-
-function undoCanvas() {
-  if (historyStep > 0) {
-    historyStep--;
-    restoreCanvasState();
-    showNotification('↶ Undo', 1000);
-  }
-}
-
-function redoCanvas() {
-  if (historyStep < canvasHistory.length - 1) {
-    historyStep++;
-    restoreCanvasState();
-    showNotification('↷ Redo', 1000);
-  }
-}
-
-function restoreCanvasState() {
-  const img = new Image();
-  img.src = canvasHistory[historyStep];
-  img.onload = () => {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.drawImage(img, 0, 0);
-    updateUndoRedoButtons();
-  };
-}
-
-function updateUndoRedoButtons() {
-  const undoBtn = document.getElementById('undo-canvas');
-  const redoBtn = document.getElementById('redo-canvas');
-  
-  if (undoBtn) undoBtn.disabled = historyStep <= 0;
-  if (redoBtn) redoBtn.disabled = historyStep >= canvasHistory.length - 1;
-}
-
-function renderPaintingToolbar() {
-  // Paint palette
-  const paletteContainer = document.getElementById('paint-palette');
-  paletteContainer.innerHTML = '';
-  
-  if (Object.keys(gameState.paints).length === 0) {
-    paletteContainer.innerHTML = '<div style="color: #DAA520; font-size: 0.9rem; padding: 0.5rem;">No paints crafted yet!</div>';
-  } else {
-    Object.keys(gameState.paints).forEach(key => {
-      const paint = gameState.paints[key];
-      const swatch = document.createElement('div');
-      swatch.className = 'paint-swatch';
-      if (gameState.selectedPaint === key) swatch.classList.add('active');
-      swatch.style.backgroundColor = paint.color;
-      swatch.title = paint.name;
-      swatch.addEventListener('click', () => {
-        gameState.selectedPaint = key;
-        renderPaintingToolbar();
-        showNotification(`Selected ${paint.name}`, 1000);
-      });
-      paletteContainer.appendChild(swatch);
-    });
-  }
-  
-  // Applicator tools
-  const toolsContainer = document.getElementById('applicator-tools');
-  toolsContainer.innerHTML = '';
-  
-  Object.keys(applicators).forEach(key => {
-    const app = applicators[key];
-    const canUse = !app.requires || gameState.tools[app.requires];
-    
-    const swatch = document.createElement('div');
-    swatch.className = 'tool-swatch';
-    if (!canUse) swatch.classList.add('disabled');
-    if (gameState.selectedTool === key) swatch.classList.add('active');
-    swatch.innerHTML = app.icon;
-    swatch.title = app.name;
-    
-    if (canUse) {
-      swatch.addEventListener('click', () => {
-        gameState.selectedTool = key;
-        renderPaintingToolbar();
-        showNotification(`Selected ${app.name}`, 1000);
-      });
-    }
-    
-    toolsContainer.appendChild(swatch);
-  });
-  
-  // Animal templates
-  const templatesContainer = document.getElementById('animal-templates');
-  templatesContainer.innerHTML = '';
-  
-  Object.keys(animalTemplates).forEach(key => {
-    const template = animalTemplates[key];
-    const swatch = document.createElement('div');
-    swatch.className = 'template-swatch';
-    if (gameState.selectedTemplate === key) swatch.classList.add('active');
-    swatch.innerHTML = template.icon;
-    swatch.title = template.name;
-    swatch.addEventListener('click', () => {
-      gameState.selectedTemplate = gameState.selectedTemplate === key ? null : key;
-      renderPaintingToolbar();
-      if (gameState.selectedTemplate) {
-        showNotification(`Template: ${template.name} - ${template.count}`, 2000);
-      }
-    });
-    templatesContainer.appendChild(swatch);
-  });
-}
-
-function startDrawing(e) {
-  if (!gameState.selectedPaint) {
-    showNotification('⚠️ Select a paint color first!', 2000);
+  const iframe = document.getElementById('cave-painter-frame');
+  if (!iframe) {
+    console.warn('Cave painter iframe not found');
     return;
   }
   
-  isDrawing = true;
-  const pos = getCanvasPosition(e);
-  lastX = pos.x;
-  lastY = pos.y;
-  
-  // Hide instruction on first paint
-  document.getElementById('cave-instruction').style.display = 'none';
-}
-
-function draw(e) {
-  if (!isDrawing || !gameState.selectedPaint) return;
-  
-  e.preventDefault();
-  const pos = getCanvasPosition(e);
-  
-  const paint = gameState.paints[gameState.selectedPaint];
-  const tool = applicators[gameState.selectedTool];
-  
-  ctx.strokeStyle = paint.color;
-  ctx.lineWidth = tool.size;
-  ctx.globalAlpha = tool.opacity;
-  
-  ctx.beginPath();
-  ctx.moveTo(lastX, lastY);
-  ctx.lineTo(pos.x, pos.y);
-  ctx.stroke();
-  
-  // Small particles while drawing
-  if (Math.random() > 0.7) {
-    const canvasRect = canvas.getBoundingClientRect();
-    createParticleBurst(
-      canvasRect.left + pos.x,
-      canvasRect.top + pos.y,
-      paint.color,
-      1
-    );
-  }
-  
-  lastX = pos.x;
-  lastY = pos.y;
-}
-
-function stopDrawing() {
-  if (isDrawing) {
-    isDrawing = false;
-    // Save canvas state after completing a stroke
-    saveCanvasState();
-  }
-}
-
-function handleTouchStart(e) {
-  e.preventDefault();
-  const touch = e.touches[0];
-  const mouseEvent = new MouseEvent('mousedown', {
-    clientX: touch.clientX,
-    clientY: touch.clientY
+  // Listen for messages from the cave painter
+  window.addEventListener('message', (event) => {
+    // Security: verify origin if deployed
+    if (event.data && event.data.type === 'cavePainterReady') {
+      console.log('Cave painter is ready');
+      syncGameStateToCavePainter();
+    }
   });
-  canvas.dispatchEvent(mouseEvent);
+  
+  // Sync state when entering cave scene
+  syncGameStateToCavePainter();
 }
 
-function handleTouchMove(e) {
-  if (!isDrawing) return;
-  e.preventDefault();
-  const touch = e.touches[0];
-  const mouseEvent = new MouseEvent('mousemove', {
-    clientX: touch.clientX,
-    clientY: touch.clientY
-  });
-  canvas.dispatchEvent(mouseEvent);
-}
-
-function getCanvasPosition(e) {
-  const rect = canvas.getBoundingClientRect();
-  return {
-    x: (e.clientX - rect.left) * (canvas.width / rect.width),
-    y: (e.clientY - rect.top) * (canvas.height / rect.height)
+function syncGameStateToCavePainter() {
+  const iframe = document.getElementById('cave-painter-frame');
+  if (!iframe || !iframe.contentWindow) return;
+  
+  // Send current paints and tools to the cave painter
+  const stateData = {
+    type: 'gameStateSync',
+    paints: gameState.paints,
+    tools: gameState.tools,
+    selectedPaint: gameState.selectedPaint,
+    selectedTool: gameState.selectedTool
   };
+  
+  try {
+    iframe.contentWindow.postMessage(stateData, '*');
+  } catch (e) {
+    console.warn('Could not sync state to cave painter:', e);
+  }
 }
 
 // ========================================

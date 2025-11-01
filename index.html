@@ -163,45 +163,13 @@
 
             <!-- Cave Scene -->
             <div id="cave-scene" class="scene">
-                <div class="cave-wall-details">
-                    <div class="rock-formation rock-1"></div>
-                    <div class="rock-formation rock-2"></div>
-                    <div class="rock-formation rock-3"></div>
-                    <div class="stalactite stalactite-1"></div>
-                    <div class="stalactite stalactite-2"></div>
-                </div>
-                <div class="cave-darkness"></div>
-                <div class="torch-light" id="torch-light">
-                    <div class="light-glow"></div>
-                    <div class="torch-flame">
-                        <div class="flame flame-1"></div>
-                        <div class="flame flame-2"></div>
-                        <div class="flame flame-3"></div>
-                    </div>
-                </div>
-                <div class="painting-area">
-                    <canvas id="painting-canvas" width="1200" height="700"></canvas>
-                </div>
-                <div class="painting-toolbar">
-                    <div class="toolbar-group">
-                        <label>Paint:</label>
-                        <div id="paint-palette" class="palette-swatches"></div>
-                    </div>
-                    <div class="toolbar-group">
-                        <label>Tool:</label>
-                        <div id="applicator-tools" class="tool-swatches"></div>
-                    </div>
-                    <div class="toolbar-group">
-                        <label>Template:</label>
-                        <div id="animal-templates" class="template-swatches"></div>
-                    </div>
-                    <div class="toolbar-actions">
-                        <button id="undo-canvas" class="btn-secondary" title="Undo last stroke">↶ Undo</button>
-                        <button id="redo-canvas" class="btn-secondary" title="Redo stroke">↷ Redo</button>
-                        <button id="clear-canvas" class="btn-secondary">Clear</button>
-                        <button id="step-back" class="btn-secondary">Step Back</button>
-                    </div>
-                </div>
+                <!-- 3D Cave Painter integrated via iframe -->
+                <iframe 
+                    id="cave-painter-frame" 
+                    src="cavepainter.html" 
+                    style="width: 100%; height: 100%; border: none; display: block;"
+                    title="3D Cave Painting Environment"
+                ></iframe>
             </div>
         </div>
 
