@@ -208,6 +208,82 @@
             transform: scale(1.1);
         }
 
+        #experimental-button {
+            position: fixed;
+            right: 130px;
+            bottom: 12px;
+            width: 50px;
+            height: 50px;
+            background: rgba(94, 82, 64, 0.6);
+            border: 2px solid #8B7355;
+            border-radius: 50%;
+            font-size: 1.3rem;
+            color: #E8DCC8;
+            cursor: pointer;
+            z-index: 120;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        #experimental-button:hover {
+            background: rgba(94, 82, 64, 0.9);
+            border-color: #DAA520;
+            transform: scale(1.1);
+        }
+
+        #experimental-modal {
+            position: absolute;
+            bottom: 75px;
+            right: 130px;
+            background: rgba(26, 22, 18, 0.95);
+            padding: 20px;
+            border-radius: 12px;
+            border: 2px solid var(--color-ochre-yellow);
+            font-size: 14px;
+            width: 200px;
+            z-index: 200;
+            display: none;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(10px);
+        }
+
+        #experimental-modal.visible {
+            display: block;
+        }
+
+        #experimental-modal h3 {
+            margin-top: 0;
+            margin-bottom: 15px;
+            color: var(--color-ochre-yellow);
+            font-size: 16px;
+        }
+
+        .experimental-option {
+            padding: 10px;
+            margin-bottom: 8px;
+            border: 2px solid rgba(212, 165, 116, 0.3);
+            background: rgba(58, 58, 58, 0.6);
+            color: var(--color-text);
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 13px;
+            transition: all 0.2s;
+            text-align: center;
+        }
+
+        .experimental-option:hover {
+            background: rgba(212, 165, 116, 0.2);
+            border-color: var(--color-ochre-yellow);
+        }
+
+        .experimental-option.active {
+            background: var(--color-ochre-yellow);
+            color: #1a1612;
+            border-color: var(--color-ochre-yellow);
+        }
+
         #instructions-modal {
             position: absolute;
             top: 50%;
@@ -354,22 +430,23 @@
 
         <div class="tool-section">
             <h3>Prehistoric Pigments</h3>
-            <div class="color-palette">
-                <button class="color-btn active" data-color="#d4a574" style="background: #d4a574;" title="Yellow Ochre"></button>
-                <button class="color-btn" data-color="#8b4513" style="background: #8b4513;" title="Red Ochre"></button>
-                <button class="color-btn" data-color="#3a3a3a" style="background: #3a3a3a;" title="Charcoal"></button>
-                <button class="color-btn" data-color="#f5ebe0" style="background: #f5ebe0;" title="Kaolin White"></button>
-                <button class="color-btn" data-color="#a0826d" style="background: #a0826d;" title="Brown Ochre"></button>
-                <button class="color-btn" data-color="#6b4423" style="background: #6b4423;" title="Dark Brown"></button>
-                <button class="color-btn" data-color="#4a4a4a" style="background: #4a4a4a;" title="Gray"></button>
-                <button class="color-btn" data-color="#2a1810" style="background: #2a1810;" title="Burnt Umber"></button>
+            <div class="color-palette" id="color-palette">
+                <button class="color-btn active" data-color="#8b4513" style="background: #8b4513;" title="Red Paint"></button>
+                <button class="color-btn" data-color="#d4a574" style="background: #d4a574;" title="Yellow Paint"></button>
+                <button class="color-btn" data-color="#3a3a3a" style="background: #3a3a3a;" title="Black Paint"></button>
+                <button class="color-btn" data-color="#6b4423" style="background: #6b4423;" title="Brown Paint"></button>
+                <button class="color-btn" data-color="#f5ebe0" style="background: #f5ebe0;" title="White Paint"></button>
             </div>
         </div>
 
         <div class="tool-section">
-            <div class="slider-group">
-                <label for="brush-size">Brush Size: <span id="size-value">15</span>px</label>
-                <input type="range" id="brush-size" min="5" max="80" value="15">
+            <div class="slider-group" id="brush-size-container">
+                <label for="brush-size">Brush Size: <span id="size-value">20</span>px</label>
+                <input type="range" id="brush-size" min="5" max="50" value="20" step="1">
+            </div>
+            <div class="slider-group" id="hand-size-container" style="display: none;">
+                <label for="hand-size">Hand Size: <span id="hand-size-value">Adult</span></label>
+                <input type="range" id="hand-size" min="0" max="1" value="1" step="1">
             </div>
             <div class="slider-group">
                 <label for="opacity">Opacity: <span id="opacity-value">80</span>%</label>
@@ -391,13 +468,24 @@
     <div id="modal-overlay"></div>
 
     <!-- Instructions Modal -->
-    <div id="instructions-modal">
-        <button class="modal-close">&times;</button>
-        <h2>Cave Painting Controls</h2>
-        <ul>
-            <li><strong>Left Click + Drag</strong> - Paint on the cave wall</li>
-            <li><strong>WASD</strong> - Move around the cave</li>
-            <li><strong>Arrow Keys</strong> - Look around (rotate camera)</li>
+    <!-- Help Button -->
+    <button id="help-button" title="Controls">❓</button>
+
+    <!-- Experimental Button -->
+    <button id="experimental-button" title="Experimental Brushes">🧪</button>
+
+    <!-- Modal Overlay -->
+    <div id="modal-overlay"></div>
+
+    <!-- Experimental Modal -->
+    <div id="experimental-modal">
+        <h3>Experimental Brushes</h3>
+        <div class="experimental-option" data-brush="handstencil">
+            ✋ Hand Stencil
+        </div>
+    </div>
+
+    <!-- Instructions Modal -->eys</strong> - Look around (rotate camera)</li>
             <li><strong>Q/E</strong> - Move down/up vertically</li>
             <li><strong>Mouse Wheel</strong> - Zoom in/out</li>
             <li><strong>Right Click + Drag</strong> - Free look (alternative camera rotation)</li>
@@ -433,7 +521,8 @@
         // Painting state
         let currentBrush = 'brush';
         let currentColor = '#d4a574';
-        let brushSize = 15;
+        let brushSize = 20;
+        let handSize = 1; // 0 = child, 1 = adult
         let opacity = 0.8;
         let isDrawing = false;
         let lastPoint = null;
@@ -1127,6 +1216,135 @@
             }
         }
 
+        function drawHandStencil(x, y) {
+            // Create a realistic left hand stencil
+            // Most people are right-handed, so they hold the spray tool in their right hand
+            // and place their left hand on the wall
+            
+            paintCtx.save();
+            paintCtx.translate(x, y);
+            
+            // Scale based on child (0.6) or adult (1.0) size
+            const baseScale = handSize === 0 ? 0.6 : 1.0;
+            paintCtx.scale(baseScale, baseScale);
+            
+            // Create realistic left hand silhouette
+            paintCtx.beginPath();
+            
+            // Start at wrist bottom left
+            paintCtx.moveTo(-40, 80);
+            
+            // Left side of wrist and palm
+            paintCtx.lineTo(-45, 60);
+            paintCtx.lineTo(-50, 40);
+            paintCtx.lineTo(-52, 20);
+            
+            // Pinky finger (left side for left hand)
+            paintCtx.lineTo(-50, 10);
+            paintCtx.lineTo(-48, 0);
+            paintCtx.lineTo(-45, -15);
+            paintCtx.lineTo(-42, -30);
+            paintCtx.quadraticCurveTo(-40, -42, -35, -48);
+            paintCtx.quadraticCurveTo(-30, -50, -26, -48);
+            paintCtx.quadraticCurveTo(-24, -45, -24, -40);
+            paintCtx.lineTo(-26, -25);
+            paintCtx.lineTo(-28, -10);
+            
+            // Ring finger
+            paintCtx.lineTo(-25, -15);
+            paintCtx.lineTo(-22, -35);
+            paintCtx.lineTo(-20, -50);
+            paintCtx.quadraticCurveTo(-18, -65, -12, -70);
+            paintCtx.quadraticCurveTo(-6, -72, -2, -70);
+            paintCtx.quadraticCurveTo(0, -66, 0, -60);
+            paintCtx.lineTo(-2, -45);
+            paintCtx.lineTo(-4, -25);
+            
+            // Middle finger (longest)
+            paintCtx.lineTo(0, -30);
+            paintCtx.lineTo(2, -50);
+            paintCtx.lineTo(4, -65);
+            paintCtx.quadraticCurveTo(6, -78, 12, -82);
+            paintCtx.quadraticCurveTo(18, -83, 22, -80);
+            paintCtx.quadraticCurveTo(24, -75, 24, -68);
+            paintCtx.lineTo(22, -50);
+            paintCtx.lineTo(20, -30);
+            
+            // Index finger
+            paintCtx.lineTo(25, -35);
+            paintCtx.lineTo(28, -50);
+            paintCtx.quadraticCurveTo(30, -62, 36, -66);
+            paintCtx.quadraticCurveTo(42, -67, 46, -64);
+            paintCtx.quadraticCurveTo(48, -60, 48, -54);
+            paintCtx.lineTo(46, -40);
+            paintCtx.lineTo(44, -25);
+            paintCtx.lineTo(42, -10);
+            paintCtx.lineTo(42, 5);
+            
+            // Right side of palm going down to where thumb attaches
+            paintCtx.lineTo(40, 15);
+            paintCtx.lineTo(38, 25);
+            paintCtx.lineTo(36, 35);
+            paintCtx.lineTo(34, 45);
+            
+            // Thumb attaches here (lower on palm, near wrist)
+            // Much shorter thumb - only extends about half the width
+            paintCtx.quadraticCurveTo(36, 48, 38, 50);
+            
+            // Thumb outer edge - short and stubby
+            paintCtx.lineTo(42, 52);
+            paintCtx.lineTo(46, 53);
+            paintCtx.quadraticCurveTo(50, 54, 52, 52);
+            paintCtx.quadraticCurveTo(54, 48, 54, 42);
+            paintCtx.quadraticCurveTo(54, 36, 52, 32);
+            paintCtx.quadraticCurveTo(50, 28, 46, 26);
+            paintCtx.quadraticCurveTo(42, 25, 38, 27);
+            
+            // Thumb inner edge connects back to palm/wrist
+            paintCtx.quadraticCurveTo(36, 30, 34, 35);
+            paintCtx.quadraticCurveTo(32, 40, 30, 45);
+            
+            // Continue down to wrist
+            paintCtx.lineTo(36, 62);
+            paintCtx.lineTo(20, 58);
+            paintCtx.lineTo(12, 66);
+            paintCtx.lineTo(3, 70);
+            
+            // Bottom of wrist (right side)
+            paintCtx.lineTo(-5, 75);
+            paintCtx.lineTo(-20, 80);
+            paintCtx.lineTo(-40, 80);
+            
+            paintCtx.closePath();
+            
+            // Create the hand as negative space (stencil)
+            paintCtx.globalCompositeOperation = 'destination-out';
+            paintCtx.fillStyle = 'rgba(255, 255, 255, 1.0)';
+            paintCtx.fill();
+            
+            // Now spray pigment densely around the hand
+            paintCtx.globalCompositeOperation = 'source-over';
+            paintCtx.fillStyle = currentColor;
+            
+            // VERY dense spray for clear hand silhouette - increased significantly
+            const sprayRadius = 150;
+            const density = 1500; // Much denser for better visibility
+            
+            for (let i = 0; i < density; i++) {
+                const angle = Math.random() * Math.PI * 2;
+                const distance = Math.random() * sprayRadius;
+                const px = Math.cos(angle) * distance;
+                const py = Math.sin(angle) * distance;
+                const size = Math.random() * 2.5 + 0.8;
+                paintCtx.globalAlpha = opacity * (0.3 + Math.random() * 0.4);
+                paintCtx.beginPath();
+                paintCtx.arc(px, py, size, 0, Math.PI * 2);
+                paintCtx.fill();
+            }
+            
+            paintCtx.restore();
+        }
+
         function paint(event) {
             if (!paintingSurfaceMesh) return;
             
@@ -1143,6 +1361,16 @@
                     const uv = intersect.uv;
                     const x = uv.x * paintCanvas.width;
                     const y = (1 - uv.y) * paintCanvas.height;
+
+                    // Hand stencil mode: draw once per click, not on drag
+                    if (currentBrush === 'handstencil') {
+                        if (!lastPoint) { // Only on first click, not drag
+                            drawHandStencil(x, y);
+                            paintTexture.needsUpdate = true;
+                        }
+                        lastPoint = { x, y };
+                        return;
+                    }
 
                     if (lastPoint && isDrawing) {
                         const dx = x - lastPoint.x;
@@ -1176,6 +1404,9 @@
                                 break;
                             case 'spray':
                                 drawSpray(x, y);
+                                break;
+                            case 'handstencil':
+                                drawHandStencil(x, y);
                                 break;
                         }
                     }
@@ -1245,6 +1476,12 @@
                 document.querySelectorAll('[data-brush]').forEach(b => b.classList.remove('active'));
                 btn.classList.add('active');
                 currentBrush = btn.dataset.brush;
+                
+                // Toggle slider visibility based on brush type
+                const brushType = btn.dataset.brush;
+                // Standard brushes use regular brush size, hand stencil uses hand size
+                document.getElementById('brush-size-container').style.display = 'block';
+                document.getElementById('hand-size-container').style.display = 'none';
             });
         });
 
@@ -1262,7 +1499,12 @@
 
         document.getElementById('brush-size').addEventListener('input', (e) => {
             brushSize = parseInt(e.target.value);
-            document.getElementById('size-value').textContent = brushSize;
+            document.getElementById('size-value').textContent = e.target.value;
+        });
+
+        document.getElementById('hand-size').addEventListener('input', (e) => {
+            handSize = parseInt(e.target.value);
+            document.getElementById('hand-size-value').textContent = handSize === 0 ? 'Child' : 'Adult';
         });
 
         document.getElementById('opacity').addEventListener('input', (e) => {
@@ -1277,6 +1519,45 @@
             }
             paintCtx.clearRect(0, 0, paintCanvas.width, paintCanvas.height);
             paintTexture.needsUpdate = true;
+        });
+
+        // Experimental Button and Modal
+        const experimentalButton = document.getElementById('experimental-button');
+        const experimentalModal = document.getElementById('experimental-modal');
+
+        experimentalButton.addEventListener('click', (e) => {
+            e.stopPropagation();
+            experimentalModal.classList.toggle('visible');
+        });
+
+        // Close experimental modal when clicking outside
+        document.addEventListener('click', (e) => {
+            if (!experimentalButton.contains(e.target) && !experimentalModal.contains(e.target)) {
+                experimentalModal.classList.remove('visible');
+            }
+        });
+
+        // Experimental option selection
+        document.querySelectorAll('.experimental-option').forEach(option => {
+            option.addEventListener('click', () => {
+                const brushType = option.dataset.brush;
+                currentBrush = brushType;
+                
+                // Update button states - deactivate standard brushes
+                document.querySelectorAll('.btn[data-brush]').forEach(btn => btn.classList.remove('active'));
+                // Update experimental option states
+                document.querySelectorAll('.experimental-option').forEach(opt => opt.classList.remove('active'));
+                option.classList.add('active');
+                
+                // Show hand size slider for hand stencil
+                if (brushType === 'handstencil') {
+                    document.getElementById('brush-size-container').style.display = 'none';
+                    document.getElementById('hand-size-container').style.display = 'block';
+                }
+                
+                // Close experimental modal
+                experimentalModal.classList.remove('visible');
+            });
         });
 
         // PNG Export with lighting (high-resolution option)
