@@ -1,0 +1,1205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cave Explorer 3D</title>
+    <style>
+        :root {
+            --color-background: rgba(252, 252, 249, 1);
+            --color-surface: rgba(255, 255, 253, 1);
+            --color-text: rgba(19, 52, 59, 1);
+            --color-primary: rgba(33, 128, 141, 1);
+            --color-brown-600: rgba(94, 82, 64, 1);
+            --font-family-base: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --color-background: rgba(31, 33, 33, 1);
+                --color-surface: rgba(38, 40, 40, 1);
+                --color-text: rgba(245, 245, 245, 1);
+            }
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: var(--font-family-base);
+            background: #000;
+            color: var(--color-text);
+            overflow: hidden;
+            cursor: none;
+        }
+
+        #canvas-container {
+            width: 100vw;
+            height: 100vh;
+            position: relative;
+        }
+
+        #hud {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            color: rgba(255, 215, 100, 0.95);
+            font-size: 16px;
+            font-weight: 600;
+            text-shadow: 2px 2px 8px rgba(0, 0, 0, 0.9);
+            z-index: 100;
+            pointer-events: none;
+            font-family: monospace;
+        }
+
+        #instructions {
+            position: absolute;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: rgba(255, 215, 100, 0.9);
+            font-size: 14px;
+            text-align: center;
+            text-shadow: 1px 1px 6px rgba(0, 0, 0, 0.9);
+            z-index: 100;
+            pointer-events: none;
+            background: rgba(0, 0, 0, 0.5);
+            padding: 12px 24px;
+            border-radius: 8px;
+        }
+
+        #crosshair {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 20px;
+            height: 20px;
+            z-index: 100;
+            pointer-events: none;
+        }
+
+        #crosshair::before,
+        #crosshair::after {
+            content: '';
+            position: absolute;
+            background: rgba(255, 215, 100, 0.8);
+        }
+
+        #crosshair::before {
+            width: 2px;
+            height: 20px;
+            left: 9px;
+            top: 0;
+        }
+
+        #crosshair::after {
+            width: 20px;
+            height: 2px;
+            left: 0;
+            top: 9px;
+        }
+
+        #start-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, rgba(10, 8, 6, 0.95), rgba(20, 15, 10, 0.95));
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 200;
+            color: rgba(255, 215, 100, 1);
+        }
+
+        #start-screen h1 {
+            font-size: 48px;
+            margin-bottom: 20px;
+            text-shadow: 3px 3px 12px rgba(0, 0, 0, 0.9);
+        }
+
+        #start-screen p {
+            font-size: 18px;
+            margin-bottom: 30px;
+            max-width: 500px;
+            text-align: center;
+            line-height: 1.6;
+        }
+
+        #start-btn {
+            padding: 16px 48px;
+            font-size: 20px;
+            background: rgba(33, 128, 141, 0.9);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        #start-btn:hover {
+            background: rgba(45, 166, 178, 1);
+            transform: scale(1.05);
+        }
+
+        #completion-message {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.85);
+            padding: 40px 60px;
+            border-radius: 12px;
+            color: rgba(255, 215, 100, 1);
+            font-size: 24px;
+            text-align: center;
+            z-index: 150;
+            display: none;
+            text-shadow: 2px 2px 8px rgba(0, 0, 0, 0.9);
+        }
+    </style>
+</head>
+<body>
+    <div id="canvas-container"></div>
+    
+    <div id="start-screen">
+        <h1>🪔 Cave Explorer 3D</h1>
+        <p>Navigate through the dark limestone cave and place three lamps to illuminate the ancient chambers. Use WASD to move, Space to jump over rocks, mouse to look around, and click to place lamps at marked locations.</p>
+        <button id="start-btn">Enter Cave</button>
+    </div>
+
+    <div id="hud">
+        Lamps Placed: <span id="lamp-count">0</span>/3<br>
+        Depth: <span id="depth">0</span>m
+    </div>
+
+    <div id="crosshair"></div>
+
+    <div id="instructions">
+        WASD: Move | Mouse: Look | Space: Jump | Click: Place Lamp at Marker
+    </div>
+
+    <div id="completion-message">
+        🏆 Cave Illuminated!<br>
+        <span style="font-size: 18px; margin-top: 10px; display: block;">All chambers secured with light</span>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+        let scene, camera, renderer, clock;
+        let moveForward = false, moveBackward = false, moveLeft = false, moveRight = false;
+        let isJumping = false;
+        let jumpVelocity = 0;
+        const jumpStrength = 5.5;
+        const gravity = 12.0;
+        let velocity = new THREE.Vector3();
+        let direction = new THREE.Vector3();
+        let prevTime = performance.now();
+        let yaw = 0, pitch = 0;
+        let isLocked = false;
+        let lampsPlaced = 0;
+        let lampMarkers = [];
+        let placedLamps = [];
+        let collisionObjects = [];
+
+        // Player settings
+        const playerHeight = 1.7;
+        const playerSpeed = 3.5; // Walking speed (was 8.0)
+        const playerRadius = 0.5;
+
+        function init() {
+            // Scene setup
+            scene = new THREE.Scene();
+            scene.fog = new THREE.FogExp2(0x000000, 0.08);
+
+            // Camera setup
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 100);
+            camera.position.set(0, playerHeight, 5);
+
+            // Renderer setup
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+            document.getElementById('canvas-container').appendChild(renderer.domElement);
+
+            clock = new THREE.Clock();
+
+            // Create cave environment
+            createCave();
+            createLampMarkers();
+
+            // Lighting
+            const ambientLight = new THREE.AmbientLight(0x1a1410, 0.15);
+            scene.add(ambientLight);
+
+            // Initial torch light (player's light source)
+            const torchLight = new THREE.PointLight(0xff9944, 2, 12);
+            torchLight.position.copy(camera.position);
+            torchLight.castShadow = true;
+            scene.add(torchLight);
+            window.torchLight = torchLight;
+
+            // Event listeners
+            document.addEventListener('keydown', onKeyDown);
+            document.addEventListener('keyup', onKeyUp);
+            document.getElementById('start-btn').addEventListener('click', startGame);
+            
+            window.addEventListener('resize', onWindowResize);
+            animate();
+        }
+
+        // Generate a limestone-like canvas texture and a bump map
+        function createCaveTexture(repeatX = 4, repeatY = 3) {
+            const size = 512;
+            const canvas = document.createElement('canvas');
+            canvas.width = size;
+            canvas.height = size;
+            const ctx = canvas.getContext('2d');
+
+            // Base limestone color
+            ctx.fillStyle = '#d4c5b3';
+            ctx.fillRect(0, 0, size, size);
+
+            // Add layered soft blotches
+            for (let i = 0; i < 120; i++) {
+                const radius = 6 + Math.random() * 60;
+                const x = Math.random() * size;
+                const y = Math.random() * size;
+                const hueRand = (Math.random() * 20) - 10;
+                ctx.fillStyle = `rgba(${212 + hueRand}, ${197 + hueRand}, ${179 + hueRand}, ${0.03 + Math.random() * 0.12})`;
+                ctx.beginPath();
+                ctx.arc(x, y, radius, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
+            // Add subtle veins/lines for organic look
+            ctx.strokeStyle = 'rgba(120,90,70,0.05)';
+            ctx.lineWidth = 2;
+            for (let i = 0; i < 18; i++) {
+                ctx.beginPath();
+                const startX = Math.random() * size;
+                const startY = Math.random() * size;
+                ctx.moveTo(startX, startY);
+                for (let j = 0; j < 6; j++) {
+                    ctx.lineTo(startX + (Math.random() - 0.5) * size * 0.3, startY + (Math.random() - 0.5) * size * 0.3);
+                }
+                ctx.stroke();
+            }
+
+            // Create bump map (grayscale noise)
+            const bumpCanvas = document.createElement('canvas');
+            bumpCanvas.width = size;
+            bumpCanvas.height = size;
+            const bctx = bumpCanvas.getContext('2d');
+            bctx.fillStyle = '#808080';
+            bctx.fillRect(0, 0, size, size);
+            for (let i = 0; i < 2000; i++) {
+                const r = Math.random() * 3 + 0.5;
+                const x = Math.random() * size;
+                const y = Math.random() * size;
+                const a = 0.02 + Math.random() * 0.08;
+                bctx.fillStyle = `rgba(0,0,0,${a})`;
+                bctx.beginPath();
+                bctx.arc(x, y, r, 0, Math.PI * 2);
+                bctx.fill();
+            }
+
+            const map = new THREE.CanvasTexture(canvas);
+            map.wrapS = map.wrapT = THREE.RepeatWrapping;
+            map.repeat.set(repeatX, repeatY);
+            map.needsUpdate = true;
+
+            const bump = new THREE.CanvasTexture(bumpCanvas);
+            bump.wrapS = bump.wrapT = THREE.RepeatWrapping;
+            bump.repeat.set(repeatX, repeatY);
+            bump.needsUpdate = true;
+
+            return { map, bump };
+        }
+
+        function createCave() {
+            // Create detailed cave tunnel with realistic textures
+            const caveSegments = 8;
+            const segmentLength = 12;
+            
+            for (let i = 0; i < caveSegments; i++) {
+                const zPos = -i * segmentLength;
+                
+                // Create cave walls with rocky texture
+                createCaveSegment(zPos, segmentLength, i);
+                
+                // Rocks are now created by createCaveRocksAndBoulders() instead
+            }
+
+            // Create cave floor with bumpy texture
+            createCaveFloor();
+            
+            // Create cave ceiling
+            createCaveCeiling();
+            
+            // Create boundary walls to keep player in narrow path
+            createBoundaryWalls();
+            
+            // Add stalactites hanging from ceiling
+            createStalactites();
+            
+            // Add rocks and boulders throughout the cave
+            createCaveRocksAndBoulders();
+        }
+
+        function createBoundaryWalls() {
+            const boundaryMaterial = new THREE.MeshStandardMaterial({
+                color: 0xd4c5b3,
+                roughness: 0.85,
+                metalness: 0.02
+            });
+
+            // Left boundary wall - extends full length including behind player
+            const leftWallGeo = new THREE.PlaneGeometry(110, 7, 256, 128); // Taller for better coverage
+            const leftVertices = leftWallGeo.attributes.position.array;
+            for (let i = 0; i < leftVertices.length; i += 3) {
+                const x = leftVertices[i];
+                const y = leftVertices[i + 1];
+                let disp = 0;
+                
+                // Large undulations
+                disp += Math.sin(x * 0.08 + y * 0.12) * 0.4;
+                disp += Math.cos(x * 0.18 + y * 0.22) * 0.22;
+                
+                // Medium detail
+                disp += Math.sin(x * 0.35 + y * 0.28) * 0.18;
+                disp += Math.cos(x * 0.52 - y * 0.41) * 0.14;
+                
+                // Small bumps
+                disp += Math.sin(x * 0.95 + y * 1.08) * 0.11;
+                disp += Math.cos(x * 1.42 + y * 1.27) * 0.09;
+                
+                // Fine texture
+                disp += Math.sin(x * 2.35 + y * 2.18) * 0.06;
+                disp += Math.cos(x * 3.71 - y * 3.42) * 0.05;
+                
+                // Random variation
+                disp += (Math.random() - 0.5) * 0.20;
+                
+                leftVertices[i + 2] += disp;
+            }
+            leftWallGeo.computeVertexNormals();
+            
+            // Apply texture with proper repeat to avoid stretching
+            const leftTex = createCaveTexture(18, 1.2);
+            boundaryMaterial.map = leftTex.map;
+            boundaryMaterial.bumpMap = leftTex.bump;
+            boundaryMaterial.bumpScale = 0.08;
+            
+            const leftWall = new THREE.Mesh(leftWallGeo, boundaryMaterial.clone());
+            leftWall.rotation.y = Math.PI / 2;
+            leftWall.position.set(-11, 1.75, -45); // Centered: -2 to 5.5, covers floor -0.5 to ceiling 4
+            leftWall.receiveShadow = true;
+            leftWall.castShadow = true;
+            scene.add(leftWall);
+            collisionObjects.push(leftWall);
+
+            // Right boundary wall - extends full length including behind player
+            const rightWallGeo = new THREE.PlaneGeometry(110, 7, 256, 128); // Taller for better coverage
+            const rightVertices = rightWallGeo.attributes.position.array;
+            for (let i = 0; i < rightVertices.length; i += 3) {
+                const x = rightVertices[i];
+                const y = rightVertices[i + 1];
+                let disp = 0;
+                
+                // Large undulations
+                disp += Math.sin(x * 0.07 + y * 0.11) * 0.42;
+                disp += Math.cos(x * 0.19 + y * 0.21) * 0.24;
+                
+                // Medium detail
+                disp += Math.sin(x * 0.32 + y * 0.29) * 0.19;
+                disp += Math.cos(x * 0.49 - y * 0.38) * 0.15;
+                
+                // Small bumps
+                disp += Math.sin(x * 0.88 + y * 1.12) * 0.12;
+                disp += Math.cos(x * 1.38 + y * 1.31) * 0.10;
+                
+                // Fine texture
+                disp += Math.sin(x * 2.42 + y * 2.25) * 0.07;
+                disp += Math.cos(x * 3.65 - y * 3.51) * 0.05;
+                
+                // Random variation
+                disp += (Math.random() - 0.5) * 0.21;
+                
+                rightVertices[i + 2] += disp;
+            }
+            rightWallGeo.computeVertexNormals();
+            
+            // Apply texture with proper repeat to avoid stretching
+            const rightTex = createCaveTexture(18, 1.2);
+            const rightMat = boundaryMaterial.clone();
+            rightMat.map = rightTex.map;
+            rightMat.bumpMap = rightTex.bump;
+            rightMat.bumpScale = 0.08;
+            
+            const rightWall = new THREE.Mesh(rightWallGeo, rightMat);
+            rightWall.rotation.y = -Math.PI / 2;
+            rightWall.position.set(11, 1.75, -45); // Centered: -2 to 5.5, covers floor -0.5 to ceiling 4
+            rightWall.receiveShadow = true;
+            rightWall.castShadow = true;
+            scene.add(rightWall);
+            collisionObjects.push(rightWall);
+
+            // Back boundary wall - identical to side walls, connects left and right
+            const backWallGeo = new THREE.PlaneGeometry(24, 7, 128, 64); // Taller for better coverage
+            const backVertices = backWallGeo.attributes.position.array;
+            for (let i = 0; i < backVertices.length; i += 3) {
+                const x = backVertices[i];
+                const y = backVertices[i + 1];
+                let disp = 0;
+                
+                // Multiple scales of displacement
+                disp += Math.sin(x * 0.08 + y * 0.12) * 0.4;
+                disp += Math.cos(x * 0.18 + y * 0.22) * 0.22;
+                disp += Math.sin(x * 0.35 + y * 0.28) * 0.15;
+                disp += Math.cos(x * 0.92 + y * 1.05) * 0.10;
+                disp += Math.sin(x * 2.18 + y * 2.32) * 0.06;
+                disp += (Math.random() - 0.5) * 0.18;
+                
+                backVertices[i + 2] += disp;
+            }
+            backWallGeo.computeVertexNormals();
+            
+            // Apply texture with same ratio as side walls
+            const backTex = createCaveTexture(3.9, 1.2);
+            const backMat = new THREE.MeshStandardMaterial({
+                color: 0xd4c5b3,
+                roughness: 0.85,
+                metalness: 0.02,
+                map: backTex.map,
+                bumpMap: backTex.bump,
+                bumpScale: 0.08,
+                side: THREE.FrontSide
+            });
+            
+            const backWall = new THREE.Mesh(backWallGeo, backMat);
+            backWall.position.set(0, 1.75, 10); // Centered: -2 to 5.5, covers floor -0.5 to ceiling 4
+            backWall.receiveShadow = true;
+            backWall.castShadow = true;
+            scene.add(backWall);
+            collisionObjects.push(backWall);
+            
+            // End wall at -99m (far end of cave)
+            const endWallGeo = new THREE.PlaneGeometry(24, 7, 128, 64); // Taller for better coverage
+            const endVertices = endWallGeo.attributes.position.array;
+            for (let i = 0; i < endVertices.length; i += 3) {
+                const x = endVertices[i];
+                const y = endVertices[i + 1];
+                let disp = 0;
+                
+                // Multiple scales of displacement
+                disp += Math.sin(x * 0.08 + y * 0.12) * 0.4;
+                disp += Math.cos(x * 0.18 + y * 0.22) * 0.22;
+                disp += Math.sin(x * 0.35 + y * 0.28) * 0.15;
+                disp += Math.cos(x * 0.88 + y * 1.02) * 0.11;
+                disp += Math.sin(x * 2.25 + y * 2.15) * 0.07;
+                disp += (Math.random() - 0.5) * 0.19;
+                
+                endVertices[i + 2] += disp;
+            }
+            endWallGeo.computeVertexNormals();
+            
+            const endTex = createCaveTexture(3.9, 1.2);
+            const endMat = new THREE.MeshStandardMaterial({
+                color: 0xd4c5b3,
+                roughness: 0.85,
+                metalness: 0.02,
+                map: endTex.map,
+                bumpMap: endTex.bump,
+                bumpScale: 0.08,
+                side: THREE.FrontSide
+            });
+            
+            const endWall = new THREE.Mesh(endWallGeo, endMat);
+            endWall.rotation.y = Math.PI; // Face toward player
+            endWall.position.set(0, 1.75, -100); // Centered: -2 to 5.5, covers floor -0.5 to ceiling 4
+            endWall.receiveShadow = true;
+            endWall.castShadow = true;
+            scene.add(endWall);
+            collisionObjects.push(endWall);
+        }
+
+        function createCaveSegment(zPos, length, segmentIndex) {
+            // Cave wall material with rocky limestone texture
+            const repeats = { x: 5, y: 2 };
+            const tex = createCaveTexture(repeats.x, repeats.y);
+            const wallMaterial = new THREE.MeshStandardMaterial({
+                color: 0xd4c5b3,
+                roughness: 0.85,
+                metalness: 0.02,
+                map: tex.map,
+                bumpMap: tex.bump,
+                bumpScale: 0.08
+            });
+
+            // Create narrow passages at segments 2, 4, 6 for variety
+            const isNarrow = (segmentIndex === 2 || segmentIndex === 4 || segmentIndex === 6);
+            const baseRadius = isNarrow ? 3.8 : 5.5;
+            const radiusVariation = isNarrow ? 0.5 : 0.9;
+
+            // Create organic cave walls using multiple boxes for irregular shape
+            const wallCount = 24;
+            for (let i = 0; i < wallCount; i++) {
+                const angle = (i / wallCount) * Math.PI * 2;
+                // Multi-scale radius variation for large+medium+small waves
+                const radius = baseRadius
+                    + Math.sin(angle * 1.2) * radiusVariation
+                    + Math.sin(angle * 3.9) * 0.35
+                    + Math.sin(angle * 7.7) * 0.12
+                    + (Math.random() - 0.5) * 0.18;
+                const height = 5.5 + Math.random() * 1.5; // Extended height to go through ceiling and floor
+                
+                // Create CaveStructure with very high subdivision for extremely organic displacement
+                const wallGeometry = new THREE.BoxGeometry(1.4, height, length / 3, 24, 24, 24);
+                
+                // Apply multi-scale vertex displacement for cave-like surface
+                const vertices = wallGeometry.attributes.position.array;
+                for (let v = 0; v < vertices.length; v += 3) {
+                    const x = vertices[v];
+                    const y = vertices[v + 1];
+                    const z = vertices[v + 2];
+                    
+                    // Allow displacement on all vertices including bottom (so it goes through floor)
+                    
+                    let displacement = 0;
+                    // Large organic waves - much more pronounced
+                    displacement += Math.sin(x * 0.6 + y * 0.4) * 0.28;
+                    displacement += Math.cos(y * 0.9 + z * 0.7) * 0.24;
+                    // Medium detail - deeper variations
+                    displacement += Math.sin(x * 2.2 + z * 1.6) * 0.15;
+                    displacement += Math.cos(y * 2.8 + z * 2.1) * 0.12;
+                    // Fine bumps and irregularities - more texture
+                    displacement += Math.sin(x * 5.2 + y * 4.1) * 0.08;
+                    displacement += Math.cos(z * 6.3 + x * 7.5) * 0.07;
+                    // Very fine detail for rough texture
+                    displacement += Math.sin(x * 11.5 + y * 9.8 + z * 10.2) * 0.04;
+                    displacement += Math.cos(x * 14.3 + z * 12.7) * 0.035;
+                    // Random variation for natural unevenness
+                    displacement += (Math.random() - 0.5) * 0.12;
+                    
+                    // Extra displacement on edges/corners to round them out aggressively
+                    const isEdgeX = Math.abs(Math.abs(x) - 0.7) < 0.15;
+                    const isEdgeZ = Math.abs(Math.abs(z) - (length / 6)) < 0.15;
+                    const isCorner = isEdgeX && isEdgeZ;
+                    
+                    if (isCorner) {
+                        // Round out corners very aggressively for organic look
+                        displacement += Math.sin(x * 2.5 + z * 2.5) * 0.35;
+                        displacement += (Math.random() - 0.5) * 0.18;
+                    } else if (isEdgeX || isEdgeZ) {
+                        // Heavily soften edges
+                        displacement += Math.sin(x * 1.8 + y * 1.3 + z * 1.8) * 0.20;
+                    }
+                    
+                    // Apply displacement in all directions for natural rounding
+                    // Use a softened normal that blends between vertices
+                    const softX = Math.tanh(x * 1.5);
+                    const softY = Math.tanh((y / height) * 2.5);
+                    const softZ = Math.tanh(z * 1.5);
+                    const len = Math.sqrt(softX * softX + softY * softY + softZ * softZ) || 1;
+                    
+                    // Apply displacement along soft normal direction
+                    vertices[v] += (softX / len) * displacement;
+                    vertices[v + 1] += (softY / len) * displacement * 0.4; // Less vertical distortion
+                    vertices[v + 2] += (softZ / len) * displacement;
+                }
+                wallGeometry.computeVertexNormals();
+                
+                const wall = new THREE.Mesh(wallGeometry, wallMaterial);
+                
+                wall.position.x = Math.cos(angle) * radius;
+                wall.position.y = height / 2 - 1.2; // Lowered so structures go through both floor and ceiling
+                wall.position.z = zPos - length / 2 + (Math.random() - 0.5) * 0.6;
+                wall.rotation.y = angle + (Math.random() - 0.5) * 0.08;
+                wall.scale.set(1 + Math.random() * 0.06, 1, 1 + Math.random() * 0.06);
+                
+                wall.castShadow = true;
+                wall.receiveShadow = true;
+                wall.userData.isCaveStructure = true; // Mark as CaveStructure
+                scene.add(wall);
+                collisionObjects.push(wall);
+            }
+        }
+
+        function createCaveFloor() {
+            // Detailed rocky floor with multi-scale bumps - extended to full cave length
+            const floorGeometry = new THREE.PlaneGeometry(24, 120, 256, 256); // Increased subdivision for more detail
+            const vertices = floorGeometry.attributes.position.array;
+
+            for (let i = 0; i < vertices.length; i += 3) {
+                const x = vertices[i];
+                const y = vertices[i + 1];
+                let displacement = 0;
+                
+                // Large scale undulations
+                displacement += Math.sin(x * 0.08) * 0.6;
+                displacement += Math.cos(y * 0.06) * 0.45;
+                
+                // Medium scale variations
+                displacement += Math.sin(x * 0.18 + y * 0.12) * 0.35;
+                displacement += Math.cos(x * 0.25 - y * 0.19) * 0.28;
+                
+                // Small bumps and dips
+                displacement += Math.sin(x * 0.52 + y * 0.48) * 0.18;
+                displacement += Math.cos(x * 0.71 + y * 0.63) * 0.15;
+                
+                // Fine rocky texture
+                displacement += Math.sin(x * 1.35 + y * 1.42) * 0.09;
+                displacement += Math.cos(x * 2.18 + y * 1.97) * 0.07;
+                
+                // Very fine detail
+                displacement += Math.sin(x * 3.45 + y * 3.12) * 0.05;
+                displacement += Math.cos(x * 5.67 - y * 4.89) * 0.04;
+                
+                // Random rocky variation
+                displacement += (Math.random() - 0.5) * 0.22;
+                
+                vertices[i + 2] += displacement;
+            }
+            floorGeometry.computeVertexNormals();
+
+            const tex = createCaveTexture(4, 18);
+            const floorMaterial = new THREE.MeshStandardMaterial({
+                color: 0xd4c5b3,
+                roughness: 0.88,
+                metalness: 0.02,
+                map: tex.map,
+                bumpMap: tex.bump,
+                bumpScale: 0.08
+            });
+
+            const floor = new THREE.Mesh(floorGeometry, floorMaterial);
+            floor.rotation.x = -Math.PI / 2;
+            floor.position.set(0, -0.5, -45); // Center in the passage
+            floor.receiveShadow = true;
+            scene.add(floor);
+        }
+
+        function createCaveCeiling() {
+            const ceilingGeometry = new THREE.PlaneGeometry(24, 120, 256, 256); // Increased subdivision for more detail
+            const vertices = ceilingGeometry.attributes.position.array;
+            
+            for (let i = 0; i < vertices.length; i += 3) {
+                const x = vertices[i];
+                const y = vertices[i + 1];
+                let displacement = 0;
+                
+                // Large depressions and formations
+                displacement += -Math.abs(Math.sin(x * 0.06)) * 0.9;
+                displacement += -Math.abs(Math.cos(y * 0.08)) * 0.75;
+                
+                // Medium scale stalactite formations
+                displacement += Math.cos(y * 0.12) * 0.45;
+                displacement += Math.sin(x * 0.19 + y * 0.16) * 0.38;
+                
+                // Smaller bumps and irregularities
+                displacement += Math.sin(x * 0.45 + y * 0.52) * 0.22;
+                displacement += Math.cos(x * 0.68 - y * 0.71) * 0.19;
+                
+                // Fine texture detail
+                displacement += Math.sin(x * 1.25 + y * 1.38) * 0.12;
+                displacement += Math.cos(x * 2.15 + y * 1.93) * 0.09;
+                
+                // Very fine rocky texture
+                displacement += Math.sin(x * 3.42 - y * 3.17) * 0.06;
+                displacement += Math.cos(x * 5.21 + y * 4.86) * 0.05;
+                
+                // Random variation
+                displacement += (Math.random() - 0.5) * 0.25;
+                
+                vertices[i + 2] += displacement;
+            }
+            ceilingGeometry.computeVertexNormals();
+
+            const tex = createCaveTexture(4, 18);
+            const ceilingMaterial = new THREE.MeshStandardMaterial({
+                color: 0xd4c5b3,
+                roughness: 0.87,
+                metalness: 0.02,
+                map: tex.map,
+                bumpMap: tex.bump,
+                bumpScale: 0.08
+            });
+
+            const ceiling = new THREE.Mesh(ceilingGeometry, ceilingMaterial);
+            ceiling.rotation.x = Math.PI / 2;
+            ceiling.position.set(0, 4, -45); // Center in the passage
+            ceiling.receiveShadow = true;
+            scene.add(ceiling);
+        }
+
+        function createStalactites() {
+            // Create many stalactites hanging from ceiling throughout the cave
+            const stalactiteCount = 60; // Dense coverage
+            const tex = createCaveTexture(1, 2);
+            
+            for (let i = 0; i < stalactiteCount; i++) {
+                // Random position throughout cave
+                const x = (Math.random() - 0.5) * 20; // Spread across width
+                const z = Math.random() * -100 + 5; // Along entire length
+                
+                // Varying stalactite sizes
+                const radiusTop = 0.15 + Math.random() * 0.25;
+                const radiusBottom = 0.05 + Math.random() * 0.1;
+                const length = 0.4 + Math.random() * 1.8;
+                
+                const stalactiteGeo = new THREE.ConeGeometry(radiusTop, length, 8);
+                const stalactiteMat = new THREE.MeshStandardMaterial({
+                    color: 0xd4c5b3,
+                    roughness: 0.85,
+                    metalness: 0.02,
+                    map: tex.map,
+                    bumpMap: tex.bump,
+                    bumpScale: 0.08
+                });
+                
+                const stalactite = new THREE.Mesh(stalactiteGeo, stalactiteMat);
+                // Start from ceiling surface (y=4) and hang down
+                stalactite.position.set(x, 4, z); // Top at ceiling
+                stalactite.rotation.x = Math.PI; // Point downward
+                stalactite.rotation.z = (Math.random() - 0.5) * 0.3; // Slight tilt
+                stalactite.castShadow = true;
+                stalactite.receiveShadow = true;
+                scene.add(stalactite);
+            }
+        }
+
+        function createCaveRocksAndBoulders() {
+            // Create many rocks and boulders throughout the cave floor
+            // Keep clear paths on left (x < -8) and right (x > 8) sides
+            // Also avoid lamp marker positions
+            const lampPositions = [
+                { x: -2, z: -15 },
+                { x: 1.5, z: -45 },
+                { x: -1, z: -80 }
+            ];
+            
+            const rockPositions = [];
+            
+            // Generate rocks along the cave length
+            for (let z = 0; z > -95; z -= 5) {
+                // Add 2-4 rocks per section, avoiding the walkable sides
+                const rocksPerSection = 2 + Math.floor(Math.random() * 3);
+                for (let i = 0; i < rocksPerSection; i++) {
+                    let x, rockZ;
+                    let tooClose = true;
+                    let attempts = 0;
+                    
+                    // Keep trying until we find a position away from lamp markers
+                    while (tooClose && attempts < 20) {
+                        x = (Math.random() - 0.5) * 12; // Range: -6 to 6
+                        rockZ = z + (Math.random() - 0.5) * 8;
+                        
+                        tooClose = false;
+                        // Check distance from all lamp markers
+                        for (const lamp of lampPositions) {
+                            const dist = Math.sqrt(Math.pow(x - lamp.x, 2) + Math.pow(rockZ - lamp.z, 2));
+                            if (dist < 3) { // Keep 3 meter clear zone around lamps
+                                tooClose = true;
+                                break;
+                            }
+                        }
+                        attempts++;
+                    }
+                    
+                    if (!tooClose) {
+                        rockPositions.push({ x: x, z: rockZ });
+                    }
+                }
+            }
+            
+            const tex = createCaveTexture(2, 2);
+            const rockMaterial = new THREE.MeshStandardMaterial({
+                color: 0xd4c5b3,
+                roughness: 0.9,
+                metalness: 0.02,
+                map: tex.map,
+                bumpMap: tex.bump,
+                bumpScale: 0.06
+            });
+            
+            rockPositions.forEach(pos => {
+                // Vary between small rocks and large boulders
+                const isBoulder = Math.random() > 0.7;
+                const baseSize = isBoulder ? (1.0 + Math.random() * 1.5) : (0.3 + Math.random() * 0.7);
+                
+                // Use high-detail geometries for very angular, rocky appearance
+                let rockGeometry;
+                const geoType = Math.floor(Math.random() * 3);
+                if (geoType === 0) {
+                    // Very detailed dodecahedron - many facets
+                    rockGeometry = new THREE.DodecahedronGeometry(baseSize, 2);
+                } else if (geoType === 1) {
+                    // Very detailed icosahedron - angular and sharp
+                    rockGeometry = new THREE.IcosahedronGeometry(baseSize, 2);
+                } else {
+                    // Sharp tetrahedron - pyramid-like rocks
+                    rockGeometry = new THREE.TetrahedronGeometry(baseSize, 3);
+                }
+                
+                const rock = new THREE.Mesh(rockGeometry, rockMaterial.clone());
+                rock.position.x = pos.x;
+                rock.position.y = -0.5 + baseSize * 0.3; // Sit on floor
+                rock.position.z = pos.z;
+                rock.rotation.set(
+                    Math.random() * Math.PI,
+                    Math.random() * Math.PI,
+                    Math.random() * Math.PI
+                );
+                rock.scale.set(
+                    0.8 + Math.random() * 0.6,
+                    0.7 + Math.random() * 0.8,
+                    0.8 + Math.random() * 0.6
+                );
+                
+                rock.castShadow = true;
+                rock.receiveShadow = true;
+                scene.add(rock);
+                collisionObjects.push(rock);
+            });
+        }
+
+        function addRocks(x, y, z, seed) {
+            const rockCount = 2 + Math.floor(Math.random() * 3);
+            const tex = createCaveTexture(2, 2);
+            const rockMaterial = new THREE.MeshStandardMaterial({
+                color: 0xd4c5b3,
+                roughness: 0.9,
+                metalness: 0.02,
+                map: tex.map,
+                bumpMap: tex.bump,
+                bumpScale: 0.06
+            });
+
+            for (let i = 0; i < rockCount; i++) {
+                const rockSize = 0.4 + Math.random() * 0.8;
+                const rockGeometry = new THREE.DodecahedronGeometry(rockSize, 0);
+
+                const rock = new THREE.Mesh(rockGeometry, rockMaterial);
+                rock.position.x = x + (Math.random() - 0.5) * 6;
+                rock.position.y = y + rockSize / 2;
+                rock.position.z = z + (Math.random() - 0.5) * 4;
+                rock.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI);
+                rock.scale.set(0.9 + Math.random() * 0.4, 0.85 + Math.random() * 0.5, 0.9 + Math.random() * 0.4);
+                
+                rock.castShadow = true;
+                rock.receiveShadow = true;
+                scene.add(rock);
+                collisionObjects.push(rock);
+            }
+        }
+
+        function createLampMarkers() {
+            const positions = [
+                { x: -2, z: -15 },
+                { x: 1.5, z: -45, y: 0.5 }, // Raised position to avoid being under surface
+                { x: -1, z: -80 }
+            ];
+
+            positions.forEach((pos, index) => {
+                // Marker platform - limestone like the rest of the cave
+                const platformGeometry = new THREE.CylinderGeometry(1.2, 1.2, 0.3, 8);
+                const tex = createCaveTexture(2, 2);
+                const platformMaterial = new THREE.MeshStandardMaterial({
+                    color: 0xd4c5b3,
+                    roughness: 0.85,
+                    metalness: 0.02,
+                    map: tex.map,
+                    bumpMap: tex.bump,
+                    bumpScale: 0.06,
+                    emissive: 0x554433,
+                    emissiveIntensity: 0.2,
+                });
+
+                const platformY = pos.y !== undefined ? pos.y : 0.15;
+                const platform = new THREE.Mesh(platformGeometry, platformMaterial);
+                platform.position.set(pos.x, platformY, pos.z);
+                platform.receiveShadow = true;
+                scene.add(platform);
+                // Don't add platform to collisionObjects so it doesn't block placement
+
+                // Glowing marker symbol - larger and more visible
+                const markerGeometry = new THREE.RingGeometry(0.6, 0.9, 16);
+                const markerMaterial = new THREE.MeshBasicMaterial({
+                    color: 0xffdd44,
+                    side: THREE.DoubleSide,
+                    transparent: true,
+                    opacity: 0.95,
+                });
+
+                const marker = new THREE.Mesh(markerGeometry, markerMaterial);
+                marker.rotation.x = -Math.PI / 2;
+                marker.position.set(pos.x, platformY + 0.2, pos.z);
+                scene.add(marker);
+
+                lampMarkers.push({ 
+                    position: pos, 
+                    marker: marker, 
+                    platform: platform, 
+                    placed: false 
+                });
+
+                // Animated glow
+                marker.userData.baseY = platformY + 0.2;
+                marker.userData.time = Math.random() * Math.PI * 2;
+            });
+        }
+
+        function checkLampPlacement() {
+            const playerPos = camera.position;
+            
+            lampMarkers.forEach((markerData, index) => {
+                if (markerData.placed) return;
+
+                const distance = Math.sqrt(
+                    Math.pow(playerPos.x - markerData.position.x, 2) +
+                    Math.pow(playerPos.z - markerData.position.z, 2)
+                );
+
+                if (distance < 2.5) {
+                    placeLamp(markerData, index);
+                }
+            });
+        }
+
+        function placeLamp(markerData, index) {
+            markerData.placed = true;
+            lampsPlaced++;
+
+            // Remove marker glow
+            scene.remove(markerData.marker);
+
+            // Create lamp
+            const lampGeometry = new THREE.CylinderGeometry(0.15, 0.25, 0.6, 8);
+            const lampMaterial = new THREE.MeshStandardMaterial({
+                color: 0xd4af37,
+                roughness: 0.3,
+                metalness: 0.8,
+                emissive: 0xff8833,
+                emissiveIntensity: 0.5,
+            });
+
+            const lamp = new THREE.Mesh(lampGeometry, lampMaterial);
+            lamp.position.set(markerData.position.x, 0.6, markerData.position.z);
+            lamp.castShadow = true;
+            scene.add(lamp);
+
+            // Add lamp light
+            const lampLight = new THREE.PointLight(0xff9944, 3, 25);
+            lampLight.position.set(markerData.position.x, 1.2, markerData.position.z);
+            lampLight.castShadow = true;
+            scene.add(lampLight);
+
+            placedLamps.push({ lamp: lamp, light: lampLight });
+
+            // Update HUD
+            document.getElementById('lamp-count').textContent = lampsPlaced;
+
+            // Check completion
+            if (lampsPlaced === 3) {
+                setTimeout(() => {
+                    document.getElementById('completion-message').style.display = 'block';
+                    setTimeout(() => {
+                        document.getElementById('completion-message').style.display = 'none';
+                        // Notify parent window that game is complete
+                        window.parent.postMessage({ type: 'caveGameComplete' }, '*');
+                    }, 4000);
+                }, 500);
+            }
+        }
+
+        function checkCollisions(newPosition) {
+            const playerBox = new THREE.Box3().setFromCenterAndSize(
+                newPosition,
+                new THREE.Vector3(playerRadius * 2, playerHeight, playerRadius * 2)
+            );
+
+            for (let obj of collisionObjects) {
+                const objBox = new THREE.Box3().setFromObject(obj);
+                if (playerBox.intersectsBox(objBox)) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        function startGame() {
+            document.getElementById('start-screen').style.display = 'none';
+            
+            // Pointer lock
+            renderer.domElement.requestPointerLock = renderer.domElement.requestPointerLock ||
+                                                      renderer.domElement.mozRequestPointerLock;
+            
+            renderer.domElement.requestPointerLock();
+            
+            document.addEventListener('pointerlockchange', onPointerLockChange);
+            document.addEventListener('mozpointerlockchange', onPointerLockChange);
+            
+            renderer.domElement.addEventListener('click', () => {
+                if (!isLocked) {
+                    renderer.domElement.requestPointerLock();
+                } else {
+                    checkLampPlacement();
+                }
+            });
+        }
+
+        function onPointerLockChange() {
+            if (document.pointerLockElement === renderer.domElement ||
+                document.mozPointerLockElement === renderer.domElement) {
+                isLocked = true;
+                document.addEventListener('mousemove', onMouseMove);
+            } else {
+                isLocked = false;
+                document.removeEventListener('mousemove', onMouseMove);
+            }
+        }
+
+        function onMouseMove(event) {
+            if (!isLocked) return;
+
+            const movementX = event.movementX || event.mozMovementX || 0;
+            const movementY = event.movementY || event.mozMovementY || 0;
+
+            yaw -= movementX * 0.002;
+            pitch -= movementY * 0.002;
+            pitch = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, pitch));
+
+            camera.rotation.order = 'YXZ';
+            camera.rotation.y = yaw;
+            camera.rotation.x = pitch;
+        }
+
+        function onKeyDown(event) {
+            switch (event.code) {
+                case 'KeyW': moveForward = true; break;
+                case 'KeyS': moveBackward = true; break;
+                case 'KeyA': moveLeft = true; break;
+                case 'KeyD': moveRight = true; break;
+                case 'Space':
+                    if (!isJumping) {
+                        isJumping = true;
+                        jumpVelocity = jumpStrength;
+                    }
+                    break;
+            }
+        }
+
+        function onKeyUp(event) {
+            switch (event.code) {
+                case 'KeyW': moveForward = false; break;
+                case 'KeyS': moveBackward = false; break;
+                case 'KeyA': moveLeft = false; break;
+                case 'KeyD': moveRight = false; break;
+            }
+        }
+
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            const time = performance.now();
+            const delta = (time - prevTime) / 1000;
+
+            velocity.x -= velocity.x * 10.0 * delta;
+            velocity.z -= velocity.z * 10.0 * delta;
+
+            direction.z = Number(moveForward) - Number(moveBackward);
+            direction.x = Number(moveRight) - Number(moveLeft);
+            direction.normalize();
+
+            // Camera-relative movement: transform direction by camera rotation
+            const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
+            const right = new THREE.Vector3(1, 0, 0).applyQuaternion(camera.quaternion);
+            
+            // Project to horizontal plane (ignore vertical component)
+            forward.y = 0;
+            right.y = 0;
+            forward.normalize();
+            right.normalize();
+
+            if (moveForward || moveBackward) {
+                velocity.x += forward.x * direction.z * playerSpeed * delta;
+                velocity.z += forward.z * direction.z * playerSpeed * delta;
+            }
+            if (moveLeft || moveRight) {
+                velocity.x += right.x * direction.x * playerSpeed * delta;
+                velocity.z += right.z * direction.x * playerSpeed * delta;
+            }
+
+            // Handle jumping and gravity
+            if (isJumping) {
+                jumpVelocity -= gravity * delta;
+                camera.position.y += jumpVelocity * delta;
+                
+                // Check if landed back on ground (eye height is 1.6, so ground is at 1.6)
+                if (camera.position.y <= 1.6) {
+                    camera.position.y = 1.6;
+                    isJumping = false;
+                    jumpVelocity = 0;
+                }
+            }
+
+            // Calculate new position
+            const newPosition = camera.position.clone();
+            newPosition.x += velocity.x;
+            newPosition.z += velocity.z;
+
+            // Check collisions before moving
+            if (!checkCollisions(newPosition)) {
+                camera.position.copy(newPosition);
+            } else {
+                velocity.x = 0;
+                velocity.z = 0;
+            }
+
+            // Update torch light
+            if (window.torchLight) {
+                window.torchLight.position.copy(camera.position);
+            }
+
+            // Update depth indicator
+            const depth = Math.max(0, Math.floor(-camera.position.z));
+            document.getElementById('depth').textContent = depth;
+
+            // Animate lamp markers
+            lampMarkers.forEach(markerData => {
+                if (!markerData.placed && markerData.marker.parent) {
+                    markerData.marker.userData.time += delta;
+                    markerData.marker.position.y = markerData.marker.userData.baseY + Math.sin(markerData.marker.userData.time * 2) * 0.1;
+                    markerData.marker.rotation.z += delta * 0.5;
+                }
+            });
+
+            // Animate lamp lights (flicker)
+            placedLamps.forEach(lampData => {
+                const flicker = 0.95 + Math.random() * 0.1;
+                lampData.light.intensity = 3 * flicker;
+            });
+
+            prevTime = time;
+            renderer.render(scene, camera);
+        }
+
+        init();
+    </script>
+</body>
+</html>
