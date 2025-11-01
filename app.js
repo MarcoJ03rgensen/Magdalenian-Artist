@@ -604,7 +604,6 @@ function loadGameState() {
       updateUI();
       updateBadges();
       renderCraftingUI();
-      renderPaintingToolbar();
       
       // Show notification about loaded progress
       const timeSince = Math.floor((Date.now() - data.timestamp) / 1000 / 60);
@@ -657,7 +656,6 @@ function applyDevUnlock() {
     updateUI();
     updateBadges();
     renderCraftingUI();
-    renderPaintingToolbar();
     saveGameState();
 
     // Show confirmation
@@ -689,7 +687,6 @@ function removeDevUnlock() {
     updateUI();
     updateBadges();
     renderCraftingUI();
-    renderPaintingToolbar();
 
     showNotification('🔁 Developer unlock removed. Progress reset (you can load a previous save if available).', 3500);
     const resetBtn = document.getElementById('dev-reset-btn');

@@ -288,9 +288,56 @@
         #modal-overlay.visible {
             display: block;
         }
+        
+        #start-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 300;
+            cursor: pointer;
+        }
+        
+        #start-overlay.hidden {
+            display: none;
+        }
+        
+        #start-message {
+            background: rgba(26, 22, 18, 0.95);
+            padding: 40px 60px;
+            border-radius: 12px;
+            border: 2px solid var(--color-ochre-yellow);
+            text-align: center;
+            font-size: 18px;
+            color: var(--color-ochre-yellow);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.8);
+        }
+        
+        #start-message h2 {
+            margin: 0 0 10px 0;
+            font-size: 24px;
+        }
+        
+        #start-message p {
+            margin: 0;
+            opacity: 0.8;
+        }
     </style>
 </head>
 <body>
+    <!-- Start overlay -->
+    <div id="start-overlay">
+        <div id="start-message">
+            <h2>Welcome to the Cave</h2>
+            <p>Click anywhere to start painting</p>
+        </div>
+    </div>
+    
     <div id="canvas-container"></div>
     
     <div id="info-panel">
@@ -348,12 +395,16 @@
         <button class="modal-close">&times;</button>
         <h2>Cave Painting Controls</h2>
         <ul>
-            <li>Click and drag to paint on the wall</li>
-            <li>WASD to move around the cave</li>
-            <li>Mouse to look around</li>
-            <li>Q/E to move up/down</li>
-            <li>Scroll to zoom in/out</li>
-            <li>Walk around to view from different angles!</li>
+            <li><strong>Left Click + Drag</strong> - Paint on the cave wall</li>
+            <li><strong>WASD</strong> - Move around the cave</li>
+            <li><strong>Arrow Keys</strong> - Look around (rotate camera)</li>
+            <li><strong>Q/E</strong> - Move down/up vertically</li>
+            <li><strong>Mouse Wheel</strong> - Zoom in/out</li>
+            <li><strong>Right Click + Drag</strong> - Free look (alternative camera rotation)</li>
+            <li><strong>Color Buttons</strong> - Select paint color</li>
+            <li><strong>Brush/Spray</strong> - Change painting tool</li>
+            <li><strong>Clear</strong> - Erase all paintings</li>
+            <li><strong>Export</strong> - Save your art as 3D model</li>
         </ul>
     </div>
 
@@ -518,69 +569,494 @@
             paintingSurface.name = 'paintingSurface';
             scene.add(paintingSurface);
             
-            // Add surrounding cave environment
+            // Add surrounding cave environment with organic curved surfaces
             const envTexture = createCaveTexture();
-            const envMaterial = new THREE.MeshStandardMaterial({
+            
+            // Create much larger organic floor with displacement that rises toward canvas
+            const floorGeometry = new THREE.PlaneGeometry(24, 18, 80, 60);
+            const floorVertices = floorGeometry.attributes.position;
+            
+            for (let i = 0; i < floorVertices.count; i++) {
+                const x = floorVertices.getX(i);
+                const y = floorVertices.getY(i);
+                const z = floorVertices.getZ(i);
+                
+                // Create organic cave floor with dips and rises
+                let displacement = Math.sin(x * 0.5) * 0.15 + Math.cos(y * 0.7) * 0.12;
+                displacement += Math.sin(x * 1.2 + y * 1.5) * 0.08;
+                displacement += Math.sin(x * 2.5) * Math.cos(y * 2.3) * 0.05;
+                displacement += (Math.random() - 0.5) * 0.1;
+                
+                // Rise smoothly toward the canvas wall (positive y direction)
+                if (y > 0) {
+                    displacement += Math.pow(y / 9, 2) * 0.5;
+                }
+                
+                // Rise to meet the canvas bottom - canvas is at z=-1 in world coords
+                const distToCanvasX = Math.abs(x);
+                const distToCanvasZ = Math.abs(y - 1.0); // Adjust to target canvas position correctly
+                if (distToCanvasX < 3.0 && distToCanvasZ < 0.8) {
+                    const distToCanvas = Math.sqrt(Math.pow(distToCanvasX / 3.0, 2) + Math.pow(distToCanvasZ / 0.8, 2));
+                    if (distToCanvas < 1) {
+                        displacement += (1 - distToCanvas) * 0.8; // Raising floor to cover bottom edge
+                    }
+                }
+                
+                // Slight slope toward edges
+                const distFromCenter = Math.sqrt(x * x + y * y);
+                displacement -= distFromCenter * 0.015;
+                
+                floorVertices.setZ(i, z + displacement);
+            }
+            
+            floorGeometry.computeVertexNormals();
+            
+            const floorMaterial = new THREE.MeshStandardMaterial({
                 map: envTexture,
-                roughness: 0.9,
-                metalness: 0.1
+                roughness: 0.95,
+                metalness: 0.05,
+                bumpMap: envTexture,
+                bumpScale: 0.03
             });
             
-            // Floor
-            const floor = new THREE.Mesh(
-                new THREE.PlaneGeometry(10, 10),
-                envMaterial.clone()
-            );
+            const floor = new THREE.Mesh(floorGeometry, floorMaterial);
             floor.rotation.x = -Math.PI / 2;
-            floor.position.y = -1.5;
+            floor.position.y = -2.0; // Lower floor for more headroom
             scene.add(floor);
             
-            // Ceiling with stalactites effect
-            const ceiling = new THREE.Mesh(
-                new THREE.PlaneGeometry(10, 10),
-                envMaterial.clone()
-            );
+            // Create much larger organic ceiling with stalactites that lowers toward canvas
+            const ceilingGeometry = new THREE.PlaneGeometry(24, 18, 80, 60);
+            const ceilingVertices = ceilingGeometry.attributes.position;
+            
+            for (let i = 0; i < ceilingVertices.count; i++) {
+                const x = ceilingVertices.getX(i);
+                const y = ceilingVertices.getY(i);
+                const z = ceilingVertices.getZ(i);
+                
+                // Create rough ceiling with stalactite formations
+                let displacement = Math.sin(x * 0.8) * 0.2 + Math.cos(y * 0.6) * 0.18;
+                displacement += Math.sin(x * 2.0 + y * 1.8) * 0.12;
+                displacement += Math.sin(x * 3.5) * Math.cos(y * 3.2) * 0.08;
+                
+                // Lower ceiling smoothly toward the canvas wall (positive y direction)
+                if (y > 0) {
+                    displacement -= Math.pow(y / 9, 2) * 0.5;
+                }
+                
+                // Lower to meet the canvas top - canvas is at z=-1 in world coords
+                const distToCanvasX = Math.abs(x);
+                const distToCanvasZ = Math.abs(z - (-1.0)); // or simply Math.abs(z + 1.0)
+                if (distToCanvasX < 4.0 && distToCanvasZ < 1.5) {
+                    const distToCanvas = Math.sqrt(Math.pow(distToCanvasX / 2.0, 2) + Math.pow(distToCanvasZ / 0.8, 2));
+                    if (distToCanvas < 1) {
+                        displacement -= (0 - distToCanvas) * -1.3; // Lowering ceiling to cover top edge
+                    }
+                }
+                
+                // Add random stalactite-like protrusions
+                if (Math.random() > 0.92) {
+                    displacement -= Math.random() * 0.25;
+                }
+                
+                displacement += (Math.random() - 0.5) * 0.15;
+                
+                ceilingVertices.setZ(i, z + displacement);
+            }
+            
+            ceilingGeometry.computeVertexNormals();
+            
+            const ceilingTexture = createCaveTexture();
+            ceilingTexture.wrapS = THREE.RepeatWrapping;
+            ceilingTexture.wrapT = THREE.RepeatWrapping;
+            ceilingTexture.repeat.set(4, 3);
+            
+            const ceilingBump = createCaveTexture();
+            ceilingBump.wrapS = THREE.RepeatWrapping;
+            ceilingBump.wrapT = THREE.RepeatWrapping;
+            ceilingBump.repeat.set(4, 3);
+            
+            const ceilingMaterial = new THREE.MeshStandardMaterial({
+                map: ceilingTexture,
+                roughness: 0.85,
+                metalness: 0.02,
+                bumpMap: ceilingBump,
+                bumpScale: 0.08,
+                color: '#d4c5b3' // Lighter limestone tone
+            });
+            
+            const ceiling = new THREE.Mesh(ceilingGeometry, ceilingMaterial);
             ceiling.rotation.x = Math.PI / 2;
-            ceiling.position.y = 1.5;
+            ceiling.position.y = 1.5; // Lowered ceiling to cover canvas top
             scene.add(ceiling);
             
-            // Back wall to close the cave (no more holes)
-            const backWall = new THREE.Mesh(
-                new THREE.PlaneGeometry(10, 4),
-                envMaterial.clone()
-            );
-            backWall.position.set(0, 0, -3);
+            // Create larger curved back wall
+            const backWallGeometry = new THREE.PlaneGeometry(20, 5, 70, 35);
+            const backVertices = backWallGeometry.attributes.position;
+            
+            for (let i = 0; i < backVertices.count; i++) {
+                const x = backVertices.getX(i);
+                const y = backVertices.getY(i);
+                const z = backVertices.getZ(i);
+                
+                // Create rough, organic wall texture with multiple scales of detail
+                let displacement = -Math.pow(x / 5, 2) * 0.8; // Parabolic curve
+                // Large waves
+                displacement += Math.sin(x * 0.8) * 0.4 + Math.cos(y * 0.6) * 0.35;
+                displacement += Math.sin(x * 2.0 + y * 1.8) * 0.25;
+                // Medium detail
+                displacement += Math.sin(x * 3.5) * Math.cos(y * 3.2) * 0.15;
+                displacement += Math.sin(x * 5.5 + y * 4.3) * 0.08;
+                // Small irregular bumps
+                displacement += Math.sin(x * 8.2) * Math.cos(y * 7.5) * 0.05;
+                displacement += Math.sin(x * 12.3 + y * 11.7) * 0.03;
+                // Random variation
+                displacement += (Math.random() - 0.5) * 0.2;
+                
+                backVertices.setZ(i, z + displacement);
+            }
+            
+            backWallGeometry.computeVertexNormals();
+            
+            const backWallTexture = createCaveTexture();
+            backWallTexture.wrapS = THREE.RepeatWrapping;
+            backWallTexture.wrapT = THREE.RepeatWrapping;
+            backWallTexture.repeat.set(5, 2);
+            
+            const backWallBump = createCaveTexture();
+            backWallBump.wrapS = THREE.RepeatWrapping;
+            backWallBump.wrapT = THREE.RepeatWrapping;
+            backWallBump.repeat.set(5, 2);
+            
+            const backWallMaterial = new THREE.MeshStandardMaterial({
+                map: backWallTexture,
+                roughness: 0.85,
+                metalness: 0.02,
+                bumpMap: backWallBump,
+                bumpScale: 0.08,
+                color: '#d4c5b3' // Lighter limestone tone
+            });
+            
+            const backWall = new THREE.Mesh(backWallGeometry, backWallMaterial);
+            backWall.position.set(0, 0.2, -6); // Pushed further back
             scene.add(backWall);
             
-            // Side walls
-            const leftWall = new THREE.Mesh(
-                new THREE.PlaneGeometry(6, 4),
-                envMaterial.clone()
-            );
-            leftWall.position.set(-3, 0, 1);
+            // Create larger curved left wall that touches the canvas edge
+            const leftWallGeometry = new THREE.PlaneGeometry(12, 5, 60, 35);
+            const leftVertices = leftWallGeometry.attributes.position;
+            
+            for (let i = 0; i < leftVertices.count; i++) {
+                const x = leftVertices.getX(i);
+                const y = leftVertices.getY(i);
+                const z = leftVertices.getZ(i);
+                
+                // Create rough, organic wall texture with multiple scales of detail
+                let displacement = Math.pow((x + 3) / 6, 3) * 2.5; // Stronger curve toward front
+                // Large waves
+                displacement += Math.sin(x * 0.8) * 0.3 + Math.cos(y * 0.6) * 0.28;
+                displacement += Math.sin(x * 2.0 + y * 1.8) * 0.2;
+                // Medium detail
+                displacement += Math.sin(x * 3.5) * Math.cos(y * 3.2) * 0.12;
+                displacement += Math.sin(x * 5.5 + y * 4.3) * 0.07;
+                // Small irregular bumps
+                displacement += Math.sin(x * 8.2) * Math.cos(y * 7.5) * 0.04;
+                displacement += Math.sin(x * 12.3 + y * 11.7) * 0.025;
+                // Random variation
+                displacement += (Math.random() - 0.5) * 0.18;
+                
+                leftVertices.setZ(i, z + displacement);
+            }
+            
+            leftWallGeometry.computeVertexNormals();
+            
+            const leftWallTexture = createCaveTexture();
+            leftWallTexture.wrapS = THREE.RepeatWrapping;
+            leftWallTexture.wrapT = THREE.RepeatWrapping;
+            leftWallTexture.repeat.set(3, 2);
+            
+            const leftWallBump = createCaveTexture();
+            leftWallBump.wrapS = THREE.RepeatWrapping;
+            leftWallBump.wrapT = THREE.RepeatWrapping;
+            leftWallBump.repeat.set(3, 2);
+            
+            const leftWallMaterial = new THREE.MeshStandardMaterial({
+                map: leftWallTexture,
+                roughness: 0.85,
+                metalness: 0.02,
+                bumpMap: leftWallBump,
+                bumpScale: 0.08,
+                color: '#d4c5b3' // Lighter limestone tone
+            });
+            
+            const leftWall = new THREE.Mesh(leftWallGeometry, leftWallMaterial);
+            leftWall.position.set(-8, 0.2, 0); // Pushed further out to the side
             leftWall.rotation.y = Math.PI / 2;
             scene.add(leftWall);
             
-            const rightWall = new THREE.Mesh(
-                new THREE.PlaneGeometry(6, 4),
-                envMaterial.clone()
-            );
-            rightWall.position.set(3, 0, 1);
+            // Create larger curved right wall that touches the canvas edge
+            const rightWallGeometry = new THREE.PlaneGeometry(12, 5, 60, 35);
+            const rightVertices = rightWallGeometry.attributes.position;
+            
+            for (let i = 0; i < rightVertices.count; i++) {
+                const x = rightVertices.getX(i);
+                const y = rightVertices.getY(i);
+                const z = rightVertices.getZ(i);
+                
+                // Create rough, organic wall texture with multiple scales of detail - mirror of left wall
+                let displacement = Math.pow((x + 3) / 6, 3) * 2.5; // Stronger curve toward front
+                // Large waves
+                displacement += Math.sin(x * 0.8) * 0.3 + Math.cos(y * 0.6) * 0.28;
+                displacement += Math.sin(x * 2.0 + y * 1.8) * 0.2;
+                // Medium detail
+                displacement += Math.sin(x * 3.5) * Math.cos(y * 3.2) * 0.12;
+                displacement += Math.sin(x * 5.5 + y * 4.3) * 0.07;
+                // Small irregular bumps
+                displacement += Math.sin(x * 8.2) * Math.cos(y * 7.5) * 0.04;
+                displacement += Math.sin(x * 12.3 + y * 11.7) * 0.025;
+                // Random variation
+                displacement += (Math.random() - 0.5) * 0.18;
+                
+                rightVertices.setZ(i, z + displacement);
+            }
+            
+            rightWallGeometry.computeVertexNormals();
+            
+            const rightWallTexture = createCaveTexture();
+            rightWallTexture.wrapS = THREE.RepeatWrapping;
+            rightWallTexture.wrapT = THREE.RepeatWrapping;
+            rightWallTexture.repeat.set(3, 2);
+            
+            const rightWallBump = createCaveTexture();
+            rightWallBump.wrapS = THREE.RepeatWrapping;
+            rightWallBump.wrapT = THREE.RepeatWrapping;
+            rightWallBump.repeat.set(3, 2);
+            
+            const rightWallMaterial = new THREE.MeshStandardMaterial({
+                map: rightWallTexture,
+                roughness: 0.85,
+                metalness: 0.02,
+                bumpMap: rightWallBump,
+                bumpScale: 0.08,
+                color: '#d4c5b3' // Lighter limestone tone
+            });
+            
+            const rightWall = new THREE.Mesh(rightWallGeometry, rightWallMaterial);
+            rightWall.position.set(8, 0.2, 0); // Pushed further out to the side
             rightWall.rotation.y = -Math.PI / 2;
             scene.add(rightWall);
             
-            // Add rock formations
+            // Create smooth curved backside behind the canvas
+            // This creates a rounded alcove that wraps around behind the painting surface
+            const canvasBackGeometry = new THREE.SphereGeometry(3, 32, 32, 0, Math.PI, 0, Math.PI);
+            const canvasBackVertices = canvasBackGeometry.attributes.position;
+            
+            for (let i = 0; i < canvasBackVertices.count; i++) {
+                const x = canvasBackVertices.getX(i);
+                const y = canvasBackVertices.getY(i);
+                const z = canvasBackVertices.getZ(i);
+                
+                // Add organic displacement
+                let displacement = Math.sin(x * 4) * 0.08 + Math.cos(y * 3) * 0.06;
+                displacement += (Math.random() - 0.5) * 0.1;
+                
+                const dist = Math.sqrt(x * x + y * y + z * z);
+                const newDist = dist + displacement;
+                const ratio = newDist / dist;
+                
+                canvasBackVertices.setX(i, x * ratio);
+                canvasBackVertices.setY(i, y * ratio);
+                canvasBackVertices.setZ(i, z * ratio);
+            }
+            
+            canvasBackGeometry.computeVertexNormals();
+            
+            const canvasBackTexture = createCaveTexture();
+            canvasBackTexture.wrapS = THREE.RepeatWrapping;
+            canvasBackTexture.wrapT = THREE.RepeatWrapping;
+            canvasBackTexture.repeat.set(2, 2);
+            
+            const canvasBackBump = createCaveTexture();
+            canvasBackBump.wrapS = THREE.RepeatWrapping;
+            canvasBackBump.wrapT = THREE.RepeatWrapping;
+            canvasBackBump.repeat.set(2, 2);
+            
+            const canvasBack = new THREE.Mesh(canvasBackGeometry, new THREE.MeshStandardMaterial({
+                map: canvasBackTexture,
+                roughness: 0.85,
+                metalness: 0.02,
+                bumpMap: canvasBackBump,
+                bumpScale: 0.08,
+                color: '#d4c5b3', // Lighter limestone tone
+                side: THREE.FrontSide
+            }));
+            canvasBack.position.set(0, 0, -1);
+            canvasBack.rotation.y = Math.PI;
+            canvasBack.scale.set(0.7, 0.6, 0.5);
+            scene.add(canvasBack);
+            
+            // Add rock formations on floor
             const rockGeometry = new THREE.DodecahedronGeometry(0.2, 0);
-            for (let i = 0; i < 15; i++) {
-                const rock = new THREE.Mesh(rockGeometry, envMaterial.clone());
+            const rockMaterial = new THREE.MeshStandardMaterial({
+                map: createCaveTexture(),
+                roughness: 0.95,
+                metalness: 0.05
+            });
+            
+            // Random rocks throughout the cave
+            for (let i = 0; i < 35; i++) {
+                const rock = new THREE.Mesh(rockGeometry, rockMaterial.clone());
                 rock.position.set(
-                    (Math.random() - 0.5) * 8,
-                    -1.5 + Math.random() * 0.2,
-                    (Math.random() - 0.5) * 4
+                    (Math.random() - 0.5) * 20,
+                    -2.0 + Math.random() * 0.15,
+                    (Math.random() - 0.5) * 12
                 );
                 rock.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI);
-                rock.scale.set(1 + Math.random() * 0.5, 0.5 + Math.random() * 0.3, 1 + Math.random() * 0.5);
+                rock.scale.set(
+                    1 + Math.random() * 0.5, 
+                    0.5 + Math.random() * 0.3, 
+                    1 + Math.random() * 0.5
+                );
                 scene.add(rock);
+            }
+            
+            // Extra rocks concentrated at the canvas base, especially left corner
+            for (let i = 0; i < 15; i++) {
+                const rock = new THREE.Mesh(rockGeometry, rockMaterial.clone());
+                // Position biased toward left side of canvas base
+                const xPos = -2 + Math.random() * 3; // Concentrated on left (-2 to 1)
+                const zPos = -0.5 + Math.random() * 1.5; // At canvas base
+                rock.position.set(
+                    xPos,
+                    -1.9 + Math.random() * 0.1,
+                    zPos
+                );
+                rock.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI);
+                rock.scale.set(
+                    1 + Math.random() * 0.5, 
+                    0.5 + Math.random() * 0.3, 
+                    1 + Math.random() * 0.5
+                );
+                scene.add(rock);
+            }
+            
+            // Add large rocks at the bottom corners of the canvas
+            // Left corner - large rock cluster
+            for (let i = 0; i < 6; i++) {
+                const cornerRock = new THREE.Mesh(rockGeometry, rockMaterial.clone());
+                cornerRock.position.set(
+                    -2.0 + (Math.random() - 0.5) * 0.6,
+                    -1.7 + (i % 3) * 0.2,
+                    -0.8 + (Math.random() - 0.5) * 0.4
+                );
+                cornerRock.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI);
+                cornerRock.scale.set(
+                    1.5 + Math.random() * 0.8,
+                    0.8 + Math.random() * 0.5,
+                    1.5 + Math.random() * 0.8
+                );
+                scene.add(cornerRock);
+            }
+            
+            // Right corner - large rock cluster
+            for (let i = 0; i < 3; i++) {
+                const cornerRock = new THREE.Mesh(rockGeometry, rockMaterial.clone());
+                cornerRock.position.set(
+                    2.0 + (Math.random() - 0.5) * 0.4,
+                    -1.7 + i * 0.2,
+                    -0.8 + (Math.random() - 0.5) * 0.3
+                );
+                cornerRock.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI);
+                cornerRock.scale.set(
+                    1.5 + Math.random() * 0.8,
+                    0.8 + Math.random() * 0.5,
+                    1.5 + Math.random() * 0.8
+                );
+                scene.add(cornerRock);
+            }
+            
+            // Add more hanging formations (small stalactites)
+            for (let i = 0; i < 15; i++) {
+                const stalactite = new THREE.Mesh(
+                    new THREE.ConeGeometry(0.05 + Math.random() * 0.08, 0.2 + Math.random() * 0.4, 8),
+                    rockMaterial.clone()
+                );
+                stalactite.position.set(
+                    (Math.random() - 0.5) * 18,
+                    1.5 - Math.random() * 0.4,
+                    (Math.random() - 0.5) * 12
+                );
+                stalactite.rotation.x = Math.PI;
+                scene.add(stalactite);
+            }
+            
+            // Add rounded transition elements where walls meet floor
+            // These create a more organic cave feel
+            
+            // Left wall-floor transition
+            for (let i = 0; i < 10; i++) {
+                const transition = new THREE.Mesh(rockGeometry, rockMaterial.clone());
+                transition.position.set(
+                    -7 + (Math.random() - 0.5) * 2,
+                    -1.8,
+                    (Math.random() - 0.5) * 10
+                );
+                transition.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI);
+                transition.scale.set(
+                    1 + Math.random() * 0.5,
+                    0.5 + Math.random() * 0.3,
+                    1 + Math.random() * 0.5
+                );
+                scene.add(transition);
+            }
+            
+            // Right wall-floor transition
+            for (let i = 0; i < 10; i++) {
+                const transition = new THREE.Mesh(rockGeometry, rockMaterial.clone());
+                transition.position.set(
+                    7 + (Math.random() - 0.5) * 2,
+                    -1.8,
+                    (Math.random() - 0.5) * 10
+                );
+                transition.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI);
+                transition.scale.set(
+                    1 + Math.random() * 0.5,
+                    0.5 + Math.random() * 0.3,
+                    1 + Math.random() * 0.5
+                );
+                scene.add(transition);
+            }
+            
+            // Back wall-floor transition
+            for (let i = 0; i < 15; i++) {
+                const transition = new THREE.Mesh(rockGeometry, rockMaterial.clone());
+                transition.position.set(
+                    (Math.random() - 0.5) * 18,
+                    -1.8,
+                    -5 + (Math.random() - 0.5) * 2
+                );
+                transition.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI);
+                transition.scale.set(
+                    1 + Math.random() * 0.5,
+                    0.5 + Math.random() * 0.3,
+                    1 + Math.random() * 0.5
+                );
+                scene.add(transition);
+            }
+            
+            // Canvas area wall-floor transitions (more concentrated around painting area)
+            for (let i = 0; i < 8; i++) {
+                const transition = new THREE.Mesh(rockGeometry, rockMaterial.clone());
+                transition.position.set(
+                    (Math.random() - 0.5) * 6,
+                    -1.75,
+                    -0.5 + (Math.random() - 0.5) * 2
+                );
+                transition.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI);
+                transition.scale.set(
+                    0.8 + Math.random() * 0.4,
+                    0.4 + Math.random() * 0.25,
+                    0.8 + Math.random() * 0.4
+                );
+                scene.add(transition);
             }
         }
 
@@ -1078,6 +1554,21 @@
         let cameraRotation = { x: 0, y: 0 };
         const keys = {};
 
+        // Ensure the document can receive keyboard events immediately
+        document.body.setAttribute('tabindex', '0');
+        document.body.focus(); // Focus immediately on script load
+        window.focus(); // Also focus the window
+        
+        // Re-focus when clicking anywhere in the window
+        window.addEventListener('click', () => {
+            document.body.focus();
+        });
+        
+        // Re-focus when mouse enters the window
+        window.addEventListener('mouseenter', () => {
+            document.body.focus();
+        });
+
         window.addEventListener('keydown', (e) => {
             keys[e.key.toLowerCase()] = true;
         });
@@ -1127,21 +1618,38 @@
             camera.rotation.y = cameraRotation.y;
             camera.rotation.x = cameraRotation.x;
 
+            // Arrow keys for camera rotation (looking around)
+            const rotateSpeed = 0.03;
+            if (keys['arrowleft']) {
+                cameraRotation.y += rotateSpeed;
+            }
+            if (keys['arrowright']) {
+                cameraRotation.y -= rotateSpeed;
+            }
+            if (keys['arrowup']) {
+                cameraRotation.x += rotateSpeed;
+                cameraRotation.x = Math.max(-Math.PI / 3, Math.min(Math.PI / 3, cameraRotation.x));
+            }
+            if (keys['arrowdown']) {
+                cameraRotation.x -= rotateSpeed;
+                cameraRotation.x = Math.max(-Math.PI / 3, Math.min(Math.PI / 3, cameraRotation.x));
+            }
+
             // WASD movement - full 3D freedom
             const moveSpeed = 0.05;
             const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
             const right = new THREE.Vector3(1, 0, 0).applyQuaternion(camera.quaternion);
             
-            if (keys['w'] || keys['arrowup']) {
+            if (keys['w']) {
                 camera.position.add(forward.multiplyScalar(moveSpeed));
             }
-            if (keys['s'] || keys['arrowdown']) {
+            if (keys['s']) {
                 camera.position.add(forward.multiplyScalar(-moveSpeed));
             }
-            if (keys['a'] || keys['arrowleft']) {
+            if (keys['a']) {
                 camera.position.add(right.multiplyScalar(-moveSpeed));
             }
-            if (keys['d'] || keys['arrowright']) {
+            if (keys['d']) {
                 camera.position.add(right.multiplyScalar(moveSpeed));
             }
             if (keys['q']) {
@@ -1151,16 +1659,61 @@
                 camera.position.y += moveSpeed;
             }
 
-            // Looser constraints - allow walking around the canvas
-            camera.position.x = Math.max(-4, Math.min(4, camera.position.x));
-            camera.position.y = Math.max(-1, Math.min(2, camera.position.y));
-            camera.position.z = Math.max(-2, Math.min(6, camera.position.z));
+            // Collision detection - prevent passing through surfaces
+            // Floor collision (rises near canvas)
+            const floorHeight = -1.5;
+            if (camera.position.y < floorHeight + 0.5) {
+                camera.position.y = floorHeight + 0.5;
+            }
+            
+            // Ceiling collision (lowers near canvas)
+            const ceilingHeight = 1.0;
+            if (camera.position.y > ceilingHeight) {
+                camera.position.y = ceilingHeight;
+            }
+            
+            // Canvas wall collision - can't pass through the canvas/back area
+            if (camera.position.z < -0.5 && Math.abs(camera.position.x) < 2.5) {
+                camera.position.z = -0.5;
+            }
+            
+            // Back wall collision
+            if (camera.position.z < -5) {
+                camera.position.z = -5;
+            }
+            
+            // Side walls collision
+            if (camera.position.x < -7.5) {
+                camera.position.x = -7.5;
+            }
+            if (camera.position.x > 7.5) {
+                camera.position.x = 7.5;
+            }
+            
+            // Front boundary (viewer's starting area)
+            if (camera.position.z > 6) {
+                camera.position.z = 6;
+            }
 
             animateTorch();
             renderer.render(scene, camera);
         }
 
         animate();
+
+        // Ensure keyboard input works immediately - force focus after everything loads
+        setTimeout(() => {
+            document.body.focus();
+            window.focus();
+        }, 100);
+        
+        // Handle start overlay - dismiss on first click
+        const startOverlay = document.getElementById('start-overlay');
+        startOverlay.addEventListener('click', () => {
+            startOverlay.classList.add('hidden');
+            document.body.focus();
+            window.focus();
+        });
 
         // Handle window resize
         window.addEventListener('resize', () => {
@@ -1206,6 +1759,7 @@
         // Close on Escape key
         window.addEventListener('keydown', (e) => {
             if (e.key === 'Escape' && instructionsModal.classList.contains('visible')) {
+                e.preventDefault();
                 closeModal();
             }
         });
