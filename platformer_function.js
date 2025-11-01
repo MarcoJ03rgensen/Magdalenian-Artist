@@ -130,9 +130,25 @@ function setupEnhancedNavigationGame(container, controls, instructions, gameData
   // Input state
   const keys = { left: false, right: false, jump: false };
   
-  // Jump sound
+  // Jump sound - preload and prepare
   const jumpSound = new Audio('SoundsForTMCAE/Minigame/Red ochre/Jump.wav');
-  jumpSound.volume = 0.6;
+  jumpSound.volume = 0.5;
+  jumpSound.preload = 'auto';
+  
+  // Debug: Log when sound loads
+  jumpSound.addEventListener('canplaythrough', () => {
+    console.log('Jump sound loaded successfully');
+  });
+  jumpSound.addEventListener('error', (e) => {
+    console.error('Jump sound failed to load:', e, jumpSound.error);
+  });
+  
+  // Apply sound settings volume if available
+  if (typeof soundSettings !== 'undefined' && soundSettings.master && typeof soundSettings.masterVolume === 'number') {
+    jumpSound.volume = 0.5 * soundSettings.masterVolume;
+  }
+  
+  console.log('Jump sound initialized with volume:', jumpSound.volume);
   
   // Deposits system
   const deposits = [];
@@ -251,12 +267,29 @@ function setupEnhancedNavigationGame(container, controls, instructions, gameData
     
     // Jump
     if (keys.jump && canJump && isGrounded) {
+      console.log('Jump triggered!'); // Debug
       velocityY = JUMP_STRENGTH;
       isGrounded = false;
       canJump = false;
-      // Play jump sound
-      jumpSound.currentTime = 0;
-      jumpSound.play().catch(e => console.log('Jump sound play failed:', e));
+      // Play jump sound (only if master sound is enabled)
+      const soundEnabled = typeof soundSettings === 'undefined' || soundSettings.master;
+      console.log('Sound enabled:', soundEnabled, 'Sound settings:', typeof soundSettings !== 'undefined' ? soundSettings : 'undefined');
+      if (soundEnabled) {
+        try {
+          console.log('Attempting to play jump sound...');
+          jumpSound.currentTime = 0;
+          const playPromise = jumpSound.play();
+          if (playPromise !== undefined) {
+            playPromise.then(() => {
+              console.log('Jump sound played successfully!');
+            }).catch(err => {
+              console.error('Jump sound play failed:', err);
+            });
+          }
+        } catch (e) {
+          console.error('Jump sound error:', e);
+        }
+      }
     }
     
     // Update position
