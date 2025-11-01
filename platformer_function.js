@@ -130,6 +130,10 @@ function setupEnhancedNavigationGame(container, controls, instructions, gameData
   // Input state
   const keys = { left: false, right: false, jump: false };
   
+  // Jump sound
+  const jumpSound = new Audio('SoundsForTMCAE/Minigame/Red ochre/Jump.wav');
+  jumpSound.volume = 0.6;
+  
   // Deposits system
   const deposits = [];
   let totalCollected = 0;
@@ -250,6 +254,9 @@ function setupEnhancedNavigationGame(container, controls, instructions, gameData
       velocityY = JUMP_STRENGTH;
       isGrounded = false;
       canJump = false;
+      // Play jump sound
+      jumpSound.currentTime = 0;
+      jumpSound.play().catch(e => console.log('Jump sound play failed:', e));
     }
     
     // Update position
