@@ -1986,6 +1986,61 @@ function initModals() {
     resetGameState();
   });
   
+  // Phone dropdown menu for action buttons
+  const navActions = document.querySelector('.nav-actions');
+  const actionButtons = [
+    'inventory-btn',
+    'challenges-btn',
+    'save-btn',
+    'codex-btn',
+    'help-btn',
+    'reset-btn'
+  ];
+  
+  // Create dropdown menu on phones
+  if (window.innerWidth <= 768) {
+    const menuButton = document.createElement('button');
+    menuButton.className = 'action-menu-button';
+    menuButton.setAttribute('aria-label', 'Show action menu');
+    menuButton.setAttribute('title', 'Action menu');
+    menuButton.textContent = '⋮';
+    
+    // Create hidden menu container
+    const menuContainer = document.createElement('div');
+    menuContainer.className = 'action-menu-container';
+    
+    // Add action buttons to menu
+    actionButtons.forEach(btnId => {
+      const originalBtn = document.getElementById(btnId);
+      if (originalBtn) {
+        const menuItem = originalBtn.cloneNode(true);
+        menuItem.className = 'action-menu-item';
+        menuContainer.appendChild(menuItem);
+        
+        // Re-attach click handlers to menu items
+        menuItem.addEventListener('click', () => {
+          originalBtn.click();
+          menuContainer.classList.remove('active');
+        });
+      }
+    });
+    
+    // Toggle menu on button click
+    menuButton.addEventListener('click', () => {
+      menuContainer.classList.toggle('active');
+    });
+    
+    // Close menu when clicking outside
+    document.addEventListener('click', (e) => {
+      if (!navActions.contains(e.target)) {
+        menuContainer.classList.remove('active');
+      }
+    });
+    
+    navActions.prepend(menuButton);
+    navActions.appendChild(menuContainer);
+  }
+  
   // Close on background click
   document.querySelectorAll('.modal').forEach(modal => {
     modal.addEventListener('click', (e) => {
