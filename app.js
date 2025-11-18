@@ -44,9 +44,9 @@ const gameState = {
 const materials = {
   redOchre: { name: 'Red Ochre', icon: '🔴', formula: 'Fe₂O₃', color: '#8B4513', info: 'Iron-rich clay from riverbanks, produces warm red-brown pigment' },
   yellowOchre: { name: 'Yellow Ochre', icon: '🟡', formula: 'FeO(OH)', color: '#DAA520', info: 'Weathered limestone deposits, creates golden yellow hues' },
-  charcoal: { name: 'Charcoal', icon: '⚫', formula: 'C', color: '#1C1C1C', info: 'Burnt wood rich in carbon, used for deep black pigment' },
-  manganese: { name: 'Manganese', icon: '🟤', formula: 'MnO₂', color: '#3C2418', info: 'Manganese dioxide ore, produces brown-black tones' },
-  limestone: { name: 'Limestone', icon: '⚪', formula: 'CaCO₃', color: '#F5F5DC', info: 'Ground cave calcite for white highlights' },
+  charcoal: { name: 'Charcoal', icon: '⚫', formula: 'C', color: '#100c08', info: 'Burnt wood rich in carbon, used for deep black pigment' },
+  manganese: { name: 'Manganese', icon: '🟤', formula: 'MnO₂', color: '#1B1B1B', info: 'Manganese dioxide ore, produces brown-black tones' },
+  kaolin: { name: 'Kaolin', icon: '⚪', formula: 'Al₂Si₂O₅(OH)₄', color: '#F5F5DC', info: 'Ground kaolin clay for white highlights' },
   animalFat: { name: 'Animal Fat', icon: '🥩', info: 'Essential binder from marrow and adipose tissue' },
   bone: { name: 'Hollow Bone', icon: '🦴', info: 'For creating spray tubes and tool handles' },
   wood: { name: 'Wood', icon: '🪵', info: 'For torch construction and handles' },
@@ -106,23 +106,23 @@ const paintRecipes = {
     color: '#DAA520'
   },
   blackPaint: {
-    name: 'Black Paint',
+    name: 'Charcoal Black',
     icon: '⚫',
     requires: { charcoal: 2, animalFat: 2 },
     xpCost: 10,
-    color: '#1C1C1C'
+    color: '#100c08'
   },
   brownPaint: {
-    name: 'Brown Paint',
+    name: 'Manganese Black',
     icon: '🟤',
     requires: { manganese: 2, animalFat: 2 },
     xpCost: 10,
-    color: '#5C4033'
+    color: '#1B1B1B'
   },
   whitePaint: {
     name: 'White Paint',
     icon: '⚪',
-    requires: { limestone: 2, animalFat: 2 },
+    requires: { kaolin: 2, animalFat: 2 },
     xpCost: 10,
     color: '#F5F5DC'
   }
@@ -263,7 +263,7 @@ const miniGames = {
       qualityTest: 'Smooth between fingers, no grittiness'
     }
   },
-  limestone: {
+  kaolin: {
     name: 'Color Harmony',
     type: 'paint-formulation',
     duration: 40,
@@ -1267,7 +1267,7 @@ function initLandscapeScene() {
     { key: 'yellowOchre', label: 'Yellow Ochre', hasGame: true },
     { key: 'charcoal', label: 'Charcoal', hasGame: true },
     { key: 'manganese', label: 'Manganese', hasGame: true },
-    { key: 'limestone', label: 'Limestone', hasGame: true },
+    { key: 'kaolin', label: 'Kaolin', hasGame: true },
     { key: 'animalFat', label: 'Animal Fat', hasGame: true },
     { key: 'bone', label: 'Bone', hasGame: true },
     { key: 'wood', label: 'Wood', hasGame: true },
@@ -1280,11 +1280,22 @@ function initLandscapeScene() {
   materialsList.forEach(mat => {
     const btn = document.createElement('button');
     btn.className = 'gather-btn pop-in';
+    btn.dataset.material = mat.key;
     
     const material = materials[mat.key] || { icon: mat.key === 'torch' ? '💡' : '📐', name: mat.label };
     
+    // For charcoal and manganese, render colored circles instead of emojis
+    let iconHTML = '';
+    if (mat.key === 'charcoal') {
+      iconHTML = `<div class="gather-icon" style="display: inline-block; width: 3rem; height: 3rem; background: radial-gradient(circle at 30% 30%, #3a3a38, #100c08 50%, #000000); border-radius: 50%; filter: drop-shadow(2px 2px 4px rgba(0, 0, 0, 0.8));"></div>`;
+    } else if (mat.key === 'manganese') {
+      iconHTML = `<div class="gather-icon" style="display: inline-block; width: 3rem; height: 3rem; background: radial-gradient(circle at 30% 30%, #4a4a48, #1B1B1B 50%, #000000); border-radius: 50%; filter: drop-shadow(2px 2px 4px rgba(0, 0, 0, 0.8));"></div>`;
+    } else {
+      iconHTML = `<div class="gather-icon">${material.icon}</div>`;
+    }
+    
     btn.innerHTML = `
-      <div class="gather-icon">${material.icon}</div>
+      ${iconHTML}
       <div class="gather-label">${mat.label}</div>
     `;
     
@@ -1549,8 +1560,20 @@ function createCraftCard(key, recipe, type) {
     statusHtml = '<div class="craft-status" style="background: rgba(139, 69, 19, 0.5);">Need Materials</div>';
   }
   
+  // For charcoal and manganese paints, render colored circles instead of emojis
+  let iconHTML = '';
+  if (key === 'blackPaint') {
+    // Charcoal - #100c08
+    iconHTML = `<div class="craft-icon" style="display: inline-block; width: 2.5rem; height: 2.5rem; background: radial-gradient(circle at 30% 30%, #3a3a38, #100c08 50%, #000000); border-radius: 50%;"></div>`;
+  } else if (key === 'brownPaint') {
+    // Manganese - #1B1B1B
+    iconHTML = `<div class="craft-icon" style="display: inline-block; width: 2.5rem; height: 2.5rem; background: radial-gradient(circle at 30% 30%, #4a4a48, #1B1B1B 50%, #000000); border-radius: 50%;"></div>`;
+  } else {
+    iconHTML = `<div class="craft-icon">${recipe.icon}</div>`;
+  }
+  
   card.innerHTML = `
-    <div class="craft-icon">${recipe.icon}</div>
+    ${iconHTML}
     <div class="craft-name">${recipe.name}</div>
     <div class="craft-requirements">${requirementsText} ${xpHtml}</div>
     ${statusHtml}
@@ -3603,7 +3626,7 @@ function setupMultiDayExpedition(container, controls, instructions, gameData) {
     { 
       name: 'Rolling Foothills', 
       distance: 16, 
-      bg: 'linear-gradient(180deg, #87CEEB 0%, #8B7355 50%, #5C4033 100%)', 
+      bg: 'linear-gradient(180deg, #87CEEB 0%, #8B7355 50%, #1B1B1B 100%)', 
       icon: '⛰️', 
       hazards: ['Loose scree slopes', 'Twisted ankle risk', 'Steep inclines'],
       features: ['Sheltered caves', 'Edible roots', 'Mountain springs'],
@@ -4002,7 +4025,7 @@ function setupMultiDayExpedition(container, controls, instructions, gameData) {
             left: ${10 + i * 15}%;
             width: ${30 + Math.random() * 30}px;
             height: ${25 + Math.random() * 25}px;
-            background: linear-gradient(135deg, #8B8680 0%, #5C4033 100%);
+            background: linear-gradient(135deg, #8B8680 0%, #1B1B1B 100%);
             border-radius: ${Math.random() * 10}px;
             box-shadow: 2px 4px 8px rgba(0, 0, 0, 0.6);
           `;
@@ -5030,7 +5053,7 @@ function setupPigmentGrindingGame(container, controls, instructions, gameData) {
   grindViz.innerHTML = `
     <div class="grinding-base"></div>
     <div class="grinding-stone" id="grinding-stone"></div>
-    <div class="pigment-pile" id="pigment-pile" style="background: #8B4513; opacity: 0.3;"></div>
+    <div class="pigment-pile" id="pigment-pile" style="background: ${materials[gameData.materialKey] && materials[gameData.materialKey].color ? materials[gameData.materialKey].color : '#8B4513'}; opacity: 0.3;"></div>
   `;
   grindViz.style.position = 'absolute';
   grindViz.style.top = '40%';
@@ -5166,6 +5189,13 @@ function setupPaintMixingGame(container, controls, instructions, gameData) {
     
     setTimeout(() => {
       stick.classList.remove('active');
+      // Update the paint mixture color to reflect the material being mixed
+      try {
+        const mixture = document.getElementById('paint-mixture');
+        const matColor = (materials[gameData.materialKey] && materials[gameData.materialKey].color) || '#8B4513';
+        if (mixture) mixture.style.background = matColor;
+      } catch (e) {}
+
       const badge = document.getElementById('quality-badge');
       badge.style.display = 'inline-block';
       
@@ -5551,7 +5581,7 @@ function setupIdentificationGame(container, controls, instructions) {
     Look for resinous bark and sticky sap. Incorrect picks cost time.
   `;
 
-  container.style.background = 'linear-gradient(180deg, #87CEEB 0%, #6B8E23 50%, #5C4033 100%)';
+  container.style.background = 'linear-gradient(180deg, #87CEEB 0%, #6B8E23 50%, #1B1B1B 100%)';
   container.innerHTML = '';
 
   controls.innerHTML = `
@@ -6314,7 +6344,7 @@ function setupPaintMixingWorkshop(container, controls, instructions, fact, title
     width: 250px;
     height: 250px;
     border-radius: 50%;
-    background: radial-gradient(circle at 30% 30%, #8B7355 0%, #5C4033 100%);
+    background: radial-gradient(circle at 30% 30%, #8B7355 0%, #1B1B1B 100%);
     box-shadow: inset 0 20px 50px rgba(0, 0, 0, 0.7), 0 15px 40px rgba(0, 0, 0, 0.6);
   `;
   
@@ -6342,7 +6372,7 @@ function setupPaintMixingWorkshop(container, controls, instructions, fact, title
     left: 50%;
     width: 10px;
     height: 70%;
-    background: linear-gradient(90deg, #4A3526 0%, #5C4033 50%, #4A3526 100%);
+    background: linear-gradient(90deg, #4A3526 0%, #1B1B1B 50%, #4A3526 100%);
     border-radius: 5px;
     transform-origin: top center;
     box-shadow: 3px 3px 10px rgba(0, 0, 0, 0.6);

@@ -758,11 +758,11 @@ select.form-control {
   --ochre-red: #8B4513;
   --ochre-yellow: #DAA520;
   --ochre-orange: #CD853F;
-  --charcoal-black: #1C1C1C;
+  --charcoal-black: #100c08;
   --cave-dark: #0a0806;
   --stone-gray: #8B8680;
   --limestone: #F5DEB3;
-  --earth-brown: #5C4033;
+  --earth-brown: #1B1B1B;
   --fire-orange: #FF6B35;
   --fire-yellow: #FDB813;
   --sky-blue: #87CEEB;
@@ -882,17 +882,17 @@ body {
 
 .main-title {
   font-family: var(--font-title);
-  font-size: 3.5rem;
+  font-size: clamp(2rem, 7vw, 3.5rem);
   font-weight: 700;
   color: var(--ochre-yellow);
   text-shadow: 3px 3px 6px rgba(0, 0, 0, 0.8);
   margin-bottom: 1rem;
   line-height: 1.2;
-  letter-spacing: 3px;
+  letter-spacing: clamp(1px, 0.5vw, 3px);
 }
 
 .subtitle {
-  font-size: 1.2rem;
+  font-size: clamp(0.9rem, 3vw, 1.2rem);
   color: var(--limestone);
   margin-bottom: 3rem;
   font-style: italic;
@@ -900,8 +900,8 @@ body {
 }
 
 .btn-primary {
-  padding: 1.2rem 3rem;
-  font-size: 1.3rem;
+  padding: clamp(0.8rem, 2vw, 1.2rem) clamp(1.5rem, 4vw, 3rem);
+  font-size: clamp(1rem, 2.5vw, 1.3rem);
   font-weight: 700;
   font-family: var(--font-title);
   background: linear-gradient(135deg, var(--ochre-red) 0%, var(--ochre-orange) 100%);
@@ -912,7 +912,11 @@ body {
   transition: all 0.3s ease;
   box-shadow: var(--shadow-deep);
   text-transform: uppercase;
-  letter-spacing: 2px;
+  letter-spacing: clamp(1px, 0.3vw, 2px);
+  min-height: 48px;
+  min-width: 120px;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .btn-primary:hover {
@@ -1056,15 +1060,26 @@ body {
   border-radius: 10px;
   color: var(--limestone);
   font-family: var(--font-body);
-  font-size: 0.95rem;
+  font-size: clamp(0.75rem, 1vw, 0.95rem);
   font-weight: 600;
   cursor: pointer;
   transition: all 0.3s ease;
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: center;
   gap: 0.3rem;
-  min-width: 100px;
+  min-width: 70px;
+  min-height: 60px;
+  @media (max-width: 480px) {
+    min-width: 60px;
+    min-height: 55px;
+    padding: 0.6rem 1rem;
+  }
+  @media (max-width: 768px) {
+    min-width: 75px;
+    min-height: 60px;
+  }
 }
 
 .nav-btn:hover {
@@ -1197,6 +1212,14 @@ body {
   cursor: pointer;
   transition: all 0.3s ease;
   padding: 0.3rem;
+  min-width: 50px;
+  min-height: 50px;
+  @media (max-width: 768px) {
+    min-width: 45px;
+    min-height: 45px;
+  }
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .inventory-item:hover, .tool-item:hover {
@@ -1536,7 +1559,7 @@ body {
 .ground-layer {
   bottom: 0;
   height: 40%;
-  background: linear-gradient(180deg, #8B7355 0%, #6B5844 50%, #5C4033 100%),
+  background: linear-gradient(180deg, #8B7355 0%, #6B5844 50%, #1B1B1B 100%),
     repeating-linear-gradient(90deg, rgba(0,0,0,0.02) 0px, rgba(0,0,0,0.02) 2px, transparent 2px, transparent 6px),
     radial-gradient(circle at 20% 20%, rgba(255,255,255,0.03) 0%, transparent 40%);
   z-index: 4;
@@ -1576,7 +1599,7 @@ body {
 .ground-layer {
   bottom: 0;
   height: 40%;
-  background: linear-gradient(180deg, #8B7355 0%, #6B5844 50%, #5C4033 100%);
+  background: linear-gradient(180deg, #8B7355 0%, #6B5844 50%, #1B1B1B 100%);
   z-index: 4;
   transition: background 10s ease-in-out;
 }
@@ -2124,10 +2147,29 @@ body {
   right: 5%;
   height: 50%;
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
-  grid-template-rows: repeat(2, 1fr);
+  grid-template-columns: repeat(auto-fit, minmax(90px, 1fr));
+  grid-auto-rows: minmax(100px, auto);
   gap: 1rem;
   padding: 1rem;
+  @supports (grid-template-columns: repeat(auto-fit, minmax(90px, 1fr))) {
+    grid-template-columns: repeat(auto-fit, minmax(90px, 1fr));
+  }
+  /* Fallback for smaller screens */
+  @media (max-width: 600px) {
+    grid-template-columns: repeat(2, 1fr);
+    bottom: 10%;
+    gap: 0.6rem;
+    padding: 0.6rem;
+  }
+  @media (min-width: 601px) and (max-width: 900px) {
+    grid-template-columns: repeat(3, 1fr);
+  }
+  @media (min-width: 901px) and (max-width: 1200px) {
+    grid-template-columns: repeat(4, 1fr);
+  }
+  @media (min-width: 1201px) {
+    grid-template-columns: repeat(5, 1fr);
+  }
 }
 
 .gather-btn {
@@ -2143,6 +2185,15 @@ body {
   justify-content: center;
   backdrop-filter: blur(5px);
   animation: gatherPulse 2s ease-in-out infinite;
+  min-height: 80px;
+  touch-action: manipulation;
+  @media (max-width: 600px) {
+    min-height: 70px;
+    border-width: 2px;
+  }
+  @media (max-width: 768px) {
+    min-height: 75px;
+  }
 }
 
 @keyframes gatherPulse {
@@ -2165,8 +2216,8 @@ body {
 }
 
 .gather-icon {
-  font-size: 3rem;
-  margin-bottom: 0.5rem;
+  font-size: clamp(2rem, 5vw, 3rem);
+  margin-bottom: clamp(0.3rem, 1vh, 0.5rem);
   filter: drop-shadow(2px 2px 4px rgba(0, 0, 0, 0.8));
 }
 
@@ -2356,7 +2407,7 @@ body {
   right: 20%;
   width: 200px;
   height: 100px;
-  background: linear-gradient(180deg, #5C4033 0%, #4A3526 100%);
+  background: linear-gradient(180deg, #1B1B1B 0%, #4A3526 100%);
   border-radius: 8px;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.8);
   z-index: 4;
@@ -2375,13 +2426,16 @@ body {
 
 .crafting-panels {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 2rem;
+  grid-template-columns: 1fr;
+  gap: clamp(1rem, 3vw, 2rem);
   margin-top: 2rem;
-  margin-bottom: 160px; /* Space for inventory panels */
-  padding: 0 1rem;
+  margin-bottom: 160px;
+  padding: 0 clamp(0.5rem, 2vw, 1rem);
   position: relative;
   z-index: 10;
+  @media (min-width: 768px) {
+    grid-template-columns: 1fr 1fr;
+  }
 }
 
 .craft-section {
@@ -2405,8 +2459,11 @@ body {
 
 .craft-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-  gap: 1rem;
+  grid-template-columns: repeat(auto-fill, minmax(clamp(100px, 80%, 140px), 1fr));
+  gap: clamp(0.6rem, 2vw, 1rem);
+  @media (max-width: 600px) {
+    grid-template-columns: repeat(2, 1fr);
+  }
 }
 
 .craft-card {
@@ -3002,12 +3059,13 @@ body {
 
 .palette-swatches, .tool-swatches, .template-swatches {
   display: flex;
-  gap: 0.5rem;
+  gap: clamp(0.3rem, 1vw, 0.5rem);
+  flex-wrap: wrap;
 }
 
 .paint-swatch, .tool-swatch, .template-swatch {
-  width: 50px;
-  height: 50px;
+  width: clamp(40px, 8vw, 50px);
+  height: clamp(40px, 8vw, 50px);
   border: 3px solid var(--stone-gray);
   border-radius: 8px;
   cursor: pointer;
@@ -3015,7 +3073,11 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 1.8rem;
+  font-size: clamp(1.4rem, 3vw, 1.8rem);
+  min-width: 40px;
+  min-height: 40px;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .paint-swatch:hover, .tool-swatch:hover, .template-swatch:hover {
@@ -3135,11 +3197,10 @@ body {
   background: rgba(26, 20, 16, 0.98);
   border: 4px solid var(--ochre-yellow);
   border-radius: 20px;
-  padding: 1rem 1.5rem;
+  padding: clamp(1rem, 3vw, 1.5rem);
   max-width: 98vw;
-  max-height: 98vh;
-  width: 98vw;
-  height: 98vh;
+  max-height: 95vh;
+  width: 100%;
   /* Allow internal scrolling when content is taller than the modal so controls remain reachable */
   overflow: auto;
   position: relative;
@@ -3147,6 +3208,10 @@ body {
   animation: modalSlideIn 0.4s ease-out;
   display: flex;
   flex-direction: column;
+  @media (max-width: 768px) {
+    max-height: 90vh;
+    padding: 1rem;
+  }
 }
 
 @keyframes modalSlideIn {
@@ -3162,21 +3227,26 @@ body {
 
 .modal-close {
   position: absolute;
-  top: 1rem;
-  right: 1rem;
-  width: 40px;
-  height: 40px;
+  top: clamp(0.5rem, 1vw, 1rem);
+  right: clamp(0.5rem, 1vw, 1rem);
+  width: clamp(36px, 10vw, 50px);
+  height: clamp(36px, 10vw, 50px);
   background: rgba(139, 69, 19, 0.8);
   border: 2px solid var(--ochre-yellow);
   border-radius: 50%;
   color: var(--limestone);
-  font-size: 1.5rem;
+  font-size: clamp(1.2rem, 3vw, 1.5rem);
   cursor: pointer;
   transition: all 0.3s ease;
   display: flex;
   align-items: center;
   justify-content: center;
   font-family: Arial, sans-serif;
+  z-index: 100;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  min-width: 36px;
+  min-height: 36px;
 }
 
 .modal-close:hover {
@@ -4070,23 +4140,27 @@ kbd {
 .minigame-content {
   max-width: 95vw;
   width: 95vw;
-  height: 95vh;
-  min-height: 600px;
-  padding: 2rem;
+  height: clamp(500px, 95vh, 95vh);
+  min-height: 500px;
+  padding: clamp(1rem, 3vw, 2rem);
+  @media (max-width: 768px) {
+    padding: 1rem;
+    height: 90vh;
+  }
 }
 
 .minigame-instructions {
   background: rgba(60, 50, 40, 0.8);
   border: 2px solid var(--ochre-yellow);
   border-radius: 8px;
-  padding: 0.3rem 0.75rem;
+  padding: 0.3rem clamp(0.5rem, 2vw, 0.75rem);
   margin-bottom: 0.4rem;
   text-align: center;
   color: var(--limestone);
-  font-size: 0.75rem;
+  font-size: clamp(0.65rem, 1.5vw, 0.75rem);
   line-height: 1.2;
   flex-shrink: 0;
-  max-height: 65px;
+  max-height: clamp(50px, 15vh, 65px);
   overflow: auto;
 }
 
@@ -4169,7 +4243,7 @@ kbd {
   bottom: 0;
   width: 100%;
   height: 30%;
-  background: linear-gradient(180deg, #8B7355 0%, #6B5844 50%, #5C4033 100%);
+  background: linear-gradient(180deg, #8B7355 0%, #6B5844 50%, #1B1B1B 100%);
   z-index: 4;
   box-shadow: inset 0 20px 40px rgba(0, 0, 0, 0.3);
 }
@@ -4377,6 +4451,30 @@ kbd {
   }
 }
 
+/* Charcoal deposit - #100c08 glossy sphere */
+.resource-deposit.deposit-charcoal,
+.resource-deposit:has(> :nth-child(1):contains("⚫")) {
+  background: radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.25) 0%, #100c08 40%, #0a0806 100%);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.6), inset 0 -4px 8px rgba(0, 0, 0, 0.4), inset 2px 2px 4px rgba(255, 255, 255, 0.1);
+}
+
+.resource-deposit.deposit-charcoal::before,
+.resource-deposit:has(> :nth-child(1):contains("⚫"))::before {
+  background: radial-gradient(circle at 30% 30%, rgba(16, 12, 8, 0.8) 0%, #100c08 100%);
+}
+
+/* Manganese deposit - #1B1B1B glossy sphere */
+.resource-deposit.deposit-manganese,
+.resource-deposit:has(> :nth-child(1):contains("🟤")) {
+  background: radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.22) 0%, #1B1B1B 40%, #0f0f0f 100%);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.6), inset 0 -4px 8px rgba(0, 0, 0, 0.3), inset 2px 2px 4px rgba(255, 255, 255, 0.1);
+}
+
+.resource-deposit.deposit-manganese::before,
+.resource-deposit:has(> :nth-child(1):contains("🟤"))::before {
+  background: radial-gradient(circle at 30% 30%, rgba(27, 27, 27, 0.75) 0%, #1B1B1B 100%);
+}
+
 /* Stamina & Resource Bars */
 .stat-bar-container {
   position: absolute;
@@ -4502,7 +4600,7 @@ kbd {
   transform: translateX(-50%);
   width: 18px;
   height: 45px;
-  background: linear-gradient(90deg, #5C4033 0%, #4A3526 50%, #5C4033 100%);
+  background: linear-gradient(90deg, #1B1B1B 0%, #4A3526 50%, #1B1B1B 100%);
   border-radius: 4px;
   box-shadow: inset -2px 0 4px rgba(0, 0, 0, 0.4), 2px 2px 6px rgba(0, 0, 0, 0.3);
 }
@@ -4708,7 +4806,7 @@ kbd {
   width: 180px;
   height: 180px;
   margin: 20px auto;
-  background: radial-gradient(circle at 30% 30%, #8B7355 0%, #5C4033 100%);
+  background: radial-gradient(circle at 30% 30%, #8B7355 0%, #1B1B1B 100%);
   border-radius: 50%;
   box-shadow: inset 0 15px 40px rgba(0, 0, 0, 0.6), 0 10px 30px rgba(0, 0, 0, 0.5);
 }
@@ -4721,7 +4819,7 @@ kbd {
   right: 20px;
   bottom: 20px;
   border-radius: 50%;
-  border: 3px solid rgba(92, 64, 51, 0.4);
+  border: 3px solid rgba(27, 27, 27, 0.4);
 }
 
 .paint-mixture {
@@ -4741,7 +4839,7 @@ kbd {
   left: 50%;
   width: 8px;
   height: 60%;
-  background: linear-gradient(90deg, #4A3526 0%, #5C4033 50%, #4A3526 100%);
+  background: linear-gradient(90deg, #4A3526 0%, #1B1B1B 50%, #4A3526 100%);
   border-radius: 4px;
   transform-origin: top center;
   animation: mixStir 2s linear infinite paused;
@@ -4772,7 +4870,7 @@ kbd {
   transform: translateY(-50%);
   width: 120px;
   height: 12px;
-  background: linear-gradient(90deg, #5C4033 0%, #6B5844 100%);
+  background: linear-gradient(90deg, #1B1B1B 0%, #6B5844 100%);
   border-radius: 6px;
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.4), inset 0 -2px 4px rgba(0, 0, 0, 0.3);
 }
@@ -4897,7 +4995,7 @@ kbd {
 
 .quality-badge.excellent {
   background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%);
-  color: #1C1C1C;
+  color: #100c08;
   border: 2px solid #FFF;
 }
 
@@ -4910,7 +5008,7 @@ kbd {
 .quality-badge.poor {
   background: linear-gradient(135deg, #8B7355 0%, #6B5844 100%);
   color: white;
-  border: 2px solid #5C4033;
+  border: 2px solid #1B1B1B;
 }
 
 @keyframes badgePulse {
@@ -5134,8 +5232,8 @@ kbd {
     90deg,
     transparent,
     transparent 30px,
-    rgba(92, 64, 51, 0.1) 30px,
-    rgba(92, 64, 51, 0.1) 60px
+    rgba(27, 27, 27, 0.1) 30px,
+    rgba(27, 27, 27, 0.1) 60px
   );
   pointer-events: none;
 }
@@ -5475,3 +5573,235 @@ kbd {
   transform: scaleX(-1);
 }
 
+/* ========================================
+   COMPREHENSIVE MOBILE & TOUCH OPTIMIZATIONS
+   ======================================== */
+
+/* Ensure all interactive elements have proper touch targets */
+button, a, .nav-btn, .gather-btn, .craft-card, .paint-swatch, 
+.tool-swatch, .template-swatch, .inventory-item, .tool-item {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+  touch-action: manipulation;
+}
+
+/* Improve touch responsiveness for all interactive elements */
+input, textarea, select {
+  font-size: 16px; /* Prevents zoom on iOS input focus */
+  touch-action: manipulation;
+}
+
+/* Fix viewport scaling on iOS */
+html {
+  width: 100%;
+  overflow-x: hidden;
+  -webkit-user-select: none;
+  -webkit-text-size-adjust: 100%;
+  -ms-text-size-adjust: 100%;
+}
+
+body {
+  position: relative;
+  width: 100%;
+  overflow-x: hidden;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* Ensure SVGs scale properly */
+svg {
+  max-width: 100%;
+  height: auto;
+  display: block;
+}
+
+/* Canvas scaling for all resolutions */
+canvas {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-width: 100%;
+}
+
+/* Ensure screens stack properly on mobile */
+.screen {
+  width: 100vw;
+  height: 100vh;
+  position: fixed;
+  top: 0;
+  left: 0;
+}
+
+/* Landscape orientation fixes */
+@media (max-height: 600px) and (orientation: landscape) {
+  .nav-buttons {
+    gap: 0.3rem;
+  }
+  
+  .nav-btn {
+    min-width: 60px;
+    min-height: 50px;
+    padding: 0.4rem 0.8rem;
+    font-size: 0.7rem;
+  }
+  
+  .nav-icon {
+    font-size: 1.2rem;
+  }
+  
+  .gathering-spots {
+    bottom: 5%;
+    height: 70%;
+    gap: 0.5rem;
+  }
+  
+  .gather-btn {
+    min-height: 60px;
+  }
+}
+
+/* Extra small phones (320px - 480px) */
+@media (max-width: 480px) {
+  html {
+    font-size: 13px;
+  }
+  
+  body {
+    font-size: 0.9rem;
+  }
+  
+  .nav-buttons {
+    gap: 0.3rem;
+    padding: 0.5rem;
+  }
+  
+  .nav-btn {
+    min-width: 55px;
+    min-height: 50px;
+    padding: 0.5rem 0.8rem;
+    border-radius: 8px;
+    font-size: 0.65rem;
+  }
+  
+  .nav-icon {
+    font-size: 1.3rem;
+  }
+  
+  .title-content {
+    padding: 1rem;
+  }
+  
+  .main-title {
+    word-break: break-word;
+  }
+  
+  .gathering-spots {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.5rem;
+  }
+}
+
+/* Small phones and tablets (481px - 768px) */
+@media (max-width: 768px) {
+  html {
+    font-size: 14px;
+  }
+  
+  .nav-btn {
+    font-size: 0.7rem;
+    padding: 0.6rem 1rem;
+  }
+  
+  .gathering-spots {
+    grid-template-columns: repeat(3, 1fr);
+  }
+  
+  .modal-content,
+  .minigame-content {
+    padding: 1rem;
+  }
+  
+  .craft-section {
+    padding: 1rem;
+  }
+  
+  .craft-section h3 {
+    font-size: 1.1rem;
+  }
+}
+
+/* Medium tablets and larger phones (769px - 1024px) */
+@media (min-width: 769px) and (max-width: 1024px) {
+  .gathering-spots {
+    grid-template-columns: repeat(4, 1fr);
+  }
+  
+  .crafting-panels {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+/* Large desktop and tablets (1025px+) */
+@media (min-width: 1025px) {
+  .gathering-spots {
+    grid-template-columns: repeat(5, 1fr);
+  }
+}
+
+/* Ensure modals work on small screens */
+@media (max-height: 500px) {
+  .modal-content,
+  .minigame-content {
+    max-height: 98vh;
+    height: auto;
+  }
+  
+  .minigame-instructions {
+    max-height: auto;
+    padding: 0.2rem 0.5rem;
+    font-size: 0.65rem;
+  }
+}
+
+/* High DPI / Retina displays */
+@media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
+  /* Reduce filter effects on high DPI to prevent performance issues */
+  .gather-icon {
+    filter: drop-shadow(1px 1px 2px rgba(0, 0, 0, 0.8));
+  }
+}
+
+/* Print media - hide interactive UI */
+@media print {
+  .nav-buttons,
+  .nav-actions,
+  .modal,
+  .notification,
+  .floating-particles {
+    display: none !important;
+  }
+}
+
+/* Improve performance on low-end devices */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Dark mode optimizations for OLED screens */
+@media (prefers-color-scheme: dark) {
+  html {
+    background-color: #000;
+  }
+  
+  body {
+    background-color: #000;
+  }
+}
