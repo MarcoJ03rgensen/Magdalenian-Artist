@@ -72,13 +72,13 @@
     <div id="game-screen" class="screen">
         <!-- Top Navigation Bar -->
         <nav id="top-nav" role="navigation" aria-label="Main navigation">
-            <div class=\"nav-title\">
-                <a href=\"https://marcoj03rgensen.github.io/\" target=\"_blank\" rel=\"noopener noreferrer\" class=\"nav-logo-link\" title=\"Visit Marco's Portfolio\">
-                    <img src=\"MJ.png\" alt=\"MJ Logo\" class=\"nav-logo-icon\">
+            <div class="nav-title">
+                <a href="https://marcoj03rgensen.github.io/" target="_blank" rel="noopener noreferrer" class="nav-logo-link" title="Visit Marco's Portfolio">
+                    <img src="MJ.png" alt="MJ Logo" class="nav-logo-icon">
                 </a>
-                <span class=\"nav-title-text\">The Magdalenian Experience</span>
+                <span>The Magdalenian Cave Art Experience</span>
             </div>
-            <div class="nav-buttons" id="nav-buttons" role="group" aria-label="Scene selection">
+            <div class="nav-buttons" role="group" aria-label="Scene selection">
                 <button id="nav-landscape" class="nav-btn active" data-scene="landscape" aria-pressed="true">
                     <span class="nav-icon" aria-hidden="true">🌄</span>
                     <span class="nav-label">Gathering</span>
@@ -94,16 +94,12 @@
             </div>
             <div class="nav-actions" role="group" aria-label="Game actions">
                 <div id="xp-display" class="icon-btn xp-display" title="Experience Points" aria-label="Experience Points">⚡ <span id="xp-count">0</span></div>
+                <button id="inventory-btn" class="icon-btn" title="View Inventory" aria-label="Open inventory">🎒</button>
+                <button id="challenges-btn" class="icon-btn" title="Challenges" aria-label="View challenges and badges">🏆</button>
                 <button id="save-btn" class="icon-btn" title="Save Progress" aria-label="Save game progress">💾</button>
-                <button id="mobile-menu-btn" class="hamburger-btn" title="Menu" aria-label="Toggle menu" aria-expanded="false">☰</button>
-            </div>
-            <!-- Mobile menu dropdown -->
-            <div class="mobile-menu" id="mobile-menu">
-                <button id="inventory-btn-mobile" class="mobile-menu-btn" data-action="inventory">🎒 Inventory</button>
-                <button id="challenges-btn-mobile" class="mobile-menu-btn" data-action="challenges">🏆 Badges</button>
-                <button id="codex-btn-mobile" class="mobile-menu-btn" data-action="codex">📖 Codex</button>
-                <button id="help-btn-mobile" class="mobile-menu-btn" data-action="help">❓ Help</button>
-                <button id="reset-btn-mobile" class="mobile-menu-btn" data-action="reset">🔄 Reset</button>
+                <button id="codex-btn" class="icon-btn" title="Codex" aria-label="Open information codex">📖</button>
+                <button id="help-btn" class="icon-btn" title="Help" aria-label="Show help menu">❓</button>
+                <button id="reset-btn" class="icon-btn" title="Reset Game" aria-label="Reset all progress">🔄</button>
             </div>
         </nav>
 
@@ -178,12 +174,6 @@
                     style="width: 100%; height: 100%; border: none; display: block;"
                     title="3D Cave Painting Environment"
                 ></iframe>
-                <!-- Virtual Joystick for Mobile -->
-                <div class="virtual-joystick" id="cave-joystick">
-                    <div class="joystick-bg">
-                        <div class="joystick-stick"></div>
-                    </div>
-                </div>
             </div>
         </div>
 
