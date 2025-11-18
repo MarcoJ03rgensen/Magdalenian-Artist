@@ -5805,3 +5805,313 @@ canvas {
     background-color: #000;
   }
 }
+
+/* ========================================
+   MOBILE MENU AND RESPONSIVE NAV
+   ======================================== */
+
+.hamburger-btn {
+  display: none;
+  width: clamp(36px, 8vw, 44px);
+  height: clamp(36px, 8vw, 44px);
+  background: rgba(94, 82, 64, 0.8);
+  border: 2px solid var(--ochre-yellow);
+  border-radius: 8px;
+  color: var(--limestone);
+  font-size: clamp(1.2rem, 3vw, 1.5rem);
+  cursor: pointer;
+  transition: all 0.3s ease;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  z-index: 150;
+  padding: 0;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.hamburger-btn:hover {
+  background: rgba(94, 82, 64, 0.95);
+  border-color: var(--fire-yellow);
+}
+
+.hamburger-btn.active {
+  background: var(--ochre-red);
+  border-color: var(--fire-yellow);
+}
+
+@media (max-width: 600px) {
+  .hamburger-btn {
+    display: flex;
+  }
+}
+
+.mobile-menu {
+  position: absolute;
+  top: calc(100% + 0.5rem);
+  right: 0.5rem;
+  background: rgba(26, 20, 16, 0.98);
+  border: 2px solid var(--ochre-yellow);
+  border-radius: 8px;
+  padding: 0.5rem;
+  display: none;
+  flex-direction: column;
+  gap: 0.3rem;
+  z-index: 190;
+  min-width: 200px;
+  max-width: 90vw;
+}
+
+.mobile-menu.open {
+  display: flex;
+}
+
+.mobile-menu-btn {
+  background: rgba(94, 82, 64, 0.7);
+  border: 1px solid var(--ochre-yellow);
+  border-radius: 6px;
+  color: var(--limestone);
+  font-family: var(--font-body);
+  font-size: clamp(0.7rem, 2vw, 0.9rem);
+  padding: 0.6rem 1rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  text-align: left;
+  width: 100%;
+  white-space: nowrap;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.mobile-menu-btn:hover, .mobile-menu-btn:active {
+  background: rgba(94, 82, 64, 0.95);
+  border-color: var(--fire-yellow);
+  transform: translateX(4px);
+}
+
+.nav-title-text {
+  display: inline;
+}
+
+@media (max-width: 600px) {
+  .nav-title-text {
+    display: none;
+  }
+  
+  .nav-buttons {
+    order: 3;
+    width: 100%;
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 100%;
+    flex-direction: column;
+    gap: 0.3rem;
+    background: rgba(26, 20, 16, 0.98);
+    border: 2px solid var(--ochre-yellow);
+    border-top: none;
+    border-radius: 0 0 8px 8px;
+    padding: 0.8rem;
+    display: none;
+    z-index: 200;
+    max-height: calc(100vh - 140px);
+    overflow-y: auto;
+  }
+  
+  .nav-buttons.mobile-open {
+    display: flex;
+  }
+  
+  #top-nav {
+    height: auto;
+    min-height: 50px;
+  }
+}
+
+/* ========================================
+   VIRTUAL JOYSTICK FOR MOBILE 3D CONTROLS
+   ======================================== */
+
+.virtual-joystick {
+  display: none;
+  position: absolute;
+  bottom: 20px;
+  left: 20px;
+  width: 100px;
+  height: 100px;
+  z-index: 80;
+  touch-action: none;
+}
+
+@media (max-width: 768px) and (orientation: landscape) {
+  .virtual-joystick {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+}
+
+@media (max-width: 600px) {
+  .virtual-joystick {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+}
+
+.joystick-bg {
+  position: relative;
+  width: 100px;
+  height: 100px;
+  background: rgba(0, 0, 0, 0.6);
+  border: 3px solid var(--ochre-yellow);
+  border-radius: 50%;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.joystick-stick {
+  position: absolute;
+  width: 50px;
+  height: 50px;
+  background: radial-gradient(circle at 30% 30%, rgba(255, 200, 100, 0.4), var(--ochre-yellow));
+  border: 2px solid var(--ochre-yellow);
+  border-radius: 50%;
+  cursor: grab;
+  transition: all 0.05s ease;
+  box-shadow: 0 4px 8px rgba(218, 165, 32, 0.6);
+}
+
+.joystick-stick:active {
+  cursor: grabbing;
+}
+
+.joystick-stick.active {
+  box-shadow: 0 0 20px rgba(218, 165, 32, 0.8);
+}
+
+/* Mobile toolbar toggles for cavepainter */
+.mobile-toolbar-toggle {
+  display: none;
+  position: absolute;
+  bottom: 20px;
+  right: 20px;
+  width: 50px;
+  height: 50px;
+  background: var(--ochre-red);
+  border: 2px solid var(--ochre-yellow);
+  border-radius: 50%;
+  color: white;
+  font-size: 1.5rem;
+  cursor: pointer;
+  z-index: 85;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.6);
+  transition: all 0.3s ease;
+  touch-action: manipulation;
+}
+
+@media (max-width: 768px) {
+  .mobile-toolbar-toggle {
+    display: flex;
+  }
+}
+
+.mobile-toolbar-toggle:hover, .mobile-toolbar-toggle:active {
+  transform: scale(1.1);
+  box-shadow: 0 6px 16px rgba(218, 165, 32, 0.8);
+}
+
+/* Drawer panel for mobile toolbar */
+.mobile-toolbar-drawer {
+  display: none;
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: rgba(26, 20, 16, 0.98);
+  border-top: 3px solid var(--ochre-yellow);
+  padding: 1.5rem 1rem;
+  max-height: 60vh;
+  overflow-y: auto;
+  z-index: 90;
+  box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.8);
+  backdrop-filter: blur(10px);
+}
+
+.mobile-toolbar-drawer.open {
+  display: block;
+}
+
+.mobile-toolbar-drawer h3 {
+  color: var(--ochre-yellow);
+  font-family: var(--font-title);
+  margin-bottom: 1rem;
+  text-transform: uppercase;
+  font-size: clamp(0.9rem, 2vw, 1.1rem);
+}
+
+.mobile-toolbar-section {
+  margin-bottom: 1.5rem;
+}
+
+.mobile-toolbar-section:last-child {
+  margin-bottom: 0;
+}
+
+.mobile-toolbar-label {
+  color: var(--limestone);
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  margin-bottom: 0.6rem;
+  font-weight: 600;
+}
+
+/* Minigame mobile controls */
+.minigame-mobile-controls {
+  display: none;
+  position: absolute;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  gap: 1rem;
+  z-index: 85;
+}
+
+@media (max-width: 768px) {
+  .minigame-mobile-controls {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+}
+
+.minigame-control-btn {
+  background: var(--ochre-red);
+  border: 2px solid var(--ochre-yellow);
+  color: white;
+  font-size: clamp(1.2rem, 3vw, 1.8rem);
+  width: clamp(50px, 12vw, 80px);
+  height: clamp(50px, 12vw, 80px);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  font-weight: bold;
+}
+
+.minigame-control-btn:active, .minigame-control-btn:focus {
+  transform: scale(1.1);
+  box-shadow: 0 0 20px rgba(218, 165, 32, 0.8);
+}
+
+.minigame-control-btn.left-btn { order: 1; }
+.minigame-control-btn.up-btn { order: 2; }
+.minigame-control-btn.down-btn { order: 4; }
+.minigame-control-btn.right-btn { order: 3; }
+.minigame-control-btn.action-btn { order: 5; width: 100%; }
