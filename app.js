@@ -1793,6 +1793,11 @@ function renderInventoryModal() {
   Object.keys(gameState.inventory).forEach(key => {
     const count = gameState.inventory[key];
     if (count > 0) {
+      // Skip if material doesn't exist in materials object
+      if (!materials[key]) {
+        console.warn(`Unknown material in inventory: ${key}`);
+        return;
+      }
       hasMaterials = true;
       const item = document.createElement('div');
       item.className = 'inventory-item';
@@ -1815,8 +1820,13 @@ function renderInventoryModal() {
   
   let hasPaints = false;
   Object.keys(gameState.paints).forEach(key => {
+    const paint = paintRecipes[key];
+    // Skip if paint doesn't exist in paintRecipes object
+    if (!paint) {
+      console.warn(`Unknown paint in inventory: ${key}`);
+      return;
+    }
     hasPaints = true;
-    const paint = gameState.paints[key];
     const item = document.createElement('div');
     item.className = 'paint-item';
     item.style.backgroundColor = paint.color;
@@ -1838,8 +1848,13 @@ function renderInventoryModal() {
   let hasTools = false;
   Object.keys(gameState.tools).forEach(key => {
     if (gameState.tools[key]) {
-      hasTools = true;
       const tool = toolRecipes[key];
+      // Skip if tool doesn't exist in toolRecipes object
+      if (!tool) {
+        console.warn(`Unknown tool in inventory: ${key}`);
+        return;
+      }
+      hasTools = true;
       const item = document.createElement('div');
       item.className = 'tool-item';
       item.innerHTML = `
@@ -1924,33 +1939,50 @@ function createParticleBurst(x, y, color, count) {
 // ========================================
 
 function initModals() {
+  // Define handler functions that can be reused
+  const handlers = {
+    inventory: () => {
+      renderInventoryModal();
+      document.getElementById('inventory-modal').classList.add('active');
+      sounds.click();
+    },
+    challenges: () => {
+      renderChallengesModal();
+      document.getElementById('challenges-modal').classList.add('active');
+      sounds.click();
+    },
+    codex: () => {
+      document.getElementById('codex-modal').classList.add('active');
+      showCodexTab('period');
+    },
+    help: () => {
+      document.getElementById('help-modal').classList.add('active');
+    },
+    save: () => {
+      saveGameState();
+      showNotification('💾 Progress saved!', 2000);
+    },
+    reset: () => {
+      resetGameState();
+    }
+  };
+  
   // Inventory
-  document.getElementById('inventory-btn').addEventListener('click', () => {
-    renderInventoryModal();
-    document.getElementById('inventory-modal').classList.add('active');
-    sounds.click();
-  });
+  document.getElementById('inventory-btn').addEventListener('click', handlers.inventory);
   
   document.getElementById('close-inventory').addEventListener('click', () => {
     document.getElementById('inventory-modal').classList.remove('active');
   });
   
   // Challenges
-  document.getElementById('challenges-btn').addEventListener('click', () => {
-    renderChallengesModal();
-    document.getElementById('challenges-modal').classList.add('active');
-    sounds.click();
-  });
+  document.getElementById('challenges-btn').addEventListener('click', handlers.challenges);
   
   document.getElementById('close-challenges').addEventListener('click', () => {
     document.getElementById('challenges-modal').classList.remove('active');
   });
   
   // Codex
-  document.getElementById('codex-btn').addEventListener('click', () => {
-    document.getElementById('codex-modal').classList.add('active');
-    showCodexTab('period');
-  });
+  document.getElementById('codex-btn').addEventListener('click', handlers.codex);
   
   document.getElementById('close-codex').addEventListener('click', () => {
     document.getElementById('codex-modal').classList.remove('active');
@@ -1967,35 +1999,37 @@ function initModals() {
   });
   
   // Help
-  document.getElementById('help-btn').addEventListener('click', () => {
-    document.getElementById('help-modal').classList.add('active');
-  });
+  document.getElementById('help-btn').addEventListener('click', handlers.help);
   
   document.getElementById('close-help').addEventListener('click', () => {
     document.getElementById('help-modal').classList.remove('active');
   });
   
   // Save button
-  document.getElementById('save-btn').addEventListener('click', () => {
-    saveGameState();
-    showNotification('💾 Progress saved!', 2000);
-  });
+  document.getElementById('save-btn').addEventListener('click', handlers.save);
   
   // Reset button
-  document.getElementById('reset-btn').addEventListener('click', () => {
-    resetGameState();
+  document.getElementById('reset-btn').addEventListener('click', handlers.reset);
+  
+  // Close on background click
+  document.querySelectorAll('.modal').forEach(modal => {
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) {
+        modal.classList.remove('active');
+      }
+    });
   });
   
-  // Phone dropdown menu for action buttons
+  // Phone dropdown menu for action buttons (after all listeners are attached)
   const navActions = document.querySelector('.nav-actions');
-  const actionButtons = [
-    'inventory-btn',
-    'challenges-btn',
-    'save-btn',
-    'codex-btn',
-    'help-btn',
-    'reset-btn'
-  ];
+  const actionButtonMap = {
+    'inventory-btn': handlers.inventory,
+    'challenges-btn': handlers.challenges,
+    'save-btn': handlers.save,
+    'codex-btn': handlers.codex,
+    'help-btn': handlers.help,
+    'reset-btn': handlers.reset
+  };
   
   // Create dropdown menu on phones
   if (window.innerWidth <= 768) {
@@ -2010,16 +2044,17 @@ function initModals() {
     menuContainer.className = 'action-menu-container';
     
     // Add action buttons to menu
-    actionButtons.forEach(btnId => {
+    Object.entries(actionButtonMap).forEach(([btnId, handler]) => {
       const originalBtn = document.getElementById(btnId);
       if (originalBtn) {
         const menuItem = originalBtn.cloneNode(true);
         menuItem.className = 'action-menu-item';
+        menuItem.id = btnId + '-menu';
         menuContainer.appendChild(menuItem);
         
-        // Re-attach click handlers to menu items
+        // Attach click handler that directly calls the handler
         menuItem.addEventListener('click', () => {
-          originalBtn.click();
+          handler();
           menuContainer.classList.remove('active');
         });
       }
@@ -2040,15 +2075,6 @@ function initModals() {
     navActions.prepend(menuButton);
     navActions.appendChild(menuContainer);
   }
-  
-  // Close on background click
-  document.querySelectorAll('.modal').forEach(modal => {
-    modal.addEventListener('click', (e) => {
-      if (e.target === modal) {
-        modal.classList.remove('active');
-      }
-    });
-  });
 }
 
 function showCodexTab(tabName) {
