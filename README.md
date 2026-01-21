@@ -1,13 +1,13 @@
-# 🎨 The Magdalenian Cave Art Experience (1)
+# 🎨 The Magdalenian Cave Art Experience
 
-> An educational cave art painting game set 17,000 years ago - Journey to the caves of Lascaux
+> An educational cave art painting game set 17,000 years ago
 
 [![Live Demo](https://img.shields.io/badge/demo-live-success)](https://marcoj03rgensen.github.io/The-Magdalenian-Cave-Art-Experience/)
 [![License: CC BY-NC-ND 4.0](https://img.shields.io/badge/License-CC%20BY--NC--ND%204.0-lightgrey.svg)](https://creativecommons.org/licenses/by-nc-nd/4.0/)
 
 ## 🌟 Overview
 
-**The Magdalenian Cave Art Experience** is an interactive, historically accurate recreation of Upper Paleolithic cave painting. Travel back 17,000 years to experience the authentic process of creating cave art at Lascaux, France.
+**The Magdalenian Cave Art Experience** is an interactive, historically accurate recreation of Upper Paleolithic cave painting. Travel back 17,000 years to experience the authentic process of creating cave art the way the Magdalenians did
 
 ### 🎯 Key Features
 
@@ -34,35 +34,6 @@
 ```
 Gather Materials → Process in Workshop → Craft Tools & Paints → Paint in Cave
 ```
-
-## 🎓 Educational Content
-
-### The Magdalenian Period (17,000 - 12,000 BCE)
-
-- **Peak of Ice Age art** - Most sophisticated prehistoric artistic achievement
-- **Lascaux Cave** - Contains ~600 paintings and 1,500 engravings
-- **Advanced techniques** - Pigment grinding, paint mixing, brush making, stenciling
-- **Scientific accuracy** - All formulas, measurements, and techniques based on archaeological evidence
-
-### Materials & Chemistry
-
-| Material | Formula | Use |
-|----------|---------|-----|
-| Red Ochre | Fe₂O₃ (Hematite) | Warm red-brown pigment |
-| Yellow Ochre | FeO(OH) (Goethite) | Golden yellow hues |
-| Charcoal | C (Carbon) | Deep black pigment |
-| Manganese | MnO₂ (Pyrolusite) | Brown-black tones |
-| Limestone | CaCO₃ (Calcite) | White highlights |
-
-### Techniques Implemented
-
-- **Pigment Grinding**: 100+ microns → 10-20 microns (15-30 min)
-- **Paint Mixing**: Ratios of 2:1, 1:1, or 1:2 (pigment:fat)
-- **Brush Making**: 50-80 hairs bundled with sinew
-- **Torch Crafting**: Resinous wood (15-20% resin content)
-- **Stone Lamp**: Burns 1-3 hours with animal fat
-- **Spray Tube**: Hollow bird bone for stenciling (15-25 PSI)
-
 ## 🎲 Mini-Games
 
 ### Resource Gathering (6 Games)
@@ -98,7 +69,7 @@ Gather Materials → Process in Workshop → Craft Tools & Paints → Paint in C
 - ✅ Firefox 88+
 - ✅ Safari 14+
 - ✅ Edge 90+
-- ⚠️ Mobile browsers (touch optimized but some features may vary)
+- ⚠️ Mobile browsers, touch optimized, but not functional as of now
 
 ### Performance Optimizations
 
@@ -189,7 +160,6 @@ Access detailed information about:
 - The Magdalenian Period
 - Pigment chemistry and sources  
 - Painting techniques and tools
-- Animals depicted at Lascaux
 - Gallery of cave art masterworks
 
 ## 🎯 Future Enhancements
