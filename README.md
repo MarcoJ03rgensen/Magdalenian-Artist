@@ -302,5 +302,4 @@ Areas where input is welcome:
 
 ---
 
-**The Magdalenian Cave Art Experience** - Made with ❤️ for prehistoric art education and archaeological science
 
