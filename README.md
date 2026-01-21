@@ -210,7 +210,7 @@ Access detailed information about:
 ### Development
 
 - Game Design & Programming: Marco Birkedahl Jørgensen
-- 
+  
 ### Research Sources
 
 Chalmin, E., Menu, M. and Vignaud, C., 2003. Analysis of rock art painting and technology of Palaeolithic painters. Measurement Science and Technology, 14, pp. 1590–1597.
