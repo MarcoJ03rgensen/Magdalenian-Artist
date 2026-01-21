@@ -192,58 +192,47 @@ Access detailed information about:
 - Animals depicted at Lascaux
 - Gallery of cave art masterworks
 
-### Scientific Accuracy
-
-All game mechanics based on:
-- Archaeological excavations at Lascaux
-- Experimental archaeology studies
-- Peer-reviewed research papers
-- Museum collections and expert consultations
-
-## 🚀 Development
-
-### File Structure
-
-```
-Magdalenian-Artist/
-├── index.html          # Main game HTML
-├── app.js              # Game logic (3,618 lines)
-├── style.css           # Styling (3,375 lines)
-└── README.md           # This file
-```
-
-### Key Code Sections
-
-- **Lines 1-200**: Game state and data definitions
-- **Lines 200-600**: UI initialization and scene management
-- **Lines 600-1200**: Landscape, workshop, and cave scenes
-- **Lines 1200-2000**: Mini-game implementations
-- **Lines 2000-3618**: Workshop crafting games and utilities
-
 ## 🎯 Future Enhancements
 
 - [x] Save/load functionality (localStorage) ✅ IMPLEMENTED
 - [x] Keyboard navigation shortcuts ✅ IMPLEMENTED
 - [x] Accessibility improvements (ARIA, focus states) ✅ IMPLEMENTED
-- [ ] Sound effects and ambient audio
-- [ ] More animal templates
-- [ ] Gallery system for completed paintings
+- [ ] Modes - Language and game style adapted to specific groups. For instance simpler words in the "Child" mode
+- [ ] Authentic sound effects
+- [ ] Google Drive/browser history based gallery system for completed paintings
 - [ ] Multiplayer collaboration mode
 - [ ] VR support for immersive experience
-- [ ] Additional prehistoric sites (Chauvet, Altamira)
-- [ ] Educational mode with guided tours
+- [ ] Specific sites
+- [ ] Educational mode (dissemination guide)
 
 ## 📖 Credits
-
-### Research Sources
-
-- (Will be updated when the project is finished)
 
 ### Development
 
 - Game Design & Programming: Marco Birkedahl Jørgensen
-- Historical Research: Archaeological Literature
-- Art Direction: Authentic Magdalenian Techniques
+- 
+### Research Sources
+
+Chalmin, E., Menu, M. and Vignaud, C., 2003. Analysis of rock art painting and technology of Palaeolithic painters. Measurement Science and Technology, 14, pp. 1590–1597.
+
+Cuenca-Solana, D., Gutiérrez-Zugasti, I., Ruiz-Redondo, A., González-Morales, M.R., Setién, J., Ruiz-Martínez, E., Palacio-Pérez, E., de las Heras-Martín, C., Prada-Freixedo, A. and Lasheras-Corruchaga, J.A. (2016) 'Painting Altamira Cave? Shell tools for ochre-processing in the Upper Palaeolithic in northern Iberia', Journal of Archaeological Science, 74, pp. 135–151
+
+Garate, D., Rivero, O., Rios Garaizar, J., Medina Alcaide, M.Á., Arriolabengoa, M., Intxaurbe, I., Ruiz López, J.F., Marín Arroyo, A.B., Rofes, J., García Bustos, P., Torres, A. and Salazar, S., (2023). 
+Unravelling the skills and motivations of Magdalenian artists in the depths of Atxurra Cave (Northern Spain). Scientific Reports, 13
+
+Hughes, F., (2021). Relief and the Structure of Intentions in Late Palaeolithic Cave Art. The Journal of Aesthetics and Art Criticism, 79, pp. 285–300.
+
+Leroi-Gourhan, Arl., (1982). The Archaeology of Lascaux Cave. Scientific American, 246(6), pp. 104-113.
+
+Medina-Alcaide, M.Á., Garate, D., Intxaurbe, I., Sanchidrián, J.L., Rivero, O., Ferrier, C., Mesa, M.D., Pereña, J. and Lı́bano, I. (2021) 'The conquest of the dark spaces: An experimental approach to lighting systems in Paleolithic caves', PLOS ONE, 16(6).
+
+Pomiès, M.-P., Menu, M. and Vignaud, C., (1999). Red Palaeolithic pigments: natural hematite or heated goethite? Archaeometry, 41(2), pp. 275-285.
+
+Salomon, H., Vignaud, C., Lahlil, S. and Menguy, N., (2015). Solutrean and Magdalenian ferruginous rocks heat-treatment: accidental and/or deliberate action? Journal of Archaeological Science, 55, pp. 100-112.
+
+Vignaud, C., Salomon, H., Chalmin, E., Geneste, J.M. and Menu, M. (2006) 'Le groupe des « bisons adossés » de Lascaux. Étude de la technique de l’artiste par analyse des pigments', L’anthropologie, 110, pp. 482–499.
+
+Wisher, I., Pettitt, P. and Kentridge, R. (2023) ‘Conversations with Caves: The Role of Pareidolia in the Upper Palaeolithic Figurative Art of Las Monedas and La Pasiega (Cantabria, Spain)’, Cambridge Archaeological Journal, pp. 1–24. doi: 10.1017/S0959774323000288
 
 ### Creator
 
