@@ -209,7 +209,7 @@ Access detailed information about:
 
 ### Development
 
-- Game Design & Programming: Marco Birkedahl Jørgensen
+Game Design & Programming: Marco Birkedahl Jørgensen
   
 ### Research Sources
 
