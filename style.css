@@ -1217,7 +1217,6 @@ body {
   touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
 }
-}
 
 /* Experience display (nav) */
 .xp-display {
@@ -1249,7 +1248,7 @@ body {
 }
 
 /* ========================================
-   INVENTORY & TOOLS PANELS
+INVENTORY & TOOLS PANELS
    ======================================== */
 
 #inventory-panel, #tools-panel {
@@ -5677,12 +5676,12 @@ kbd {
 
 /* Platformer character styles (Ochre Expedition look) */
 .character-sprite.platformer-char {
-  background: rgba(255,255,255,0.02);
-  box-shadow: none;
+  background: linear-gradient(135deg, var(--ochre-red) 0%, var(--ochre-orange) 100%);
+  box-shadow: 0 4px 8px rgba(0,0,0,0.4);
 }
 .character-sprite.platformer-char::before,
 .character-sprite.platformer-char::after {
-  display: none !important;
+  display: block !important;
 }
 .character-sprite.platformer-char.running {
   transform-origin: center;
