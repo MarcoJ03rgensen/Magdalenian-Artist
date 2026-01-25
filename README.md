@@ -1,13 +1,13 @@
-# 🎨 The Magdalenian Cave Art Experience (1)
+# 🎨 The Magdalenian Cave Art Experience
 
-> An educational cave art painting game set 17,000 years ago - Journey to the caves of Lascaux
+> An educational cave art painting game set 17,000 years ago
 
 [![Live Demo](https://img.shields.io/badge/demo-live-success)](https://marcoj03rgensen.github.io/The-Magdalenian-Cave-Art-Experience/)
 [![License: CC BY-NC-ND 4.0](https://img.shields.io/badge/License-CC%20BY--NC--ND%204.0-lightgrey.svg)](https://creativecommons.org/licenses/by-nc-nd/4.0/)
 
 ## 🌟 Overview
 
-**The Magdalenian Cave Art Experience** is an interactive, historically accurate recreation of Upper Paleolithic cave painting. Travel back 17,000 years to experience the authentic process of creating cave art at Lascaux, France.
+**The Magdalenian Cave Art Experience** is an interactive, historically accurate recreation of Upper Paleolithic cave painting. Travel back 17,000 years to experience the authentic process of creating cave art the way the Magdalenians did
 
 ### 🎯 Key Features
 
@@ -34,35 +34,6 @@
 ```
 Gather Materials → Process in Workshop → Craft Tools & Paints → Paint in Cave
 ```
-
-## 🎓 Educational Content
-
-### The Magdalenian Period (17,000 - 12,000 BCE)
-
-- **Peak of Ice Age art** - Most sophisticated prehistoric artistic achievement
-- **Lascaux Cave** - Contains ~600 paintings and 1,500 engravings
-- **Advanced techniques** - Pigment grinding, paint mixing, brush making, stenciling
-- **Scientific accuracy** - All formulas, measurements, and techniques based on archaeological evidence
-
-### Materials & Chemistry
-
-| Material | Formula | Use |
-|----------|---------|-----|
-| Red Ochre | Fe₂O₃ (Hematite) | Warm red-brown pigment |
-| Yellow Ochre | FeO(OH) (Goethite) | Golden yellow hues |
-| Charcoal | C (Carbon) | Deep black pigment |
-| Manganese | MnO₂ (Pyrolusite) | Brown-black tones |
-| Limestone | CaCO₃ (Calcite) | White highlights |
-
-### Techniques Implemented
-
-- **Pigment Grinding**: 100+ microns → 10-20 microns (15-30 min)
-- **Paint Mixing**: Ratios of 2:1, 1:1, or 1:2 (pigment:fat)
-- **Brush Making**: 50-80 hairs bundled with sinew
-- **Torch Crafting**: Resinous wood (15-20% resin content)
-- **Stone Lamp**: Burns 1-3 hours with animal fat
-- **Spray Tube**: Hollow bird bone for stenciling (15-25 PSI)
-
 ## 🎲 Mini-Games
 
 ### Resource Gathering (6 Games)
@@ -98,7 +69,7 @@ Gather Materials → Process in Workshop → Craft Tools & Paints → Paint in C
 - ✅ Firefox 88+
 - ✅ Safari 14+
 - ✅ Edge 90+
-- ⚠️ Mobile browsers (touch optimized but some features may vary)
+- ⚠️ Mobile browsers, touch optimized, but not functional as of now
 
 ### Performance Optimizations
 
@@ -189,61 +160,49 @@ Access detailed information about:
 - The Magdalenian Period
 - Pigment chemistry and sources  
 - Painting techniques and tools
-- Animals depicted at Lascaux
 - Gallery of cave art masterworks
-
-### Scientific Accuracy
-
-All game mechanics based on:
-- Archaeological excavations at Lascaux
-- Experimental archaeology studies
-- Peer-reviewed research papers
-- Museum collections and expert consultations
-
-## 🚀 Development
-
-### File Structure
-
-```
-Magdalenian-Artist/
-├── index.html          # Main game HTML
-├── app.js              # Game logic (3,618 lines)
-├── style.css           # Styling (3,375 lines)
-└── README.md           # This file
-```
-
-### Key Code Sections
-
-- **Lines 1-200**: Game state and data definitions
-- **Lines 200-600**: UI initialization and scene management
-- **Lines 600-1200**: Landscape, workshop, and cave scenes
-- **Lines 1200-2000**: Mini-game implementations
-- **Lines 2000-3618**: Workshop crafting games and utilities
 
 ## 🎯 Future Enhancements
 
 - [x] Save/load functionality (localStorage) ✅ IMPLEMENTED
 - [x] Keyboard navigation shortcuts ✅ IMPLEMENTED
 - [x] Accessibility improvements (ARIA, focus states) ✅ IMPLEMENTED
-- [ ] Sound effects and ambient audio
-- [ ] More animal templates
-- [ ] Gallery system for completed paintings
+- [ ] Modes - Language and game style adapted to specific groups. For instance simpler words in the "Child" mode
+- [ ] Authentic sound effects
+- [ ] Google Drive/browser history based gallery system for completed paintings
 - [ ] Multiplayer collaboration mode
 - [ ] VR support for immersive experience
-- [ ] Additional prehistoric sites (Chauvet, Altamira)
-- [ ] Educational mode with guided tours
+- [ ] Specific sites
+- [ ] Educational mode (dissemination guide)
 
 ## 📖 Credits
 
-### Research Sources
-
-- (Will be updated when the project is finished)
-
 ### Development
 
-- Game Design & Programming: Marco Birkedahl Jørgensen
-- Historical Research: Archaeological Literature
-- Art Direction: Authentic Magdalenian Techniques
+Game Design & Programming: Marco Birkedahl Jørgensen
+  
+### Research Sources
+
+Chalmin, E., Menu, M. and Vignaud, C., 2003. Analysis of rock art painting and technology of Palaeolithic painters. Measurement Science and Technology, 14, pp. 1590–1597.
+
+Cuenca-Solana, D., Gutiérrez-Zugasti, I., Ruiz-Redondo, A., González-Morales, M.R., Setién, J., Ruiz-Martínez, E., Palacio-Pérez, E., de las Heras-Martín, C., Prada-Freixedo, A. and Lasheras-Corruchaga, J.A. (2016) 'Painting Altamira Cave? Shell tools for ochre-processing in the Upper Palaeolithic in northern Iberia', Journal of Archaeological Science, 74, pp. 135–151
+
+Garate, D., Rivero, O., Rios Garaizar, J., Medina Alcaide, M.Á., Arriolabengoa, M., Intxaurbe, I., Ruiz López, J.F., Marín Arroyo, A.B., Rofes, J., García Bustos, P., Torres, A. and Salazar, S., (2023). 
+Unravelling the skills and motivations of Magdalenian artists in the depths of Atxurra Cave (Northern Spain). Scientific Reports, 13
+
+Hughes, F., (2021). Relief and the Structure of Intentions in Late Palaeolithic Cave Art. The Journal of Aesthetics and Art Criticism, 79, pp. 285–300.
+
+Leroi-Gourhan, Arl., (1982). The Archaeology of Lascaux Cave. Scientific American, 246(6), pp. 104-113.
+
+Medina-Alcaide, M.Á., Garate, D., Intxaurbe, I., Sanchidrián, J.L., Rivero, O., Ferrier, C., Mesa, M.D., Pereña, J. and Lı́bano, I. (2021) 'The conquest of the dark spaces: An experimental approach to lighting systems in Paleolithic caves', PLOS ONE, 16(6).
+
+Pomiès, M.-P., Menu, M. and Vignaud, C., (1999). Red Palaeolithic pigments: natural hematite or heated goethite? Archaeometry, 41(2), pp. 275-285.
+
+Salomon, H., Vignaud, C., Lahlil, S. and Menguy, N., (2015). Solutrean and Magdalenian ferruginous rocks heat-treatment: accidental and/or deliberate action? Journal of Archaeological Science, 55, pp. 100-112.
+
+Vignaud, C., Salomon, H., Chalmin, E., Geneste, J.M. and Menu, M. (2006) 'Le groupe des « bisons adossés » de Lascaux. Étude de la technique de l’artiste par analyse des pigments', L’anthropologie, 110, pp. 482–499.
+
+Wisher, I., Pettitt, P. and Kentridge, R. (2023) ‘Conversations with Caves: The Role of Pareidolia in the Upper Palaeolithic Figurative Art of Las Monedas and La Pasiega (Cantabria, Spain)’, Cambridge Archaeological Journal, pp. 1–24. doi: 10.1017/S0959774323000288
 
 ### Creator
 
@@ -313,5 +272,4 @@ Areas where input is welcome:
 
 ---
 
-**The Magdalenian Cave Art Experience** - Made with ❤️ for prehistoric art education and archaeological science
 
