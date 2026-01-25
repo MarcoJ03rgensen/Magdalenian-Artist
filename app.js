@@ -46,7 +46,7 @@ const materials = {
   yellowOchre: { name: 'Yellow Ochre', icon: '🟡', formula: 'FeO(OH)', color: '#DAA520', info: 'Weathered limestone deposits, creates golden yellow hues' },
   charcoal: { name: 'Charcoal', icon: '⚫', formula: 'C', color: '#100c08', info: 'Burnt wood rich in carbon, used for deep black pigment' },
   manganese: { name: 'Manganese', icon: '🟤', formula: 'MnO₂', color: '#1B1B1B', info: 'Manganese dioxide ore, produces brown-black tones' },
-  kaolin: { name: 'White Powder', icon: '⚪', formula: 'Al₂Si₂O₅(OH)₄', color: '#F5F5DC', info: 'Ground kaolin clay for white highlights' },
+  whitePowder: { name: 'White Powder', icon: '⚪', formula: 'Al₂Si₂O₅(OH)₄', color: '#F5F5DC', info: 'Ground white powder for white highlights' },
   animalFat: { name: 'Animal Fat', icon: '🥩', info: 'Essential binder from marrow and adipose tissue' },
   bone: { name: 'Hollow Bone', icon: '🦴', info: 'For creating spray tubes and tool handles' },
   wood: { name: 'Wood', icon: '🪵', info: 'For torch construction and handles' },
@@ -122,7 +122,7 @@ const paintRecipes = {
   whitePaint: {
     name: 'White Paint',
     icon: '⚪',
-    requires: { kaolin: 2, animalFat: 2 },
+    requires: { whitePowder: 2, animalFat: 2 },
     xpCost: 10,
     color: '#F5F5DC'
   }
@@ -263,7 +263,7 @@ const miniGames = {
       qualityTest: 'Smooth between fingers, no grittiness'
     }
   },
-  kaolin: {
+  whitePowder: {
     name: 'Color Harmony',
     type: 'paint-formulation',
     duration: 40,
@@ -1267,7 +1267,7 @@ function initLandscapeScene() {
     { key: 'yellowOchre', label: 'Yellow Ochre', hasGame: true },
     { key: 'charcoal', label: 'Charcoal', hasGame: true },
     { key: 'manganese', label: 'Manganese', hasGame: true },
-    { key: 'kaolin', label: 'Kaolin', hasGame: true },
+    { key: 'whitePowder', label: 'White Powder', hasGame: true },
     { key: 'animalFat', label: 'Animal Fat', hasGame: true },
     { key: 'bone', label: 'Bone', hasGame: true },
     { key: 'wood', label: 'Wood', hasGame: true },
