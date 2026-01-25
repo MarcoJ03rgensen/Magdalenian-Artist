@@ -46,7 +46,7 @@ const materials = {
   yellowOchre: { name: 'Yellow Ochre', icon: '🟡', formula: 'FeO(OH)', color: '#DAA520', info: 'Weathered limestone deposits, creates golden yellow hues' },
   charcoal: { name: 'Charcoal', icon: '⚫', formula: 'C', color: '#100c08', info: 'Burnt wood rich in carbon, used for deep black pigment' },
   manganese: { name: 'Manganese', icon: '🟤', formula: 'MnO₂', color: '#1B1B1B', info: 'Manganese dioxide ore, produces brown-black tones' },
-  kaolin: { name: 'Kaolin', icon: '⚪', formula: 'Al₂Si₂O₅(OH)₄', color: '#F5F5DC', info: 'Ground kaolin clay for white highlights' },
+  kaolin: { name: 'White Powder', icon: '⚪', formula: 'Al₂Si₂O₅(OH)₄', color: '#F5F5DC', info: 'Ground kaolin clay for white highlights' },
   animalFat: { name: 'Animal Fat', icon: '🥩', info: 'Essential binder from marrow and adipose tissue' },
   bone: { name: 'Hollow Bone', icon: '🦴', info: 'For creating spray tubes and tool handles' },
   wood: { name: 'Wood', icon: '🪵', info: 'For torch construction and handles' },
@@ -73,7 +73,7 @@ const toolRecipes = {
     isLight: true
   },
   brush: {
-    name: 'Hair Brush',
+    name: 'Brush',
     icon: '🖌️',
     requires: { wood: 7, animalHair: 7 },
     xpCost: 50,
